@@ -588,6 +588,29 @@ body{
   .chapter-slide .right img{max-height:26vh;object-fit:cover}
 }
 
+/* ============================================================
+   窄屏（真实手机 360–430px）
+   headless 浏览器有最小视口限制，测不到这个宽度，
+   所以按「宁可单栏，不要拥挤」的原则直接兜住。
+   ============================================================ */
+@media (max-width:560px){
+  /* 图文两栏（AED 实物页）→ 改为上下堆叠 */
+  .split,.split.rev{grid-template-columns:1fr !important;gap:var(--s-lg)}
+  .split.rev .figure{order:0}
+  .split .figure{aspect-ratio:16/10 !important;max-height:30vh}
+
+  /* 三图并排 → 两栏 + 第三张通栏，避免挤成细条 */
+  .gallery{grid-template-columns:1fr 1fr}
+  .gallery .figure{height:clamp(108px,15vh,165px)}
+  .gallery .figure:nth-child(3){grid-column:1 / -1}
+
+  /* 数据条 → 横向单行（数值在左、说明在右），比三栏竖排更好读 */
+  .stats{grid-template-columns:1fr !important;gap:10px}
+  .stat{display:flex;align-items:baseline;gap:12px;padding-left:12px}
+  .stat .v{font-size:clamp(22px,6.4vw,34px);flex:0 0 auto}
+  .stat .k{font-size:12px;margin-top:0;line-height:1.45}
+}
+
 /* 横屏手机（高度很小）：压缩纵向留白，否则内容溢出 */
 @media (orientation:landscape) and (max-height:520px){
   .slide{padding:5vh 6vw;justify-content:center}
