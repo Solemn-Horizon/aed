@@ -126,6 +126,34 @@ body{
   transform:translate3d(1.6%,-1.2%,0) scale(.985);
 }
 
+/* ============================================================
+   元素交接（FLIP）
+   每页挑一个「主角元素」(.hero / .initial / .h2)，
+   翻页时它从上一页的位置与大小，飞到本页的位置与大小；
+   其余内容照常淡入。这就是「由上一页的某个元素引入下一页」。
+   ============================================================ */
+.carrier{
+  transform-origin:left top;
+  backface-visibility:hidden;
+}
+/* 没有来源页时（首次进入 / 直接跳页）用的简单浮现 */
+.carrier.enter{animation:carrierIn .95s var(--ease) both}
+@keyframes carrierIn{
+  from{opacity:0;transform:translate3d(0,30px,0)}
+  to{opacity:1;transform:none}
+}
+
+/* 章节标签与页码：翻页时旧值上移淡出、新值自下淡入 */
+#chapter,#pagerNum{
+  display:inline-block;overflow:hidden;vertical-align:bottom;
+}
+#pagerNum{line-height:1.2}
+.sw{display:inline-block}
+.sw.out{animation:swOut .3s var(--ease-in) both}
+.sw.in{animation:swIn .45s var(--ease) both}
+@keyframes swOut{to{opacity:0;transform:translate3d(0,-85%,0)}}
+@keyframes swIn{from{opacity:0;transform:translate3d(0,85%,0)}to{opacity:1;transform:none}}
+
 /* ---------- 入场动画元素 ---------- */
 /* --rise 由各角色自行声明：主角位移大、说明文字位移小 → 层次感 */
 [data-anim]{
@@ -667,6 +695,9 @@ body{
 /* ---------- 可访问性：尊重系统的「减弱动态效果」 ---------- */
 @media (prefers-reduced-motion:reduce){
   .aurora i{animation:none}
+  /* 交接与出入动画全部退化为即时切换 */
+  .carrier.enter{animation:none !important;opacity:1 !important;transform:none !important}
+  .sw.out,.sw.in{animation:none !important}
   .slide{
     transition:opacity .18s linear !important;transform:none !important;
   }
@@ -685,7 +716,7 @@ body{
 
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 <div id="bar"></div>
-<div id="chapter">01 / 问题的起点</div>
+<div id="chapter"><span class="sw">01 / 问题的起点</span></div>
 
 <main id="stage">
 
@@ -980,7 +1011,7 @@ body{
 
 </main>
 
-<div id="pager"><b>01</b> / 15</div>
+<div id="pager"><span id="pagerNum"><b>01</b></span> / 19</div>
 <div id="tools">
   <button id="btnNotes" type="button">讲稿 N</button>
   <button id="btnAuto" type="button">自动播放 A</button>
@@ -1007,6 +1038,7 @@ body{
   var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
   var bar = document.getElementById('bar');
   var pager = document.getElementById('pager');
+  var pagerNumEl = document.getElementById('pagerNum');
   var chapterEl = document.getElementById('chapter');
   var notesEl = document.getElementById('notes');
   var notesBody = document.getElementById('notesBody');
@@ -1042,6 +1074,11 @@ body{
         else el.textContent = prefix + target;
       }
       el.textContent = prefix + '0';
+      // 兜底：rAF 在后台标签页 / 自动播放切页时可能被节流，
+      // 到点后直接把终值写上，避免数字永远停在 0
+      setTimeout(function () {
+        if (last !== target) el.textContent = prefix + target;
+      }, dur + 260);
       requestAnimationFrame(step);
     });
   }
@@ -1096,10 +1133,101 @@ body{
     el.classList.add('typing');
   }
 
+  /* ============================================================
+     元素交接（FLIP）
+     每页挑一个「主角元素」，翻页时让它从上一页的位置与大小，
+     平滑落到本页的位置与大小 —— 即「由上一页的元素引入下一页」。
+     ============================================================ */
+  // 按「视觉重要度」依次尝试，而不是靠 querySelector 的文档顺序 ——
+  // 否则页面里靠前的小字（如 kicker）会抢走主角位置
+  var CARRIER_SELS = ['.hero', '.initial', '.h2', '.bignum', '.capsule', '.kicker'];
+  function carrierOf(sl) {
+    for (var i = 0; i < CARRIER_SELS.length; i++) {
+      var el = sl.querySelector(CARRIER_SELS[i]);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  // 主角元素不再走普通入场动画，统一交给交接逻辑控制
+  slides.forEach(function (sl) {
+    var c = carrierOf(sl);
+    if (c) {
+      c.removeAttribute('data-anim');
+      c.classList.add('carrier');
+    }
+  });
+
+  function resetCarrier(el) {
+    el.style.transition = 'none';
+    el.style.transform = '';
+    el.style.opacity = '';
+  }
+
+  // 把 to 从 fromRect 处飞回它自己的位置。
+  // 用 Web Animations API 而不是内联 transition：
+  // 基准态直接设为「最终位置」，动画只负责插值 ——
+  // 即使动画因为任何原因没跑，元素也已经在对的位置，不会卡住。
+  function handoff(fromRect, to) {
+    resetCarrier(to);
+    void to.offsetWidth;                 // 清掉历史内联样式后重新量一次
+    var r2 = to.getBoundingClientRect();
+    if (fromRect.width < 2 || r2.width < 2 || r2.height < 2) return false;
+
+    var dx = fromRect.left - r2.left;
+    var dy = fromRect.top - r2.top;
+    // 等比缩放并限制幅度，避免小字被放大到失真
+    var s = Math.max(.5, Math.min(1.75, fromRect.width / r2.width));
+
+    // 基准态 = 自己的最终位置（关键：动画失效也不会错位）
+    to.style.transformOrigin = 'left top';
+    to.style.transform = 'none';
+    to.style.opacity = '1';
+
+    if (!to.animate) return true;        // 老浏览器：直接落位，无动画
+
+    // 先清掉该元素上可能残留的旧动画，避免连按后动画累积
+    if (to.getAnimations) {
+      to.getAnimations().forEach(function (a) { a.cancel(); });
+    }
+
+    to.animate([
+      { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')',
+        opacity: 0 },
+      { transform: 'translate3d(0,0,0) scale(1)', opacity: 1 }
+    ], {
+      duration: 920,
+      easing: 'cubic-bezier(.16,1,.3,1)',
+      fill: 'none'
+    });
+    return true;
+  }
+
+  // 章节标签 / 页码：旧值上移淡出，新值自下淡入
+  function swapChrome(el, html) {
+    if (!el) return;
+    var old = el.querySelector('.sw');
+    var nx = document.createElement('span');
+    nx.className = 'sw in';
+    nx.innerHTML = html;
+    if (old) {
+      old.classList.remove('in');
+      old.classList.add('out');
+      el.appendChild(nx);
+      setTimeout(function () {
+        if (old.parentNode) old.parentNode.removeChild(old);
+      }, 340);
+    } else {
+      el.innerHTML = '';
+      el.appendChild(nx);
+    }
+  }
+
   /* ---------- 翻页 ---------- */
   var stageEl = document.getElementById('stage');
   var navLock = false;      // 转场进行中不接受新的翻页指令
-  var LOCK_MS = 460;        // 略短于转场时长，连按仍有跟手感
+  var LOCK_MS = 600;        // 略短于交接时长，连按仍跟手
+  var booted = false;       // 首次进入不做交接（直接跳页时不该从封面飞过来）
 
   function show(n, dir) {
     n = Math.max(0, Math.min(slides.length - 1, n));
@@ -1112,24 +1240,55 @@ body{
     // 前进 / 后退：驱动方向感知的运镜
     if (stageEl) stageEl.setAttribute('data-dir', dir === 'prev' ? 'prev' : 'next');
 
+    var fromSlide = slides[idx];
+    var toSlide = slides[n];
+    var fromC = carrierOf(fromSlide);
+    var toC = carrierOf(toSlide);
+
+    // 1) 切换前先量出上一页主角的矩形（切换后就量不到了）
+    var fromRect = null;
+    if (booted && !reduce && fromC && fromSlide !== toSlide) {
+      fromRect = fromC.getBoundingClientRect();
+    }
+
+    // 2) 切换页面状态
     slides.forEach(function (s, i) {
       s.classList.toggle('active', i === n);
       s.classList.toggle('prev', i < n);
     });
     idx = n;
 
-    // 界面状态
+    // 3) 界面状态
     bar.style.width = ((n + 1) / slides.length * 100) + '%';
-    pager.innerHTML = '<b>' + pad(n + 1) + '</b> / ' + slides.length;
-    chapterEl.textContent = slides[n].getAttribute('data-chapter') || '';
+    swapChrome(pagerNumEl, '<b>' + pad(n + 1) + '</b>');
+    swapChrome(chapterEl, slides[n].getAttribute('data-chapter') || '');
     notesBody.textContent = slides[n].getAttribute('data-notes') || '（本页无讲稿）';
 
-    // 触发本页动效
+    // 4) 先跑数字滚动/打字，再量尺寸 —— 否则空的 h2 量不到宽度
     runCounters(slides[n]);
     runType(slides[n]);
 
+    // 5) 元素交接
+    if (toC) {
+      toC.classList.remove('enter');
+      var flew = false;
+      if (fromRect) flew = handoff(fromRect, toC);
+      if (!flew && !reduce) {
+        resetCarrier(toC);
+        void toC.offsetWidth;
+        toC.classList.add('enter');
+        setTimeout(function () { toC.classList.remove('enter'); }, 1000);
+      }
+      // 上一页的主角快速"交出"，避免与来者叠成双影
+      if (fromC && fromC !== toC) {
+        fromC.style.transition = 'opacity .32s var(--ease-in)';
+        fromC.style.opacity = '0';
+      }
+    }
+
     // 首次交互后隐藏提示
     if (hint) hint.classList.add('hide');
+    booted = true;
   }
 
   function next() { show(idx + 1, 'next'); }
