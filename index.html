@@ -143,7 +143,68 @@ body{
   to{opacity:1;transform:none}
 }
 
-/* 章节标签与页码：翻页时旧值上移淡出、新值自下淡入 */
+/* ============================================================
+   问卷数据条
+   用宽度表达百分比，激活本页时从 0 长到目标值
+   ============================================================ */
+.bars{margin-top:clamp(14px,2.6vh,38px);display:flex;flex-direction:column;
+      gap:clamp(9px,1.4vh,19px)}
+.brow{display:grid;grid-template-columns:minmax(78px,19%) 1fr auto;
+      align-items:center;gap:clamp(9px,1.3vw,20px)}
+.brow .lab{font-size:clamp(11px,1.22vw,18px);color:var(--grey);
+           font-weight:600;text-align:right;line-height:1.3}
+.brow .track{display:block;height:clamp(7px,1vh,13px);background:#141414;
+             border-radius:999px;overflow:hidden}
+.brow .fill{display:block;height:100%;width:0;border-radius:999px;
+            background:var(--grad-main);
+            transition:width 1.05s var(--ease)}
+.slide.active .brow .fill{width:var(--w,0%)}
+.brow .val{font-family:var(--font-num);font-size:clamp(12px,1.4vw,20px);
+           font-weight:800;min-width:4.3em;text-align:right;color:var(--white)}
+/* 重点条目：数值也用渐变 */
+.brow.hot .val,.brow.hot .lab{color:var(--white)}
+.brow.hot .val{background:var(--grad-main);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+/* 逐条错开生长 */
+.slide.active .brow:nth-child(1) .fill{transition-delay:.10s}
+.slide.active .brow:nth-child(2) .fill{transition-delay:.22s}
+.slide.active .brow:nth-child(3) .fill{transition-delay:.34s}
+.slide.active .brow:nth-child(4) .fill{transition-delay:.46s}
+.slide.active .brow:nth-child(5) .fill{transition-delay:.58s}
+
+/* 大引言（访谈原话） */
+.quote{
+  font-size:clamp(24px,4.4vw,72px);font-weight:800;line-height:1.2;
+  letter-spacing:-.02em;margin:0;
+  background:var(--grad-main);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+
+/* 案例卡：左侧一道渐变竖线 */
+.case{position:relative;padding-left:clamp(14px,1.8vw,28px);margin-top:clamp(14px,2.4vh,34px)}
+.case::before{
+  content:"";position:absolute;left:0;top:2px;bottom:2px;
+  width:3px;border-radius:2px;background:var(--grad-main);
+}
+
+/* 讲者标签（右上角） */
+#speaker{
+  position:fixed;right:3.2vw;top:3.4vh;z-index:9;
+  font-size:12px;letter-spacing:.08em;color:var(--dim);font-weight:700;
+  text-align:right;
+}
+#speakerName{display:inline-block;overflow:hidden;vertical-align:bottom}
+#speakerName b{color:var(--pink);font-weight:800}
+
+@media (max-width:760px){
+  #speaker{right:7vw;top:4.2vh;font-size:10.5px}
+  .brow{grid-template-columns:minmax(64px,30%) 1fr auto;gap:8px}
+  .brow .lab{font-size:11px}
+  .brow .val{font-size:12px;min-width:3.6em}
+  #speaker{max-width:44vw}
+}
+
 #chapter,#pagerNum{
   display:inline-block;overflow:hidden;vertical-align:bottom;
 }
@@ -743,19 +804,19 @@ body{
 
 <main id="stage">
 
-  <!-- ============ 01 封面 ============ -->
-  <section class="slide" data-chapter="01 / 问题的起点"
-           data-notes="（上台先停三秒，不要急着说话）&#10;各位老师、同学好。&#10;我先问一个问题：如果此刻身边有人突然倒下，从倒地到脑损伤，我们只有 4 分钟。&#10;今天这场汇报，讲的就是这 4 分钟里最关键的那台设备 —— AED。">
+  <!-- ====== 01 封面 ====== -->
+  <section class="slide" data-chapter="01 / 问题的起点" data-speaker="孙子涵"
+           data-notes="（上台先停三秒再开口）&#10;各位老师、同学好。&#10;我先问一个问题：如果此刻身边有人突然倒下，从倒地到脑损伤，我们只有 4 分钟。&#10;今天这场汇报，讲的就是这 4 分钟里最关键的那台设备 —— AED。">
     <p class="kicker" data-anim="1">如果身边有人倒下</p>
     <h1 class="hero" data-anim="zoom">你只有 4 分钟</h1>
     <p class="sub dim" data-anim="3" style="margin-top:6vh">
-      扬州市公共场所 AED 配置与急救培训调研<br>
-      邗江一中 · 中学生领导力课题组
+      关于普及社区与校园 AED 配置及急救科普培训的调查<br>
+      邗江一中 ·「寻城市 AED，守生命四分钟」课题组
     </p>
   </section>
 
-  <!-- ============ 02 对比：时间差 ============ -->
-  <section class="slide" data-chapter="01 / 问题的起点"
+  <!-- ====== 02 两个数字 ====== -->
+  <section class="slide" data-chapter="01 / 问题的起点" data-speaker="孙子涵"
            data-notes="救护车再快，也快不过现场那 4 分钟。&#10;这就是整个课题的起点 —— 我们把问题定在了：AED 配了多少、在哪儿、有没有人会用。">
     <p class="kicker" data-anim="1">两个数字之间，隔着一条命</p>
     <div class="grid g2" data-anim="2" style="margin-top:5vh;align-items:end">
@@ -777,9 +838,9 @@ body{
     </p>
   </section>
 
-  <!-- ============ 03 三个问题 ============ -->
-  <section class="slide" data-chapter="01 / 问题的起点"
-           data-notes="三个问题看起来都很朴素。但一问下去就发现：每一个都不好回答。">
+  <!-- ====== 03 三个问题 ====== -->
+  <section class="slide" data-chapter="01 / 问题的起点" data-speaker="孙子涵"
+           data-notes="三个问题看起来都很朴素，但一问下去就发现：每一个都不好回答。&#10;接下来的数据，就是我们对这三个问题的回答。">
     <h2 class="h2 grad" data-anim="1">于是我们问了三个问题</h2>
     <div class="rows">
       <div class="row" data-anim="3"><span class="idx">01</span><span class="txt grad">配了多少？</span></div>
@@ -788,253 +849,466 @@ body{
     </div>
   </section>
 
-  <!-- ============ 章节页 Q ============ -->
-  <section class="slide chapter-slide" data-chapter="01 / 问题的起点"
-           data-notes="（这是过渡页，停留 3–4 秒即可，不要念英文）&#10;翻页前可以补一句：这三个问题，我们决定亲自去问。">
+  <!-- ====== 04 章节 D · DATA ====== -->
+  <section class="slide chapter-slide" data-chapter="02 / 三周问卷" data-speaker="梅艺馨"
+           data-notes="（过渡页，停 3–4 秒，不用念英文）&#10;下面这段是数据部分，交给梅艺馨。">
     <div class="left">
-      <span class="initial">Q</span>
-      <p class="word">QUESTIONS</p>
-      <p class="cn">问题 · 三个没人能立刻回答的问题</p>
+      <span class="initial">D</span>
+      <p class="word">DATA</p>
+      <p class="cn">数据 · 三周线上问卷，133 份回收</p>
       <div class="bar-line"></div>
     </div>
     <div class="right">
       <figure class="figure">
-        <img src="img/interview-notes.webp" alt="访谈提纲与笔记" loading="lazy">
-        <figcaption>9.26 · 访谈提纲与现场笔记</figcaption>
+        <img src="img/interview-notes.webp" alt="问卷与访谈提纲记录" loading="lazy">
+        <figcaption>组员手写的访谈提纲与记录</figcaption>
       </figure>
     </div>
   </section>
 
-  <!-- ============ 04 四条线 ============ -->
-  <section class="slide" data-chapter="02 / 我们做了什么"
-           data-notes="我们没有只做问卷，而是四条线同时推进：问市民、问管理者、去现场、发抖音。&#10;为什么发抖音？因为想让更多人认识 AED，调研本身也可以是一次科普。">
-    <p class="kicker" data-anim="1">两周时间</p>
-    <h2 class="h2 grad" data-anim="2">四条线同时推进</h2>
-    <div class="grid g4" data-anim="4">
-      <div class="item"><div class="t grad">问卷</div><div class="d">9.28 起投放</div></div>
-      <div class="item"><div class="t grad">访谈</div><div class="d">9.30 前对接</div></div>
-      <div class="item"><div class="t grad">实地</div><div class="d">10.1—10.5</div></div>
-      <div class="item"><div class="t grad">传播</div><div class="d">10.1 起持续</div></div>
-    </div>
-  </section>
-
-  <!-- ============ 05 时间轴 ============ -->
-  <section class="slide" data-chapter="02 / 我们做了什么"
-           data-notes="时间线一镜到底：前两个阶段已经落地，我们现在正站在第三阶段中间。&#10;所以这不是一份完成的报告，而是一份进行中的汇报。">
-    <h2 class="h2 grad" data-anim="1">我们正站在第三阶段</h2>
-    <div class="tl">
-      <div class="node done" data-anim="3"><div class="d">9.28—9.30</div><div class="n">启动</div><div class="s">分工 / 问卷 / 账号</div></div>
-      <div class="node done" data-anim="4"><div class="d">10.1—10.7</div><div class="n">调研</div><div class="s">两轮实地 + 访谈</div></div>
-      <div class="node" data-anim="5"><div class="d">10.8—10.18</div><div class="n grad">分析</div><div class="s">数据统计 / 报告初稿</div></div>
-      <div class="node" data-anim="6"><div class="d">10.19—11月初</div><div class="n grad">整合</div><div class="s">建议书 / PPT / 彩排</div></div>
-    </div>
-  </section>
-
-  <!-- ============ 06 上街 ============ -->
-  <section class="slide" data-chapter="03 / 我们去了现场"
-           data-notes="这一页一定要放现场照片。&#10;口播重点：我们不是在网上查资料，是真的一趟一趟跑出来的。">
-    <p class="kicker" data-anim="1">10.1 — 10.5 · 两轮实地调研</p>
-    <h2 class="h2 grad" data-anim="2" style="font-size:clamp(26px,3.6vw,60px)">国庆假期，我们真的出去了</h2>
-    <!-- landscape-split：横屏极矮时自动变为「图左 · 数据右」两栏，避免纵向溢出 -->
-    <div class="landscape-split">
-      <div class="gallery" data-anim="4" style="margin-top:3.4vh">
-        <figure class="figure">
-          <img src="img/two-recording.webp" alt="两位同学现场记录" loading="lazy">
-          <figcaption>访谈现场 · 同学分工记录</figcaption>
-        </figure>
-        <figure class="figure">
-          <img src="img/student-writing.webp" alt="同学边听边记" loading="lazy">
-          <figcaption>手写记录 · 录音同步留存</figcaption>
-        </figure>
-        <figure class="figure">
-          <img src="img/group-photo.webp" alt="调研团队与受访者合影" loading="lazy">
-          <figcaption>调研团队与受访工作人员</figcaption>
-        </figure>
+  <!-- ====== 05 方法（修正版） ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="梅艺馨"
+           data-notes="这里要诚实说明：国庆节我们并没有外出。&#10;这三周的成果，主要是把问卷推出去、把 133 份回答收回来。&#10;线下的访谈是 9 月 26 日做的，实地拍摄更早。">
+    <p class="kicker" data-anim="1">9.26 — 10.18</p>
+    <h2 class="h2 grad" data-anim="2" style="font-size:clamp(24px,3.2vw,54px)">
+      一次访谈 · 三周问卷 · 一次实地
+    </h2>
+    <div class="split" data-anim="4" style="margin-top:4vh">
+      <div class="rows" style="margin-top:0">
+        <div class="row"><span class="idx">01</span>
+          <span class="txt" style="font-size:clamp(16px,2vw,34px)">线下访谈
+            <span class="sub" style="margin:0 0 0 16px;display:inline">9.26 · 街道办红十字会</span></span></div>
+        <div class="row"><span class="idx">02</span>
+          <span class="txt" style="font-size:clamp(16px,2vw,34px)">线上问卷
+            <span class="sub" style="margin:0 0 0 16px;display:inline">三周 · 回收 133 份</span></span></div>
+        <div class="row"><span class="idx">03</span>
+          <span class="txt" style="font-size:clamp(16px,2vw,34px)">实地拍摄
+            <span class="sub" style="margin:0 0 0 16px;display:inline">京华城 · 唯一一台</span></span></div>
       </div>
-      <div class="stats" data-anim="6" style="margin-top:3.2vh">
-        <div class="stat"><div class="v">5</div><div class="k">走访点位<br>街道办 / 商场 / 地铁站 / 社区 / 校医院</div></div>
-        <div class="stat"><div class="v">2</div><div class="k">轮外出调研<br>10.1—10.3、10.4—10.5</div></div>
-        <div class="stat"><div class="v">11</div><div class="k">人参与首次访谈<br>提问 / 记录 / 拍摄分工</div></div>
-      </div>
+      <figure class="figure" style="aspect-ratio:4/3">
+        <img src="img/two-recording.webp" alt="访谈现场同学分工记录" loading="lazy">
+        <figcaption>访谈现场 · 提问与记录分工</figcaption>
+      </figure>
+    </div>
+    <p class="sub dim" data-anim="6" style="margin-top:2.4vh">
+      国庆期间没有外出调研，主要精力放在问卷投放与数据回收
+    </p>
+  </section>
+
+  <!-- ====== 06 样本构成 ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="梅艺馨"
+           data-notes="133 份回答，覆盖 10 个省份，截止 10 月 4 日。&#10;年龄上一个很明显的偏向：18 岁以下和 31–50 岁这两段占了八成 —— 正好对应学生和校方/家长。">
+    <p class="kicker" data-anim="1">有效问卷 · 截至 2026.10.04</p>
+    <h2 class="h2 grad" data-anim="2">133 份回答，覆盖 10 个省份</h2>
+    <div class="stats" data-anim="3" style="margin-top:3vh">
+      <div class="stat"><div class="v">133</div><div class="k">份有效问卷</div></div>
+      <div class="stat"><div class="v">10</div><div class="k">个省份参与</div></div>
+      <div class="stat"><div class="v">10</div><div class="k">道核心题目</div></div>
+    </div>
+    <div class="bars" data-anim="5">
+      <div class="brow hot"><div class="lab">18 岁以下</div>
+        <div class="track"><i class="fill" style="--w:47.37%"></i></div>
+        <div class="val">47.37%</div></div>
+      <div class="brow"><div class="lab">31–50 岁</div>
+        <div class="track"><i class="fill" style="--w:33.08%"></i></div>
+        <div class="val">33.08%</div></div>
+      <div class="brow"><div class="lab">51–65 岁</div>
+        <div class="track"><i class="fill" style="--w:7.52%"></i></div>
+        <div class="val">7.52%</div></div>
+      <div class="brow"><div class="lab">18–31 岁</div>
+        <div class="track"><i class="fill" style="--w:6.77%"></i></div>
+        <div class="val">6.77%</div></div>
+      <div class="brow"><div class="lab">65 岁以上</div>
+        <div class="track"><i class="fill" style="--w:5.26%"></i></div>
+        <div class="val">5.26%</div></div>
+    </div>
+    <p class="sub dim" data-anim="7">年龄分布 · 学生与中年群体合计超过 80%</p>
+  </section>
+
+  <!-- ====== 07 认知 ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="武馨儿"
+           data-notes="第 3 题问‘您是否了解 AED 是什么’。&#10;注意看：说自己‘非常了解’的只有 15%。而‘听说过但不清楚具体作用’加上‘完全没听说过’，接近 37%。&#10;也就是说，超过三分之一的人，对 AED 只有模糊印象。">
+    <p class="kicker" data-anim="1">第 3 题 · 您是否了解 AED（自动体外除颤器）</p>
+    <h2 class="h2 grad" data-anim="2">只有 15% 的人说「非常了解」</h2>
+    <div class="bars" data-anim="3">
+      <div class="brow hot"><div class="lab">非常了解</div>
+        <div class="track"><i class="fill" style="--w:15.04%"></i></div>
+        <div class="val">15.04%</div></div>
+      <div class="brow"><div class="lab">了解，知道一些基础用法</div>
+        <div class="track"><i class="fill" style="--w:48.12%"></i></div>
+        <div class="val">48.12%</div></div>
+      <div class="brow"><div class="lab">听说过，但不清楚作用</div>
+        <div class="track"><i class="fill" style="--w:28.57%"></i></div>
+        <div class="val">28.57%</div></div>
+      <div class="brow"><div class="lab">完全没听说过</div>
+        <div class="track"><i class="fill" style="--w:8.27%"></i></div>
+        <div class="val">8.27%</div></div>
+    </div>
+    <p class="sub" data-anim="6" style="margin-top:3vh">
+      超过三分之一的人，对 AED 只有模糊印象
+    </p>
+  </section>
+
+  <!-- ====== 08 培训 ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="武馨儿"
+           data-notes="第 5 题问是否接受过心肺复苏或 AED 培训。&#10;‘接受过且能熟练操作’只有 26%，而‘接受过但已生疏’和‘从未接受过’各占 36.84%。&#10;这组数据说明一件事：‘接受过’不等于‘会做’。">
+    <p class="kicker" data-anim="1">第 5 题 · 是否接受过心肺复苏或 AED 培训</p>
+    <h2 class="h2 grad" data-anim="2">培训过，但手生了</h2>
+    <div class="bars" data-anim="3">
+      <div class="brow"><div class="lab">接受过，且能熟练操作</div>
+        <div class="track"><i class="fill" style="--w:26.32%"></i></div>
+        <div class="val">26.32%</div></div>
+      <div class="brow hot"><div class="lab">接受过，但已生疏</div>
+        <div class="track"><i class="fill" style="--w:36.84%"></i></div>
+        <div class="val">36.84%</div></div>
+      <div class="brow hot"><div class="lab">从未接受过</div>
+        <div class="track"><i class="fill" style="--w:36.84%"></i></div>
+        <div class="val">36.84%</div></div>
+    </div>
+    <p class="sub" data-anim="6" style="margin-top:3vh">
+      「接受过」不等于「会做」—— 近四成人已经生疏
+    </p>
+  </section>
+
+  <!-- ====== 09 能力与第一反应 ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="唐辰茜"
+           data-notes="第 7 题：如果身边有人心脏骤停，你觉得自己能正确使用 AED 吗？&#10;只有 19.55% 说‘完全可以’，超过一半的人说‘可能需要指导’。&#10;再看第 6 题：26.32% 的人承认，遇到有人倒地，会倾向于先等 120。">
+    <p class="kicker" data-anim="1">第 7 题 · 认为自己能正确使用 AED 吗</p>
+    <h2 class="h2 grad" data-anim="2">54.89% 说「可能需要指导」</h2>
+    <div class="bars" data-anim="3">
+      <div class="brow"><div class="lab">完全可以</div>
+        <div class="track"><i class="fill" style="--w:19.55%"></i></div>
+        <div class="val">19.55%</div></div>
+      <div class="brow hot"><div class="lab">可能需要指导</div>
+        <div class="track"><i class="fill" style="--w:54.89%"></i></div>
+        <div class="val">54.89%</div></div>
+      <div class="brow"><div class="lab">不太可能</div>
+        <div class="track"><i class="fill" style="--w:12.03%"></i></div>
+        <div class="val">12.03%</div></div>
+      <div class="brow"><div class="lab">完全不能</div>
+        <div class="track"><i class="fill" style="--w:13.53%"></i></div>
+        <div class="val">13.53%</div></div>
+    </div>
+    <p class="sub" data-anim="6" style="margin-top:3vh">
+      第 6 题里，还有 26.32% 的人承认：遇到有人倒地，会倾向于先等 120
+    </p>
+  </section>
+
+  <!-- ====== 10 法律顾虑 ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="唐辰茜"
+           data-notes="第 8 题是我们最在意的一组数据。&#10;‘非常担心’24.81%，‘比较担心’49.62% —— 加起来 74.43%。&#10;也就是说，将近四分之三的人，即使会操作，也会因为怕担责任而犹豫。&#10;这正是‘好人法’要解决的问题，也必须写进培训里。">
+    <p class="kicker" data-anim="1">第 8 题 · 是否担心因使用 AED 承担法律责任</p>
+    <h2 class="h2 grad" data-anim="2">74.43% 担心承担责任</h2>
+    <div class="bars" data-anim="3">
+      <div class="brow hot"><div class="lab">非常担心</div>
+        <div class="track"><i class="fill" style="--w:24.81%"></i></div>
+        <div class="val">24.81%</div></div>
+      <div class="brow hot"><div class="lab">比较担心</div>
+        <div class="track"><i class="fill" style="--w:49.62%"></i></div>
+        <div class="val">49.62%</div></div>
+      <div class="brow"><div class="lab">一般</div>
+        <div class="track"><i class="fill" style="--w:14.29%"></i></div>
+        <div class="val">14.29%</div></div>
+      <div class="brow"><div class="lab">不太担心</div>
+        <div class="track"><i class="fill" style="--w:3.01%"></i></div>
+        <div class="val">3.01%</div></div>
+      <div class="brow"><div class="lab">完全不担心</div>
+        <div class="track"><i class="fill" style="--w:8.27%"></i></div>
+        <div class="val">8.27%</div></div>
+    </div>
+    <p class="sub" data-anim="7" style="margin-top:3vh">
+      即使会操作，也有近四分之三的人会因为怕担责而犹豫
+    </p>
+  </section>
+
+  <!-- ====== 11 配置与醒目度 ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="刘梓旭"
+           data-notes="第 4 题：你居住的地方或学校有没有配 AED？&#10;注意这个数字：27.82% 的人回答‘已配备，但我不清楚位置’。还有约 22.5% 说‘不清楚有没有配’。&#10;第 10 题问是否醒目，多数人的答案是‘一般，要仔细看’或者‘不醒目’。&#10;这就引出了我们的第一个断点：不是没有设备，是找不到。">
+    <p class="kicker" data-anim="1">第 4、10 题 · 配置与醒目度</p>
+    <h2 class="h2 grad" data-anim="2">配了，但你可能找不到</h2>
+    <div class="numwrap" data-anim="3" style="margin-top:4vh">
+      <span class="bignum" data-count="27.82">0</span><span class="unit">%</span>
+    </div>
+    <p class="sub solid" data-anim="4" style="margin-top:1.6vh;font-weight:700">
+      回答「已配备，但我不知道在哪」
+    </p>
+    <div class="case" data-anim="6">
+      <p class="sub" style="margin-top:0">
+        另有约 <b class="solid">22.5%</b> 的人说：不清楚自己所在社区或学校到底有没有配<br>
+        第 10 题问「是否醒目」，多数人选择「一般，要仔细看」或「不醒目」
+      </p>
     </div>
   </section>
 
-  <!-- ============ 章节页 W ============ -->
-  <section class="slide chapter-slide" data-chapter="04 / 最关键的一次访谈"
-           data-notes="（过渡页，停 3–4 秒）&#10;接下来这一段，是我们整个调研里信息量最大的一次访谈。">
+  <!-- ====== 12 理想密度 ====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="刘梓旭"
+           data-notes="第 9 题问：你理想中的配置密度是多少？&#10;最多人选的是‘每栋楼至少一个’，36.84%；其次是‘每 500 米一个’，24.81%。&#10;但也有 17.29% 的人说‘没概念’。这组数据说明：公众的期待，其实比现状更密。">
+    <p class="kicker" data-anim="1">第 9 题 · 您认为理想的 AED 配置密度</p>
+    <h2 class="h2 grad" data-anim="2">36.84% 希望「每栋楼至少一个」</h2>
+    <div class="bars" data-anim="3">
+      <div class="brow hot"><div class="lab">每栋楼至少一个</div>
+        <div class="track"><i class="fill" style="--w:36.84%"></i></div>
+        <div class="val">36.84%</div></div>
+      <div class="brow"><div class="lab">每 500 米一个</div>
+        <div class="track"><i class="fill" style="--w:24.81%"></i></div>
+        <div class="val">24.81%</div></div>
+      <div class="brow"><div class="lab">没概念</div>
+        <div class="track"><i class="fill" style="--w:17.29%"></i></div>
+        <div class="val">17.29%</div></div>
+      <div class="brow"><div class="lab">每 100 米一个</div>
+        <div class="track"><i class="fill" style="--w:14.29%"></i></div>
+        <div class="val">14.29%</div></div>
+      <div class="brow"><div class="lab">每 1000 米一个</div>
+        <div class="track"><i class="fill" style="--w:6.77%"></i></div>
+        <div class="val">6.77%</div></div>
+    </div>
+    <p class="sub" data-anim="7" style="margin-top:3vh">
+      公众的期待，比现状要密得多
+    </p>
+  </section>
+
+  <!-- ====== 13 章节 W · WITNESS ====== -->
+  <section class="slide chapter-slide" data-chapter="03 / 一线访谈" data-speaker="羽辰"
+           data-notes="（过渡页，停 3–4 秒）&#10;数据到这里，下面换成一线人员的话。交给羽辰。">
     <div class="left">
       <span class="initial">W</span>
       <p class="word">WITNESS</p>
-      <p class="cn">一线 · 街道红十字会工作人员访谈</p>
+      <p class="cn">一线 · 邗江区红十字会培训人员</p>
       <div class="bar-line"></div>
     </div>
     <div class="right">
       <figure class="figure">
-        <img src="img/interviewee.webp" alt="受访的街道红十字会工作人员" loading="lazy">
+        <img src="img/interviewee.webp" alt="受访的红十字会培训人员" loading="lazy">
         <figcaption>9.26 · 新盛街道办事处 · 受访者</figcaption>
       </figure>
     </div>
   </section>
 
-  <!-- ============ 07 反转（打字机） ============ -->
-  <section class="slide" data-chapter="04 / 最关键的一次访谈"
-           data-notes="我们准备了一整套问题，以为会拿到权威数字。&#10;结果受访者第一句话是：这个我还真不知道。&#10;（停顿，可以轻轻笑一下）当时我们有点懵。但回去路上我们反应过来 —— 这个「不知道」，本身就是答案。">
-    <p class="kicker" data-anim="1">9 月 26 日 · 新盛街道办事处 · 街道红十字会工作人员</p>
-    <h2 class="h2 grad type" data-type="「这个我还真不知道。」" data-delay="400"></h2>
-    <p class="sub" data-anim="3" style="margin-top:5vh">
-      「这个可能要要到市一级才会知道<br>我这边才是街道一级的。」
+  <!-- ====== 14 访谈金句 ====== -->
+  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="羽辰"
+           data-notes="我们原以为大家最怕的是‘AED 电错人’。&#10;结果受访者说：没有人担心这个。被问得最多的，是‘AED 和心肺复苏究竟哪个先用’，还有‘AED 能不能重复使用’。&#10;（停顿）这个反差挺有意思 —— 大家真正的困惑，是操作顺序，不是安全问题。">
+    <p class="kicker" data-anim="1">问：讲座里大家最常问什么</p>
+    <h2 class="quote type" data-type="「AED 和心肺复苏，究竟哪个先用？」" data-delay="420"></h2>
+    <p class="sub" data-anim="3" style="margin-top:4vh">
+      受访者原话：「没有人担心电错人」<br>
+      高频问题还有：AED 能不能重复使用？
     </p>
-    <p class="sub soft" data-anim="5" style="margin-top:6vh;font-weight:700">
-      这个「不知道」本身，就是最重要的发现
+    <p class="sub soft" data-anim="5" style="margin-top:5vh;font-weight:700">
+      大家真正困惑的是操作顺序，不是安全问题
     </p>
   </section>
 
-  <!-- ============ 章节页 E ============ -->
-  <section class="slide chapter-slide" data-chapter="05 / 我们发现了什么"
-           data-notes="（过渡页，停 3–4 秒）&#10;把一线的话和现场看到的东西放在一起，我们才看清了问题在哪。">
+  <!-- ====== 15 一线事实 ====== -->
+  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="羽辰"
+           data-notes="这四条全部来自受访者的原话。&#10;特别说两条：第一，AED 不单独培训，只和心肺复苏一起教；第二，微信小程序其实能查到附近的 AED —— 很多人不知道。&#10;还有扬马，每 50 到 100 米就有一名急救员带着 AED 巡回。">
+    <p class="kicker" data-anim="1">受访者原话</p>
+    <h2 class="h2 grad" data-anim="2">一线告诉我们的事实</h2>
+    <div class="split" data-anim="4" style="margin-top:3.4vh">
+      <div class="grid g2" style="margin-top:0">
+        <div class="item"><div class="t grad">不单独培训</div>
+          <div class="d">AED 只和心肺复苏一起教，不单独开班</div></div>
+        <div class="item"><div class="t grad">小程序可查</div>
+          <div class="d">微信里能搜到附近 AED 的位置</div></div>
+        <div class="item"><div class="t grad">来源多样</div>
+          <div class="d">公园靠红会捐赠，企业多为自行购买</div></div>
+        <div class="item"><div class="t grad">扬马保障</div>
+          <div class="d">每 50–100 米一名急救员带机巡回</div></div>
+      </div>
+      <figure class="figure" style="aspect-ratio:4/3">
+        <img src="img/student-writing.webp" alt="同学现场记录" loading="lazy">
+        <figcaption>访谈现场 · 边听边记</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ====== 16 成功案例（重大修正） ====== -->
+  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="不鱼🐟"
+           data-notes="这一页要重点讲，因为它推翻了我们最初的假设。&#10;我们原以为扬州‘没有成功救人案例’，但受访者说：这种案例非常的多。&#10;2026 年 3 月 26 日，邗江中专一名学生倒地，老师取来 AED 及时使用，人救回来了。&#10;所以问题不是‘AED 没用’，而是‘大多数人不知道它救过人’。">
+    <p class="kicker" data-anim="1">2026 年 3 月 26 日 · 邗江中专</p>
+    <h2 class="h2 grad" data-anim="2">一台 AED，救回一条命</h2>
+    <div class="case" data-anim="3" style="margin-top:4vh">
+      <p class="sub solid" style="margin-top:0;font-size:clamp(16px,2vw,34px);
+         font-weight:700;line-height:1.45">
+        一名学生倒在地上，老师取来 AED 及时使用，<br>把人救活了
+      </p>
+    </div>
+    <p class="sub" data-anim="5" style="margin-top:5vh">
+      受访者原话：「这种案例非常的多」<br>
+      扬马等大型赛事的保障中，也多次成功使用
+    </p>
+    <p class="sub soft" data-anim="7" style="margin-top:4vh;font-weight:700">
+      不是 AED 没用，是大多数人不知道它救过人
+    </p>
+  </section>
+
+  <!-- ====== 17 AED 怎么找 ====== -->
+  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="不鱼🐟"
+           data-notes="这一页是实用信息，也是我们踩坑换来的。&#10;受访者提醒我们：打开微信小程序，就能看到附近的 AED 在哪 —— 这是最直接的办法。&#10;想学的话，红会的 CPR + AED 培训是可以报名的。">
+    <p class="kicker" data-anim="1">受访者给的三条路径</p>
+    <h2 class="h2 grad" data-anim="2">想找、想学，都有路</h2>
+    <div class="grid g3" data-anim="4" style="margin-top:4.4vh">
+      <div class="item"><div class="t grad">找设备</div>
+        <div class="d">打开微信小程序<br>能看到附近 AED 的位置</div></div>
+      <div class="item"><div class="t grad">学操作</div>
+        <div class="d">红会 CPR + AED 合并培训<br>不单独开班</div></div>
+      <div class="item"><div class="t grad">看保障</div>
+        <div class="d">扬马沿线每 50–100 米<br>一名急救员带机巡回</div></div>
+    </div>
+    <p class="sub dim" data-anim="6" style="margin-top:4.4vh">
+      最大的短板不是设备数量，而是密集度 —— 「有些 AED 要跑很长一段路才能找到」
+    </p>
+  </section>
+
+  <!-- ====== 18 章节 G · GAP ====== -->
+  <section class="slide chapter-slide" data-chapter="04 / 我们发现了什么" data-speaker="孙子涵"
+           data-notes="（过渡页，停 3–4 秒）&#10;数据、访谈、实物放在一起，我们看到的是三个断层。">
     <div class="left">
-      <span class="initial">E</span>
-      <p class="word">EVIDENCE</p>
-      <p class="cn">证据 · 一线事实与现场观察</p>
+      <span class="initial">G</span>
+      <p class="word">GAP</p>
+      <p class="cn">落差 · 设备、认知与法律之间</p>
       <div class="bar-line"></div>
     </div>
-    <div class="right">
-      <figure class="figure">
-        <img src="img/aed-cabinet-2.webp" alt="公共场所的 AED 设备柜" loading="lazy">
-        <figcaption>AED 设备柜 · 白色柜体 + 红色标识</figcaption>
-      </figure>
-    </div>
   </section>
 
-  <!-- ============ 08 六条事实 ============ -->
-  <section class="slide" data-chapter="04 / 最关键的一次访谈"
-           data-notes="这六条全部来自那位工作人员的原话。&#10;特别注意最后一条：法律免责，也就是大家常说的「好人法」，连负责这块工作的人都不了解。&#10;这条后来成了我们政策建议里最核心的一条。">
-    <h2 class="h2 grad" data-anim="1">一线告诉我们的事实</h2>
-    <div class="grid g3" data-anim="3">
-      <div class="item"><div class="t grad">博爱家园</div><div class="d">每个社区都有点位，设备就放在那儿</div></div>
-      <div class="item"><div class="t grad">每年检查 2 次</div><div class="d">没有联网监控，故障由上级派专人修</div></div>
-      <div class="item"><div class="t grad">每年培训约 40 人</div><div class="d">每年 1–2 场，面向社区工作者与志愿者</div></div>
-      <div class="item"><div class="t grad">极少使用</div><div class="d">无成功救人案例，也未遇严重故障</div></div>
-      <div class="item"><div class="t grad">资金和宣传不到位</div><div class="d">受访者自己总结的推广最大困难</div></div>
-      <div class="item"><div class="t grad">法律免责？不了解</div><div class="d">问到「好人法」时，受访者表示不清楚</div></div>
-    </div>
-  </section>
-
-  <!-- ============ 08b AED 实物（图 + 数据） ============ -->
-  <section class="slide" data-chapter="04 / 最关键的一次访谈"
-           data-notes="这是我们在现场拍到的 AED 实物。&#10;注意它的位置 —— 在柜台侧面、贴着墙，不刻意找的话根本不会注意到。&#10;这正好印证了前面那句话：设备是配了的，但你不一定找得到。">
-    <p class="kicker" data-anim="1">现场实拍 · 公共场所的 AED</p>
-    <h2 class="h2 grad" data-anim="2">设备在，但你得先找到它</h2>
-    <div class="split" data-anim="4" style="margin-top:5vh">
-      <figure class="figure" style="aspect-ratio:16/11">
-        <img src="img/aed-cabinet-1.webp" alt="AED 设备柜特写" loading="lazy">
-        <figcaption>白色柜体 · 红色 AED 标识 · 「FOR EMERGENCY USE ONLY」</figcaption>
-      </figure>
-      <div>
-        <p class="sub solid" data-anim="5" style="margin-top:0;font-weight:700;
-           font-size:clamp(17px,2.1vw,36px);line-height:1.4">
-          柜子贴墙、位置不显眼，<br>柜上还要「击碎玻璃取钥匙」
-        </p>
-        <div class="stats" style="grid-template-columns:1fr;margin-top:var(--s-xl)">
-          <div class="stat"><div class="v">1 把</div>
-            <div class="k">取用需先击碎玻璃拿钥匙 —— 紧急时多一道动作</div></div>
-          <div class="stat"><div class="v">无联网</div>
-            <div class="k">设备状态不上传，是否可用靠人工巡检</div></div>
-          <div class="stat"><div class="v">年检 2 次</div>
-            <div class="k">受访者所在街道的检查频率</div></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ 09 三个断点 ============ -->
-  <section class="slide" data-chapter="05 / 我们发现了什么"
-           data-notes="把三条线放一起看，结论很清楚：&#10;不是扬州不重视，而是「配置—维护—使用」这条链子上，每一环都缺一块。">
-    <h2 class="h2 grad" data-anim="1">不是设备不够，是三个环节断了</h2>
+  <!-- ====== 19 三处断开 ====== -->
+  <section class="slide" data-chapter="04 / 我们发现了什么" data-speaker="孙子涵"
+           data-notes="三条结论，每一条都有一个具体数字支撑。&#10;找不到 —— 27.82% 的人知道有 AED 但不知道在哪。&#10;不敢用 —— 74.43% 担心担责。&#10;不会用 —— 只有 19.55% 敢说自己能独立操作。&#10;所以不是设备不够，是这三处都断着。">
+    <h2 class="h2 grad" data-anim="1">不是设备不够，是三处断开</h2>
     <div class="rows">
-      <div class="row" data-anim="3"><span class="idx">01</span><span class="txt">数据断层<span class="sub" style="margin:0 0 0 24px;display:inline">街道不掌握全市总量</span></span></div>
-      <div class="row" data-anim="4"><span class="idx">02</span><span class="txt">维护盲区<span class="sub" style="margin:0 0 0 24px;display:inline">没有联网监控，靠人工检查</span></span></div>
-      <div class="row" data-anim="5"><span class="idx">03</span><span class="txt">认知与法律盲区<span class="sub" style="margin:0 0 0 24px;display:inline">不会用、不敢用</span></span></div>
+      <div class="row" data-anim="3"><span class="idx">01</span>
+        <span class="txt">找不到
+          <span class="sub" style="margin:0 0 0 20px;display:inline">27.82% 知道有，不知道在哪</span></span></div>
+      <div class="row" data-anim="4"><span class="idx">02</span>
+        <span class="txt">不敢用
+          <span class="sub" style="margin:0 0 0 20px;display:inline">74.43% 担心承担责任</span></span></div>
+      <div class="row" data-anim="5"><span class="idx">03</span>
+        <span class="txt">不会用
+          <span class="sub" style="margin:0 0 0 20px;display:inline">仅 19.55% 敢独立操作</span></span></div>
     </div>
   </section>
 
-  <!-- ============ 10 对标 ============ -->
-  <section class="slide" data-chapter="05 / 我们发现了什么"
-           data-notes="有个细节值得说：我们没有问「哪些城市做得好」，是受访者自己主动提到「我们去看过苏州和无锡」。&#10;说明一线人员心里其实有标杆，缺的是把做法落到本地的条件。">
-    <p class="kicker" data-anim="1">受访者主动提到的两个城市</p>
-    <div class="capsule" data-anim="2">苏州 · 无锡 <span class="emoji">🏙️</span></div>
-    <h2 class="h2 grad" data-anim="4" style="margin-top:6vh">布点更密集<br>覆盖银行等高频场所</h2>
-    <p class="sub" data-anim="6" style="margin-top:5vh">
-      一线人员心里有标杆，缺的是把做法落到本地的条件
+  <!-- ====== 20 三条建议 ====== -->
+  <section class="slide" data-chapter="05 / 我们想推动的改变" data-speaker="孙子涵"
+           data-notes="三条建议，一一对应刚才三个断点。&#10;找不到 → 把位置公开到小程序和地图。&#10;不敢用 → 把好人法写进每一次培训。&#10;不会用 → 培训下沉到社区和小区，提高密度。">
+    <h2 class="h2 grad" data-anim="1">三条建议，对应三处断开</h2>
+    <div class="rows">
+      <div class="row" data-anim="3"><span class="idx">01</span>
+        <span class="txt grad">把 AED 位置公开到小程序与地图</span></div>
+      <div class="row" data-anim="4"><span class="idx">02</span>
+        <span class="txt grad">把「好人法」写进每一次培训</span></div>
+      <div class="row" data-anim="5"><span class="idx">03</span>
+        <span class="txt grad">培训下沉社区，提高布点密度</span></div>
+    </div>
+  </section>
+
+  <!-- ====== 21 下一步计划（已落地进展） ====== -->
+  <section class="slide" data-chapter="05 / 我们想推动的改变" data-speaker="孙子涵"
+           data-notes="这一页讲我们已经往前推了一步。&#10;10 月，我们和邗江区红十字会的房主任取得了初步联系。&#10;11 月计划做三件事：跟着红会老师完整走一遍培训流程、请他们进社区或校园做一次讲座、拿到全市 AED 数量和布点的权威数据。&#10;（收一下）所以这还不是一份完成的报告，而是一份进行中的汇报。">
+    <p class="kicker" data-anim="1">已落地 · 与邗江区红十字会取得联系</p>
+    <h2 class="h2 grad" data-anim="2">下一步：11 月，走进红会</h2>
+    <div class="grid g3" data-anim="4" style="margin-top:4.2vh">
+      <div class="item"><div class="t grad">线下学习</div>
+        <div class="d">跟培训人员完整走一遍<br>CPR + AED 实操流程</div></div>
+      <div class="item"><div class="t grad">讲座</div>
+        <div class="d">请红会老师进社区或校园<br>做一次面向公众的讲座</div></div>
+      <div class="item"><div class="t grad">数据获取</div>
+        <div class="d">拿到全市 AED 数量<br>与布点分布的权威数据</div></div>
+    </div>
+    <div class="case" data-anim="6" style="margin-top:3.6vh">
+      <p class="sub" style="margin-top:0">
+        目前已与 <b class="solid">邗江区红十字会 房主任</b> 取得初步联系，11 月将安排上述三项工作
+      </p>
+    </div>
+    <p class="sub soft" data-anim="7" style="margin-top:2.6vh;font-weight:700">
+      这还不是一份完成的报告，而是一份进行中的汇报
     </p>
   </section>
 
-  <!-- ============ 11 三条建议 ============ -->
-  <section class="slide" data-chapter="06 / 我们想推动的改变"
-           data-notes="这三条不是拍脑袋想的，每一条都正好对着前面说的一个断点：&#10;数据公开对数据断层，维护联网对维护盲区，法律培训对认知盲区。">
-    <h2 class="h2 grad" data-anim="1">三条建议，对应三个断点</h2>
-    <div class="rows">
-      <div class="row" data-anim="3"><span class="idx">01</span><span class="txt grad">建立 AED 地图并公开</span></div>
-      <div class="row" data-anim="4"><span class="idx">02</span><span class="txt grad">加装状态监测 / 二维码巡检</span></div>
-      <div class="row" data-anim="5"><span class="idx">03</span><span class="txt grad">把「好人法」写进培训内容</span></div>
+  <!-- ====== 22 实物与国际对比（来源修正） ====== -->
+  <section class="slide" data-chapter="06 / 我们拍到的 AED" data-speaker="倪筱雅"
+           data-notes="这一页要说明来源，不能含糊。&#10;左边这张是我们组员在扬州京华城拍到的 —— 也是我们唯一拍到的一台本地 AED。&#10;右边两张是另一位组员在新加坡拍的：那里 AED 分布密集、位置醒目。&#10;对比之下，我们缺的正是密度和醒目度。">
+    <p class="kicker" data-anim="1">来源如实标注</p>
+    <h2 class="h2 grad" data-anim="2">一台在扬州，两台在新加坡</h2>
+    <div class="gallery" data-anim="4" style="margin-top:3.4vh">
+      <figure class="figure">
+        <img src="img/aed-cabinet-3.webp" alt="京华城的AED设备" loading="lazy">
+        <figcaption>扬州 · 京华城 · 我们拍到的唯一一台</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="img/aed-cabinet-1.webp" alt="新加坡的AED设备" loading="lazy">
+        <figcaption>新加坡 · 组员拍摄</figcaption>
+      </figure>
+      <figure class="figure">
+        <img src="img/aed-cabinet-2.webp" alt="新加坡的AED设备" loading="lazy">
+        <figcaption>新加坡 · 组员拍摄</figcaption>
+      </figure>
     </div>
+    <p class="sub" data-anim="6" style="margin-top:3vh">
+      新加坡街头 AED 分布密集、位置醒目 —— 对比之下，密度与醒目度正是我们最缺的两块
+    </p>
   </section>
 
-  <!-- ============ 12 实用资源 ============ -->
-  <section class="slide" data-chapter="07 / 顺手带走的信息"
-           data-notes="这一页是实用信息，也是我们踩坑换来的经验。&#10;如果时间紧可以快速带过，但对后面想做的同学很有用。">
+  <!-- ====== 22 培训资源 ====== -->
+  <section class="slide" data-chapter="07 / 顺手带走的信息" data-speaker="倪筱雅"
+           data-notes="这一页是实用信息。想学的同学可以直接去。&#10;扬州市红十字会救护培训基地，扬子江南路 248 号，周一到周五开放，要提前电话预约。">
     <p class="kicker" data-anim="1">想学，是有地方去的</p>
     <h2 class="h2 grad" data-anim="2">扬州市红十字会救护培训基地</h2>
-    <p class="sub solid" data-anim="4" style="margin-top:4vh;font-size:clamp(20px,2.4vw,40px);font-weight:800">
+    <p class="sub solid" data-anim="3" style="margin-top:3.4vh;
+       font-size:clamp(18px,2.2vw,36px);font-weight:800">
       扬子江南路 248 号
     </p>
-    <div class="grid g3" data-anim="6" style="margin-top:5vh">
+    <div class="grid g3" data-anim="5" style="margin-top:4vh">
       <div class="item"><div class="t">时间</div><div class="d">周一至周五<br>9:00—12:00 / 14:00—18:00</div></div>
-      <div class="item"><div class="t">学什么</div><div class="d">心肺复苏（CPR）操作<br>AED 模拟机实操</div></div>
+      <div class="item"><div class="t">学什么</div><div class="d">心肺复苏（CPR）<br>AED 模拟机实操</div></div>
       <div class="item"><div class="t">拿什么</div><div class="d">考核合格发救护员证<br>需提前电话预约</div></div>
     </div>
   </section>
 
-  <!-- ============ 13 花絮 ============ -->
-  <section class="slide" data-chapter="08 / 一些真实花絮"
-           data-notes="（这一页语速可以快一点，带点自嘲，观众会笑）&#10;讲完停一下，再落回来：就是这些手忙脚乱，让我们真正明白了「普及急救」难在哪儿 —— 连我们做调研的都这么费劲，普通市民要在一分钟内找到并敢用 AED，难度可想而知。">
+  <!-- ====== 23 花絮 ====== -->
+  <section class="slide" data-chapter="08 / 一些真实花絮" data-speaker="梅艺馨"
+           data-notes="（语速可以快一点，带点自嘲，观众会笑）&#10;讲完停一下再落回来：就是这些手忙脚乱，让我们真正明白了「普及急救」难在哪儿。">
     <h2 class="h2 grad" data-anim="1">调研路上，不是只有严肃时刻</h2>
-    <p class="sub dim" data-anim="2" style="margin-top:2vh">以下全部来自我们自己的群聊记录</p>
-    <div class="rows" style="margin-top:5vh">
-      <div class="row" data-anim="3"><span class="txt" style="font-size:clamp(17px,2.1vw,38px)">「AED」这三个字，我们念了四遍才对</span></div>
-      <div class="row" data-anim="4"><span class="txt" style="font-size:clamp(17px,2.1vw,38px)">出发前一晚：坏了，我这没有 U 盘</span></div>
-      <div class="row" data-anim="5"><span class="txt" style="font-size:clamp(17px,2.1vw,38px)">「打算去哪里啊？」「不道啊。」</span></div>
-      <div class="row" data-anim="6"><span class="txt" style="font-size:clamp(17px,2.1vw,38px)">那个医生目前在德国，二月才回来</span></div>
+    <p class="sub dim" data-anim="2" style="margin-top:1.6vh">以下全部来自我们自己的群聊记录</p>
+    <div class="rows" style="margin-top:3vh">
+      <div class="row" data-anim="3"><span class="txt" style="font-size:clamp(15px,1.9vw,32px)">「AED」这三个字，我们念了四遍才对</span></div>
+      <div class="row" data-anim="4"><span class="txt" style="font-size:clamp(15px,1.9vw,32px)">出发前一晚：坏了，我这没有 U 盘</span></div>
+      <div class="row" data-anim="5"><span class="txt" style="font-size:clamp(15px,1.9vw,32px)">「打算去哪里啊？」「不道啊。」</span></div>
+      <div class="row" data-anim="6"><span class="txt" style="font-size:clamp(15px,1.9vw,32px)">那个医生目前在德国，二月才回来</span></div>
     </div>
+    <figure class="figure" data-anim="7" style="margin-top:3vh;aspect-ratio:21/6">
+      <img src="img/group-photo.webp" alt="课题组与受访工作人员合影" loading="lazy">
+      <figcaption>课题组成员与受访工作人员</figcaption>
+    </figure>
   </section>
 
-  <!-- ============ 14 收束 ============ -->
-  <section class="slide" data-chapter="09 / 回到那 4 分钟"
+  <!-- ====== 24 收束 ====== -->
+  <section class="slide" data-chapter="09 / 回到那 4 分钟" data-speaker="孙子涵"
            data-notes="情绪落点，语速放慢。&#10;最后一句说完停两秒，再进入致谢。">
-    <h2 class="hero" data-anim="zoom" style="font-size:clamp(40px,7.4vw,124px)">
+    <h2 class="hero" data-anim="zoom" style="font-size:clamp(38px,7vw,118px)">
       设备配得再多<br>也得有人敢按下去
     </h2>
-    <p class="sub" data-anim="3" style="margin-top:7vh">
-      如果有一个人因此知道了「AED 在哪儿、怎么用、用了不担责」——<br>
+    <p class="sub" data-anim="3" style="margin-top:6.4vh">
+      如果因此多一个人知道「AED 在哪、怎么用、用了不担责」——<br>
       这件事就值得。
     </p>
   </section>
 
-  <!-- ============ 15 致谢 ============ -->
-  <section class="slide" data-chapter="10 / 致谢"
-           data-notes="谢谢大家。&#10;如果老师同学有问题，我们带了访谈原文、现场照片和问卷原始数据，可以现场展示。">
-    <h2 class="hero" data-anim="zoom" style="font-size:clamp(38px,7vw,120px)">
-      Thank for you<br>joining us
+  <!-- ====== 25 致谢 ====== -->
+  <section class="slide" data-chapter="10 / 致谢" data-speaker="全体"
+           data-notes="谢谢大家。（修正了原来的英文语法错误）&#10;如果老师同学有问题，我们带了访谈原文、问卷原始数据和现场照片，可以现场展示。">
+    <h2 class="hero" data-anim="zoom" style="font-size:clamp(32px,5.6vw,96px)">
+      Thank you for<br>joining us
     </h2>
-    <p class="sub dim" data-anim="3" style="margin-top:7vh">
+    <p class="sub dim" data-anim="3" style="margin-top:6.4vh">
       邗江一中 ·「寻城市 AED，守生命四分钟」课题组<br>
-      感谢每一位接受访谈的工作人员，和每一位配合调研的市民
+      孙子涵 · 梅艺馨 · 武馨儿 · 唐辰茜 · 刘梓旭 · 羽辰 · 不鱼 · 倪筱雅
     </p>
   </section>
 
 </main>
 
-<div id="pager"><span id="pagerNum"><b>01</b></span> / 19</div>
+<div id="speaker">讲者 <span id="speakerName"><b>—</b></span></div>
+<div id="pager"><span id="pagerNum"><b>01</b></span> / 26</div>
 <div id="tools">
   <button id="btnNotes" type="button">讲稿 N</button>
   <button id="btnAuto" type="button">自动播放 A</button>
@@ -1062,6 +1336,7 @@ body{
   var bar = document.getElementById('bar');
   var pager = document.getElementById('pager');
   var pagerNumEl = document.getElementById('pagerNum');
+  var speakerNameEl = document.getElementById('speakerName');
   var chapterEl = document.getElementById('chapter');
   var notesEl = document.getElementById('notes');
   var notesBody = document.getElementById('notesBody');
@@ -1285,7 +1560,11 @@ body{
     bar.style.width = ((n + 1) / slides.length * 100) + '%';
     swapChrome(pagerNumEl, '<b>' + pad(n + 1) + '</b>');
     swapChrome(chapterEl, slides[n].getAttribute('data-chapter') || '');
-    notesBody.textContent = slides[n].getAttribute('data-notes') || '（本页无讲稿）';
+    // 讲者：右上角标签 + 讲稿前加署名，方便组员对稿
+    var who = slides[n].getAttribute('data-speaker') || '—';
+    swapChrome(speakerNameEl, '<b>' + who + '</b>');
+    var noteTxt = slides[n].getAttribute('data-notes') || '（本页无讲稿）';
+    notesBody.textContent = '【讲者 · ' + who + '】\n' + noteTxt;
 
     // 4) 先跑数字滚动/打字，再量尺寸 —— 否则空的 h2 量不到宽度
     runCounters(slides[n]);
