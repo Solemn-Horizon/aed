@@ -205,13 +205,19 @@ body{
   #speaker{max-width:44vw}
 }
 
-#chapter,#pagerNum{
+#chapter,#pagerNum,#speakerName{
   display:inline-block;overflow:hidden;vertical-align:bottom;
+  position:relative;line-height:1.45;
 }
 #pagerNum{line-height:1.2}
-.sw{display:inline-block}
+.sw{display:inline-block;white-space:nowrap}
 .sw.out{animation:swOut .3s var(--ease-in) both}
 .sw.in{animation:swIn .45s var(--ease) both}
+/* 退出的那个必须脱离文档流：
+   否则翻页的 300ms 里它会和新值并排，右上角会短暂出现两个名字 */
+#chapter .sw.out{position:absolute;left:0;top:0}
+#speakerName .sw.out{position:absolute;right:0;top:0}
+#pagerNum .sw.out{position:absolute;left:0;top:0}
 @keyframes swOut{to{opacity:0;transform:translate3d(0,-85%,0)}}
 @keyframes swIn{from{opacity:0;transform:translate3d(0,85%,0)}to{opacity:1;transform:none}}
 
@@ -1068,8 +1074,8 @@ body{
   </section>
 
   <!-- ====== 13 章节 W · WITNESS ====== -->
-  <section class="slide chapter-slide" data-chapter="03 / 一线访谈" data-speaker="羽辰"
-           data-notes="（过渡页，停 3–4 秒）&#10;数据到这里，下面换成一线人员的话。交给羽辰。">
+  <section class="slide chapter-slide" data-chapter="03 / 一线访谈" data-speaker="唐辰茜"
+           data-notes="（过渡页，停 3–4 秒）&#10;数据到这里，下面换成一线人员的话。">
     <div class="left">
       <span class="initial">W</span>
       <p class="word">WITNESS</p>
@@ -1085,7 +1091,7 @@ body{
   </section>
 
   <!-- ====== 14 访谈金句 ====== -->
-  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="羽辰"
+  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="唐辰茜"
            data-notes="我们原以为大家最怕的是‘AED 电错人’。&#10;结果受访者说：没有人担心这个。被问得最多的，是‘AED 和心肺复苏究竟哪个先用’，还有‘AED 能不能重复使用’。&#10;（停顿）这个反差挺有意思 —— 大家真正的困惑，是操作顺序，不是安全问题。">
     <p class="kicker" data-anim="1">问：讲座里大家最常问什么</p>
     <h2 class="quote type" data-type="「AED 和心肺复苏，究竟哪个先用？」" data-delay="420"></h2>
@@ -1099,7 +1105,7 @@ body{
   </section>
 
   <!-- ====== 15 一线事实 ====== -->
-  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="羽辰"
+  <section class="slide" data-chapter="03 / 一线访谈" data-speaker="刘梓旭"
            data-notes="这四条全部来自受访者的原话。&#10;特别说两条：第一，AED 不单独培训，只和心肺复苏一起教；第二，微信小程序其实能查到附近的 AED —— 很多人不知道。&#10;还有扬马，每 50 到 100 米就有一名急救员带着 AED 巡回。">
     <p class="kicker" data-anim="1">受访者原话</p>
     <h2 class="h2 grad" data-anim="2">一线告诉我们的事实</h2>
@@ -1301,7 +1307,7 @@ body{
     </h2>
     <p class="sub dim" data-anim="3" style="margin-top:6.4vh">
       邗江一中 ·「寻城市 AED，守生命四分钟」课题组<br>
-      孙子涵 · 梅艺馨 · 武馨儿 · 唐辰茜 · 刘梓旭 · 羽辰 · 不鱼 · 倪筱雅
+      孙子涵 · 梅艺馨 · 武馨儿 · 唐辰茜 · 刘梓旭 · 不鱼 · 倪筱雅
     </p>
   </section>
 
@@ -1504,21 +1510,24 @@ body{
   // 章节标签 / 页码：旧值上移淡出，新值自下淡入
   function swapChrome(el, html) {
     if (!el) return;
-    var old = el.querySelector('.sw');
+    // 关键：要收集「所有」旧值，不能只查第一个。
+    // 快速连翻时，上一个还在退出动画里（未移除），
+    // 只处理第一个会让它们越积越多 —— 右上角同时出现好几个名字。
+    var olds = Array.prototype.slice.call(el.querySelectorAll('.sw'));
     var nx = document.createElement('span');
     nx.className = 'sw in';
     nx.innerHTML = html;
-    if (old) {
-      old.classList.remove('in');
-      old.classList.add('out');
-      el.appendChild(nx);
-      setTimeout(function () {
-        if (old.parentNode) old.parentNode.removeChild(old);
-      }, 340);
-    } else {
-      el.innerHTML = '';
-      el.appendChild(nx);
-    }
+    if (!olds.length) el.innerHTML = '';   // 清掉首屏的默认占位值
+    olds.forEach(function (o) {
+      o.classList.remove('in');
+      o.classList.add('out');
+    });
+    el.appendChild(nx);
+    setTimeout(function () {
+      olds.forEach(function (o) {
+        if (o.parentNode) o.parentNode.removeChild(o);
+      });
+    }, 340);
   }
 
   /* ---------- 翻页 ---------- */
@@ -1526,6 +1535,8 @@ body{
   var navLock = false;      // 转场进行中不接受新的翻页指令
   var LOCK_MS = 600;        // 略短于交接时长，连按仍跟手
   var booted = false;       // 首次进入不做交接（直接跳页时不该从封面飞过来）
+  var lastChapter = null;   // 上一页的章节标签，值没变就不重放动画
+  var lastSpeaker = null;   // 上一页的讲者，同上
 
   function show(n, dir) {
     n = Math.max(0, Math.min(slides.length - 1, n));
@@ -1557,12 +1568,21 @@ body{
     idx = n;
 
     // 3) 界面状态
+    // 章节与讲者只在「真的变了」时才重放出入动画 ——
+    // 连续几页同一个人讲时，每翻一页都闪一下会显得很抖
     bar.style.width = ((n + 1) / slides.length * 100) + '%';
     swapChrome(pagerNumEl, '<b>' + pad(n + 1) + '</b>');
-    swapChrome(chapterEl, slides[n].getAttribute('data-chapter') || '');
+    var chap = slides[n].getAttribute('data-chapter') || '';
+    if (chap !== lastChapter) {
+      swapChrome(chapterEl, chap);
+      lastChapter = chap;
+    }
     // 讲者：右上角标签 + 讲稿前加署名，方便组员对稿
     var who = slides[n].getAttribute('data-speaker') || '—';
-    swapChrome(speakerNameEl, '<b>' + who + '</b>');
+    if (who !== lastSpeaker) {
+      swapChrome(speakerNameEl, '<b>' + who + '</b>');
+      lastSpeaker = who;
+    }
     var noteTxt = slides[n].getAttribute('data-notes') || '（本页无讲稿）';
     notesBody.textContent = '【讲者 · ' + who + '】\n' + noteTxt;
 
