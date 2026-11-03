@@ -1485,6 +1485,70 @@ body::after{content:none !important}
   .segbar i{transition:none !important;width:var(--w,0%) !important}
   .dotchart i{transition:none !important;opacity:1 !important;transform:none !important}
 }
+
+/* ============================================================
+   18. 惊艳感：一条心电图
+   ------------------------------------------------------------
+   为什么是心电图，而不是再加些渐变和光效？
+   因为这份汇报的全部情绪只压在一句话上：「你只有 4 分钟」。
+   能一句话说清这句话的，只有心电曲线 —— 它先跳动，然后归于平直。
+   这是全篇唯一一处"允许自己情绪化"的地方。
+   苹果的克制之所以有力量，正是因为它在关键处敢破一次。
+
+   技术：pathLength="1000" 把路径长度归一化，
+   于是 dasharray/dashoffset 可以直接写 1000，不用 JS 量长度。
+   ============================================================ */
+.ecg{
+  position:absolute;left:0;right:0;width:100%;
+  height:clamp(56px,12vh,120px);
+  pointer-events:none;z-index:0;
+}
+.ecg path{
+  fill:none;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:1000;stroke-dashoffset:1000;
+  transition:stroke-dashoffset 2.9s cubic-bezier(.33,.02,.28,1) .35s;
+}
+.ecg .line{stroke:url(#ecgGrad);stroke-width:2.4}
+.ecg .glow{stroke:#8b9cf7;stroke-width:9;opacity:.30;filter:blur(7px)}
+.slide.active .ecg path{stroke-dashoffset:0}
+
+/* 心跳标记：曲线画完之后，末端有一个持续的光点 */
+.ecg .beat{
+  opacity:0;transition:opacity .5s ease 3.2s;
+}
+.slide.active .ecg .beat{opacity:1}
+@keyframes pulseDot{
+  0%,100%{opacity:.35;r:3}
+  50%{opacity:1;r:5}
+}
+.ecg .beat circle{animation:pulseDot 1.9s ease-in-out infinite}
+
+/* ============================================================
+   19. 章节字母：一道光扫过金属
+   ------------------------------------------------------------
+   苹果的产品片里，金属表面总会有一道光缓慢划过 ——
+   那不是装饰，是让观众相信"这是真的金属"。
+   做法：把镀铬渐变改成可移动的宽带，用 background-position 扫过去。
+   ============================================================ */
+.chapter-slide .initial{
+  background:linear-gradient(100deg,
+    #8b93a4 0%, #c8cfdc 22%, #ffffff 38%,
+    #eef1f7 48%, #b4bbca 62%, #7d8496 82%, #9aa2b2 100%);
+  background-size:230% 100%;
+  background-position:100% 0;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  transition:background-position 2.6s cubic-bezier(.33,.02,.28,1) .35s;
+}
+.slide.active .chapter-slide .initial,
+.slide.active.chapter-slide .initial{background-position:0% 0}
+
+@media (prefers-reduced-motion:reduce){
+  .ecg path{transition:none !important;stroke-dashoffset:0 !important}
+  .ecg .beat{opacity:1 !important}
+  .ecg .beat circle{animation:none !important}
+  .chapter-slide .initial{transition:none !important;background-position:0 0 !important}
+}
 </style>
 </head>
 <body>
@@ -1500,6 +1564,30 @@ body::after{content:none !important}
            data-notes="（上台先停三秒再开口）&#10;各位老师、同学好。&#10;我先问一个问题：如果此刻身边有人突然倒下，从倒地到脑损伤，我们只有 4 分钟。&#10;今天这场汇报，讲的就是这 4 分钟里最关键的那台设备 —— AED。">
     <p class="kicker" data-anim="1">如果身边有人倒下</p>
     <h1 class="hero" data-anim="zoom">你只有 4 分钟</h1>
+    <!-- 心电图：全篇唯一的情绪点。先跳动四拍，再归于平直。 -->
+    <svg class="ecg" style="top:80%" viewBox="0 0 1200 140"
+         preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="ecgGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#a78bfa" stop-opacity="0"/>
+          <stop offset="12%" stop-color="#a78bfa" stop-opacity=".9"/>
+          <stop offset="55%" stop-color="#818cf8"/>
+          <stop offset="90%" stop-color="#22d3ee"/>
+          <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path class="glow" pathLength="1000" vector-effect="non-scaling-stroke"
+            d="M0 70 H150 L162 70 L170 44 L178 96 L186 70 L198 70 H330
+               L342 70 L350 38 L358 102 L366 70 L378 70 H520
+               L532 70 L540 46 L548 94 L556 70 L568 70 H700
+               L712 70 L720 30 L728 110 L736 70 L748 70 H1200"/>
+      <path class="line" pathLength="1000" vector-effect="non-scaling-stroke"
+            d="M0 70 H150 L162 70 L170 44 L178 96 L186 70 L198 70 H330
+               L342 70 L350 38 L358 102 L366 70 L378 70 H520
+               L532 70 L540 46 L548 94 L556 70 L568 70 H700
+               L712 70 L720 30 L728 110 L736 70 L748 70 H1200"/>
+      <g class="beat"><circle cx="1186" cy="70" r="4" fill="#22d3ee"/></g>
+    </svg>
     <p class="sub dim" data-anim="3" style="margin-top:6vh">
       研急救之策，筑护城之心 —— 扬州市 AED 安全保障项目实践<br>
       邗江一中课题组 · 关于普及社区与校园 AED 配置及急救科普培训的调查
@@ -2003,6 +2091,14 @@ body::after{content:none !important}
     <h2 class="hero" data-anim="zoom" style="font-size:clamp(32px,5.6vw,96px)">
       Thank you for<br>joining us
     </h2>
+    <!-- 结尾把心跳拉平：与封面呼应，也是这份汇报真正的落点 -->
+    <svg class="ecg" style="top:76%;height:6vh;opacity:.45" viewBox="0 0 1200 140"
+         preserveAspectRatio="none" aria-hidden="true">
+      <path class="glow" pathLength="1000" vector-effect="non-scaling-stroke"
+            d="M0 70 H1200"/>
+      <path class="line" pathLength="1000" vector-effect="non-scaling-stroke"
+            d="M0 70 H1200"/>
+    </svg>
     <p class="sub dim" data-anim="3" style="margin-top:6.4vh">
       研急救之策，筑护城之心 —— 扬州市 AED 安全保障项目实践<br>
       孙子涵 · 梅艺馨 · 武馨儿 · 唐辰茜 · 刘梓旭 · 潘禹彤 · 倪筱雅
