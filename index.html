@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>寻城市 AED，守生命四分钟 · 调研汇报</title>
+<title>研急救之策，筑护城之心 · 扬州市 AED 安全保障项目实践</title>
 <style>
 /* ============================================================
    设计令牌
@@ -1238,6 +1238,140 @@ body.ui-hidden #speaker{
   font-variant-numeric:tabular-nums;
   font-feature-settings:"tnum" 1;
 }
+
+/* ============================================================
+   15. 按苹果三条原则重做 + 修复手机背景不可见
+   ------------------------------------------------------------
+   苹果发布会 PPT 的三条硬原则（据公开的设计拆解）：
+   ① 局部高亮：弱化次要信息，用提亮的方式突出唯一重点
+   ② 逐点展示：Less is more，一页只承载一个 Point
+   ③ 保持一致：通篇统一冷色调与排版格式，一致性本身就是高级感
+
+   BUG 修复：手机上背景"看不见"的真因是
+   .aurora 被压到 opacity .15 又叠了 brightness(.9)，
+   实测像素值只有 RGB(8,5,15) —— 等于纯黑。
+   修法：去掉嵌套 filter（它会拖垮移动端合成），
+   恢复光斑亮度，并给 body 铺一层保底渐变 ——
+   即使光斑渲染失败，背景也一定有内容。
+   ============================================================ */
+
+/* --- 15.1 保底背景：不依赖任何动画或滤镜 --- */
+html,body{
+  background:
+    radial-gradient(ellipse 130% 85% at 50% -12%,
+      #191c30 0%, #0d0e18 40%, #050508 72%, #000 100%)
+    fixed no-repeat;
+}
+
+/* --- 15.2 光斑修复：去掉嵌套 filter，恢复可见度 --- */
+.aurora{filter:none !important;opacity:1 !important}
+.aurora i{
+  opacity:.30 !important;
+  filter:blur(clamp(70px,12vmax,160px)) !important;
+}
+.aurora i:nth-child(1){
+  width:min(100vmax,1320px);height:min(100vmax,1320px);
+  left:-24vmax;top:-32vmax;opacity:.26 !important;
+  background:radial-gradient(circle,
+    rgba(124,58,237,.80) 0%,rgba(124,58,237,0) 66%);
+}
+.aurora i:nth-child(2){
+  width:min(88vmax,1160px);height:min(88vmax,1160px);
+  right:-20vmax;bottom:-26vmax;opacity:.22 !important;
+  background:radial-gradient(circle,
+    rgba(14,165,233,.72) 0%,rgba(14,165,233,0) 68%);
+}
+/* 第三个光斑删掉：三个颜色同时出现会显得热闹，
+   苹果是"一束光"而不是"一片霞"。 */
+.aurora i:nth-child(3){display:none !important}
+
+/* --- 15.3 去掉装饰性边框 ---
+   目的：让技术隐形。取景框在自我表现，观众会注意到"有个框"，
+   而不是注意到内容。苹果的幻灯片从不给内容加边框。 */
+body::after{content:none !important}
+
+/* --- 15.4 局部高亮：正文一律白，颜色只给数字 ---
+   这是三条原则里最关键的一条。之前渐变铺满所有文字，
+   观众的眼睛无处可停 —— 等于没有重点。 */
+.hero{
+  background:linear-gradient(180deg,#ffffff 0%,#eceef4 52%,#c3c9d6 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  filter:drop-shadow(0 14px 46px rgba(120,132,175,.16));
+}
+.h2,.h2.grad{
+  background:linear-gradient(180deg,#ffffff 0%,#dcdfe8 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+/* 数字才是这一页的主角 —— 用唯一的强调色把它点亮 */
+.bignum,.stat .v,.brow .val,.brow.hot .val{
+  background:linear-gradient(100deg,#a78bfa 0%,#818cf8 46%,#22d3ee 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+/* 条目与建议保持白字，不再染色（避免和数字抢） */
+.item .t.grad,.row .txt.grad{
+  background:none;
+  -webkit-text-fill-color:#f5f5f7;color:#f5f5f7;
+}
+/* 章节字母：镀铬保留（它是产品名，不是数据） */
+.chapter-slide .initial{
+  background:linear-gradient(176deg,#ffffff 0%,#eaecf2 38%,#c0c6d3 66%,#8b93a4 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+
+/* --- 15.5 一致性：所有强调统一成同一组冷色 --- */
+:root{
+  --grad-main:linear-gradient(100deg,#a78bfa 0%,#818cf8 46%,#22d3ee 100%);
+  --pink:#a78bfa;
+  --purple:#818cf8;
+}
+/* 数据条也用同一组，不再出现第二套配色 */
+.brow .fill{
+  background:linear-gradient(90deg,#a78bfa 0%,#818cf8 52%,#22d3ee 100%);
+  box-shadow:0 0 14px rgba(129,140,248,.42);
+}
+#bar{background:linear-gradient(90deg,#a78bfa,#22d3ee)}
+.case::before{background:linear-gradient(180deg,#a78bfa,#22d3ee)}
+.chapter-slide .bar-line{background:linear-gradient(90deg,#a78bfa,#22d3ee)}
+
+/* --- 15.6 手机端：光斑在小屏上要更集中才看得见 --- */
+@media (max-width:760px){
+  .aurora i{filter:blur(clamp(46px,18vmax,110px)) !important}
+  .aurora i:nth-child(1){opacity:.34 !important}
+  .aurora i:nth-child(2){opacity:.28 !important}
+  html,body{
+    background:
+      radial-gradient(ellipse 160% 100% at 50% -8%,
+        #1d2038 0%, #10111d 38%, #050508 70%, #000 100%)
+      fixed no-repeat;
+  }
+}
+
+/* ============================================================
+   16. BUG 修复：手机上文字被裁切
+   ------------------------------------------------------------
+   真因：.cam 是 .slide（display:flex）的子项，flex 子项默认
+   min-width:auto —— 它不会收缩到内容宽度以下，于是把长句顶出
+   视口，右侧被裁掉。加 min-width:0 才允许它正常收缩换行。
+   （之前只给了 min-height:0，漏了横向。）
+   ============================================================ */
+.cam{min-width:0}
+.cam > *{max-width:100%}
+
+/* 局部高亮再收一层：数值里只有「关键项」染色，其余白字。
+   目的是让眼睛有确定的落点，而不是一片彩色。 */
+.brow .val{
+  background:none;
+  -webkit-text-fill-color:#d6d8e0;color:#d6d8e0;
+}
+.brow.hot .val{
+  background:linear-gradient(100deg,#a78bfa 0%,#818cf8 46%,#22d3ee 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
 </style>
 </head>
 <body>
@@ -1254,8 +1388,8 @@ body.ui-hidden #speaker{
     <p class="kicker" data-anim="1">如果身边有人倒下</p>
     <h1 class="hero" data-anim="zoom">你只有 4 分钟</h1>
     <p class="sub dim" data-anim="3" style="margin-top:6vh">
-      关于普及社区与校园 AED 配置及急救科普培训的调查<br>
-      邗江一中 ·「寻城市 AED，守生命四分钟」课题组
+      研急救之策，筑护城之心 —— 扬州市 AED 安全保障项目实践<br>
+      邗江一中课题组 · 关于普及社区与校园 AED 配置及急救科普培训的调查
     </p>
   </section>
 
@@ -1744,7 +1878,7 @@ body.ui-hidden #speaker{
       Thank you for<br>joining us
     </h2>
     <p class="sub dim" data-anim="3" style="margin-top:6.4vh">
-      邗江一中 ·「寻城市 AED，守生命四分钟」课题组<br>
+      研急救之策，筑护城之心 —— 扬州市 AED 安全保障项目实践<br>
       孙子涵 · 梅艺馨 · 武馨儿 · 唐辰茜 · 刘梓旭 · 潘禹彤 · 倪筱雅
     </p>
   </section>
