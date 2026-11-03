@@ -127,6 +127,125 @@ body{
 }
 
 /* ============================================================
+   Apple 式动效层
+   设计原则：
+   1. 每个动画都必须表达「关系」——镜头推近表示"靠近真相"，
+      遮罩浮现表示"文字从幕后走到台前"，而不是无意义的炫技。
+   2. 只用 clip-path / transform / opacity，全部走合成器，不掉帧。
+   3. 节奏统一：先骨架（容器）→ 再主句（遮罩浮现）→ 最后细节。
+   ============================================================ */
+
+/* ---------- 1. 运镜：镜头缓慢推近 ----------
+   .cam 是每页的「镜头层」。进入后 14 秒内极缓慢地推近 3.2%，
+   像摄影机在轨道上慢慢前移 —— 静态页因此有了"呼吸"。 */
+.cam{
+  flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;
+  min-height:0;transform-origin:50% 45%;will-change:transform;
+}
+.chapter-slide .cam{
+  flex-direction:row;align-items:center;justify-content:space-between;
+  gap:var(--s-2xl);
+}
+.slide.active .cam{
+  animation:dolly 14s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes dolly{
+  from{transform:scale(1) translate3d(0,0,0)}
+  to{transform:scale(1.032) translate3d(0,-0.7%,0)}
+}
+
+/* ---------- 2. 文字从遮罩里浮现 ----------
+   只裁切 clip-path，不动 transform ——
+   避免和 FLIP 交接的内联 transform 打架。 */
+[data-rv]{
+  clip-path:inset(0 0 105% 0);
+  transition:clip-path 1.15s var(--ease);
+  will-change:clip-path;
+}
+.slide.active [data-rv]{
+  clip-path:inset(-22% 0 -22% 0);   /* 负值向上下扩，避免裁掉行高与降部 */
+}
+.slide.active [data-rv="1"]{transition-delay:.10s}
+.slide.active [data-rv="2"]{transition-delay:.24s}
+.slide.active [data-rv="3"]{transition-delay:.38s}
+.slide.active [data-rv="4"]{transition-delay:.52s}
+.slide.active [data-rv="5"]{transition-delay:.66s}
+.slide.active [data-rv="6"]{transition-delay:.80s}
+.slide.active [data-rv="7"]{transition-delay:.94s}
+.slide.active [data-rv="8"]{transition-delay:1.08s}
+
+/* ---------- 3. 渐变字扫光 ----------
+   文字落位后，一道光从左向右掠过渐变 —— 这是苹果常用的
+   "产品被点亮"的隐喻。background-size 放大到 220% 才扫得动。 */
+.hero,.h2.grad,.quote{
+  background-size:220% 100%;
+  background-position:100% 0;
+}
+.slide.active .hero,
+.slide.active .h2.grad,
+.slide.active .quote{
+  animation:sweep 2.8s var(--ease-soft) .35s both;
+}
+@keyframes sweep{
+  from{background-position:100% 0}
+  to{background-position:0% 0}
+}
+
+/* ---------- 4. 图片：拉镜揭示 ----------
+   从小到大回落到原位，像镜头从近景慢慢退到全景。 */
+.slide.active .figure img{
+  animation:imgPull 16s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes imgPull{
+  0%{opacity:0;transform:scale(1.18)}
+  12%{opacity:1}
+  100%{opacity:1;transform:scale(1)}
+}
+
+/* ---------- 5. 分割线生长 ---------- */
+.slide.active .rule{
+  transform-origin:left center;
+  animation:lineGrow 1.15s var(--ease) .28s both;
+}
+@keyframes lineGrow{
+  from{transform:scaleX(0);opacity:.2}
+  to{transform:scaleX(1);opacity:1}
+}
+
+/* ---------- 6. 数据卡逐张入场 ---------- */
+.slide.active .stat{
+  animation:statIn .95s var(--ease) both;
+}
+.slide.active .stat:nth-child(1){animation-delay:.34s}
+.slide.active .stat:nth-child(2){animation-delay:.46s}
+.slide.active .stat:nth-child(3){animation-delay:.58s}
+.slide.active .stat:nth-child(4){animation-delay:.70s}
+@keyframes statIn{
+  from{opacity:0;transform:translate3d(0,18px,0)}
+  to{opacity:1;transform:none}
+}
+
+/* ---------- 移动端：章节页的镜头层也要竖排 ---------- */
+@media (max-width:760px){
+  .chapter-slide .cam{
+    flex-direction:column;align-items:flex-start;justify-content:flex-start;
+    gap:var(--s-lg);
+  }
+}
+
+/* ---------- 尊重「减弱动态效果」 ---------- */
+@media (prefers-reduced-motion:reduce){
+  .slide.active .cam{animation:none}
+  [data-rv]{clip-path:none !important;transition:none !important}
+  .slide.active .hero,
+  .slide.active .h2.grad,
+  .slide.active .quote{animation:none;background-position:0 0}
+  .slide.active .figure img{animation:none;opacity:1;transform:none}
+  .slide.active .rule{animation:none}
+  .slide.active .stat{animation:none}
+}
+
+/* ============================================================
    元素交接（FLIP）
    每页挑一个「主角元素」(.hero / .initial / .h2)，
    翻页时它从上一页的位置与大小，飞到本页的位置与大小；
@@ -800,6 +919,325 @@ body{
   .slide.active .tl::after{transition:none !important;width:58%}
   #bar{transition:none}
 }
+/* ============================================================
+   Apple 化精修层
+   —— 覆盖上方的彩色方案，把设计语言收敛到苹果的克制体系。
+
+   核心变化：
+   1. 文案回归「银白金属」而非彩色渐变 —— 苹果的高级感来自
+      明暗与材质，不来自色相数量。彩色只保留一处强调。
+   2. 极光收敛成「光源」，不再是彩色壁纸（透明度 .42 → .16）。
+   3. 加入精密取景框与顶部柔光，画面因此有"被拍摄"的秩序感。
+   4. 数据条改为细线 + 微光，接近苹果图表的分寸。
+   ============================================================ */
+
+/* ---------- 1. 文案：银白金属 + 单一强调色 ---------- */
+.hero{
+  background:linear-gradient(178deg,#ffffff 0%,#e2e4ea 46%,#9ba1b0 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  letter-spacing:-.038em;
+  /* 金属字需要一点外发光，才不像"扁平渐变" */
+  filter:drop-shadow(0 12px 40px rgba(120,130,170,.18));
+}
+.h2{
+  color:#f5f5f7;letter-spacing:-.03em;
+}
+/* 唯一保留的彩色强调：更冷、更透，接近苹果的"环境光"而非霓虹 */
+.h2.grad{
+  background:linear-gradient(104deg,#c7b8fd 0%,#93a4fa 46%,#6ee7f9 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+/* 小字统一压到中性灰，形成"呼吸" */
+.kicker{
+  color:#6e6e73;letter-spacing:.15em;text-transform:uppercase;
+  font-size:clamp(10px,1vw,14px);font-weight:700;
+}
+.sub{color:#86868b;letter-spacing:.004em}
+.sub.dim{color:#5b5b62}
+.sub.soft{
+  background:linear-gradient(100deg,#d4d6de 0%,#ffffff 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+/* ---------- 2. 极光：从"彩色壁纸"降为"环境光" ---------- */
+.aurora{opacity:1;filter:saturate(.72) brightness(.9)}
+.aurora i{opacity:.15 !important}
+.aurora i:nth-child(1){
+  background:radial-gradient(circle,#7c3aed 0%,rgba(124,58,237,0) 70%);
+}
+.aurora i:nth-child(2){
+  background:radial-gradient(circle,#0ea5e9 0%,rgba(14,165,233,0) 70%);
+}
+.aurora i:nth-child(3){
+  background:radial-gradient(circle,#22d3ee 0%,rgba(34,211,238,0) 72%);
+  opacity:.10 !important;
+}
+
+/* ---------- 3. 顶部柔光：让画面有"主光从上方来"的方向感 ---------- */
+#stage::before{
+  content:"";position:absolute;left:50%;top:-34vh;width:130vw;height:78vh;
+  transform:translateX(-50%);pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at center,
+             rgba(150,140,255,.085) 0%,rgba(150,140,255,0) 62%);
+}
+
+/* ---------- 4. 精密取景框：32px 内缩的一道发丝线 ----------
+   苹果的产品页大量使用这种"看不到但感觉得到"的秩序线。 */
+body::after{
+  content:"";position:fixed;inset:34px;z-index:6;pointer-events:none;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:3px;
+}
+
+/* ---------- 5. 数据条：细线 + 微光 ---------- */
+.brow .track{
+  background:rgba(255,255,255,.075);
+  height:clamp(5px,.75vh,9px);
+}
+.brow .fill{
+  background:linear-gradient(90deg,#8b5cf6 0%,#6366f1 55%,#22d3ee 100%);
+  box-shadow:0 0 16px rgba(139,92,246,.40);
+}
+.brow .lab{color:#86868b;letter-spacing:.01em}
+.brow .val{color:#f5f5f7;letter-spacing:-.012em}
+.brow.hot .val{
+  background:linear-gradient(100deg,#c7b8fd,#6ee7f9);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+
+/* ---------- 6. 界面元素同步收敛 ---------- */
+#chapter{color:#6e6e73;letter-spacing:.22em;font-size:10.5px;font-weight:700}
+#pager{color:#6e6e73;letter-spacing:.12em}
+#pager b{color:#f5f5f7;font-weight:600}
+#tools button{color:#5a5a61;letter-spacing:.06em}
+#tools button:hover,#tools button.on{color:#f5f5f7}
+#speaker{color:#5a5a61;letter-spacing:.12em}
+#speakerName b{color:#c7b8fd;font-weight:700}
+#bar{height:2px;background:linear-gradient(90deg,#8b5cf6,#22d3ee)}
+
+/* ---------- 7. 分割线：发丝级 ---------- */
+.rule{background:rgba(255,255,255,.075)}
+.row{border-bottom-color:rgba(255,255,255,.06)}
+.case::before{background:linear-gradient(180deg,#8b5cf6,#22d3ee);width:2px}
+
+/* 大引言同样回到金属字，只保留一处冷色强调 */
+.quote{
+  background:linear-gradient(178deg,#ffffff 0%,#d7dae3 60%,#9aa0b0 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  letter-spacing:-.032em;
+}
+
+/* ---------- 8. 全局渐变令牌换血 ----------
+   原来的粉紫渐变是"海报色"，苹果用的是冷调金属与天光。
+   直接改令牌，所有引用 --grad-main / --pink 的元素一次性对齐。 */
+:root{
+  --grad-main:linear-gradient(102deg,#c7b8fd 0%,#93a4fa 48%,#6ee7f9 100%);
+  --grad-soft:linear-gradient(100deg,#8f95a4 0%,#ffffff 100%);
+  --pink:#a78bfa;
+  --purple:#8b9cf7;
+}
+
+/* ---------- 9. 章节字母：镀铬 ----------
+   苹果的"金属"不是贴图，是自上而下的明暗过渡 + 一点点冷光。 */
+.chapter-slide .initial{
+  background:linear-gradient(176deg,#ffffff 0%,#e6e8ee 34%,#b6bcc9 62%,#767d8e 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  letter-spacing:-.055em;
+  filter:drop-shadow(0 22px 70px rgba(120,132,175,.22));
+}
+.chapter-slide .word{
+  color:#f5f5f7;letter-spacing:.06em;font-weight:700;
+}
+.chapter-slide .cn{color:#86868b;letter-spacing:.02em}
+/* 章节页那根细线：更细、更冷 */
+.chapter-slide .bar-line{
+  background:linear-gradient(90deg,#c7b8fd,#6ee7f9);
+  height:1.5px;opacity:.85;
+}
+
+/* ---------- 10. 条目标题同步冷调 ---------- */
+.item .t.grad{
+  background:linear-gradient(102deg,#d8cffd 0%,#a9b6fb 50%,#7df0fb 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+.row .txt.grad{
+  background:linear-gradient(102deg,#d8cffd 0%,#a9b6fb 50%,#7df0fb 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+.bignum{
+  background:linear-gradient(178deg,#ffffff 0%,#d2d6e0 52%,#8e95a6 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+.unit{color:#86868b}
+
+/* ---------- 11. 顶部进度条：降到发丝级，不与取景框抢视线 ---------- */
+#bar{height:1.5px;opacity:.75}
+
+/* ---------- 12. 文字渲染细节 ---------- */
+.hero,.h2,.quote,.initial{
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+}
+
+/* ============================================================
+   13. 动效引擎：统一改为 transition 驱动
+   原因（实测）：CSS animation 在无头浏览器 / 后台标签页里不会推进，
+   而 transition 只要属性值变化就会走。改成 transition 后
+   在任何环境都丝滑，而且能被翻页打断 —— 这正是苹果强调的
+   「动效必须可中断、可即时响应」。
+   ============================================================ */
+
+/* --- 运镜：14 秒极缓推近 --- */
+.cam{
+  transform:scale(1) translate3d(0,0,0);
+  transition:transform 14s cubic-bezier(.22,.61,.36,1);
+  animation:none !important;
+}
+.slide.active .cam{
+  transform:scale(1.032) translate3d(0,-0.7%,0);
+  animation:none !important;
+}
+
+/* --- 图片：拉镜揭示 --- */
+.figure img{
+  opacity:0;transform:scale(1.16);
+  transition:opacity 1s var(--ease),
+             transform 16s cubic-bezier(.22,.61,.36,1);
+  animation:none !important;
+}
+.slide.active .figure img{
+  opacity:1;transform:scale(1);animation:none !important;
+}
+
+/* --- 分割线生长 --- */
+.rule{
+  transform:scaleX(0);transform-origin:left center;opacity:.25;
+  transition:transform 1.15s var(--ease) .28s,
+             opacity 1.15s var(--ease) .28s;
+  animation:none !important;
+}
+.slide.active .rule{transform:scaleX(1);opacity:1}
+
+/* --- 数据卡错落入场 --- */
+.stat{
+  opacity:0;transform:translate3d(0,18px,0);
+  transition:opacity .95s var(--ease),transform .95s var(--ease);
+  animation:none !important;
+}
+.slide.active .stat{opacity:1;transform:none}
+.slide.active .stat:nth-child(1){transition-delay:.34s}
+.slide.active .stat:nth-child(2){transition-delay:.46s}
+.slide.active .stat:nth-child(3){transition-delay:.58s}
+.slide.active .stat:nth-child(4){transition-delay:.70s}
+
+/* --- 文字遮罩浮现 ---
+   关键：clip-path 必须写进 transition，否则会被 [data-anim] 的
+   "opacity, transform" 覆盖，文字就变成硬切出现（实测确认过）。 */
+[data-rv]{clip-path:inset(0 0 105% 0)}
+.slide.active [data-rv]{clip-path:inset(-22% 0 -22% 0)}
+.slide.active [data-anim][data-rv]{
+  transition:clip-path 1.05s var(--ease),
+             opacity .78s var(--ease),
+             transform 1.02s var(--ease);
+}
+.slide.active .carrier[data-rv]{
+  transition:clip-path 1.05s var(--ease);
+}
+
+/* --- hero 扫光 ---
+   注意：前面用 background 简写换过渐变，简写会把 background-size 重置成
+   auto（实测 background-size=auto 导致扫光失效）。这里必须重新声明 220%。 */
+.hero,.h2.grad,.quote{
+  background-size:220% 100%;
+  background-position:100% 0;animation:none !important;
+  transition:background-position 2.8s var(--ease-soft) .35s;
+}
+.slide.active .hero,
+.slide.active .h2.grad,
+.slide.active .quote{background-position:0% 0}
+
+/* --- 离场时镜头快速归位 ---
+   否则退出页要花 14 秒慢慢缩回去，下次进来会从"半途"起步。 */
+.slide:not(.active) .cam{transition:transform .24s linear}
+
+/* --- 运镜的四种变体 ---
+   全都推近会显得单调。按页面类型分配镜头语言：
+   pan  = 章节页，横向缓移（像镜头沿轨道滑过）
+   zoom = 数据页，向前推近（强调"看清这个数"）
+   rise = 封面/收束页，微微上抬推近（有仪式感）
+   默认 = 极缓推近 */
+.slide[data-cam="pan"].active .cam{
+  transform:scale(1.07) translate3d(-2.2%,-0.5%,0);
+  transition:transform 16s cubic-bezier(.33,.02,.28,1);
+}
+.slide[data-cam="zoom"].active .cam{
+  transform:scale(1.062) translate3d(0,-1.1%,0);
+  transition:transform 15s cubic-bezier(.22,.61,.36,1);
+}
+.slide[data-cam="rise"].active .cam{
+  transform:scale(1.038) translate3d(0,-1.5%,0);
+  transition:transform 17s cubic-bezier(.22,.61,.36,1);
+}
+
+/* --- 减弱动态效果时全部归位 --- */
+@media (prefers-reduced-motion:reduce){
+  .cam,.slide.active .cam{transform:none !important;transition:none !important}
+  .figure img,.slide.active .figure img{transform:none !important;
+    opacity:1 !important;transition:none !important}
+  .rule,.slide.active .rule{transform:none !important;opacity:1 !important;
+    transition:none !important}
+  .stat,.slide.active .stat{transform:none !important;opacity:1 !important;
+    transition:none !important}
+  [data-rv],.slide.active [data-rv]{clip-path:none !important;
+    transition:none !important}
+  .hero,.h2.grad,.quote,.slide.active .hero,
+  .slide.active .h2.grad,.slide.active .quote{
+    background-position:0 0 !important;transition:none !important}
+}
+
+/* ============================================================
+   14. 功能优先的三处修正
+   每一处都对着一个明确的目的，不是风格偏好。
+   ============================================================ */
+
+/* --- 14.1 放映时自动隐藏讲者工具 ---
+   目的：台下观众不该看到讲稿按钮、页码、讲者名 —— 那是讲者的工具，
+   不是内容。鼠标一动立刻回来，不影响操作。
+   这是"观众视角"与"讲者视角"的分离，而不是把它做得更漂亮。 */
+#tools,#pager,#chapter,#speaker{
+  transition:opacity .45s var(--ease);
+}
+body.ui-hidden #tools,
+body.ui-hidden #pager,
+body.ui-hidden #chapter,
+body.ui-hidden #speaker{
+  opacity:0;pointer-events:none;
+}
+
+/* --- 14.2 投影可读性 ---
+   目的：教室投影的对比度远低于显示器。原来的 #86868b 在投影上会糊成灰雾，
+   观众看不清解释性文字 —— 那是这份汇报最容易被扣分的地方。
+   所以次级文字提到 #a1a1a6，仍然低于正文，但看得清。 */
+.sub{color:#a1a1a6}
+.sub.dim{color:#7c7c84}
+.kicker{color:#8e8e93}
+
+/* --- 14.3 关键数字的表盘感 ---
+   目的：观众只记得住一个数。让数字用等宽数字（tabular-nums），
+   滚动时不抖动，读起来像仪表盘而不是随手打的字。 */
+.bignum,.brow .val,#pager,#speakerName{
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;
+}
 </style>
 </head>
 <body>
@@ -1462,6 +1900,65 @@ body{
     }
   });
 
+  /* ============================================================
+     Apple 式动效初始化
+     1) 给每页套一层 .cam「镜头层」—— 页面不动，镜头动。
+        这样翻页的 transform 和运镜的 transform 互不干扰。
+     2) 给文字打 data-rv 标记，按文档顺序错开，做出
+        「一句一句从遮罩后面升起来」的节奏。
+     ============================================================ */
+  (function initAppleMotion() {
+    // 文字类元素，按重要度顺序收集
+    var TEXT_SEL = '.kicker, .h2, .hero, .quote, .bignum, .capsule, .sub';
+
+    slides.forEach(function (sl) {
+      // --- 镜头层
+      if (!sl.querySelector(':scope > .cam')) {
+        var cam = document.createElement('div');
+        cam.className = 'cam';
+        // 用 while 逐个搬移，保留原有节点与事件
+        while (sl.firstChild) cam.appendChild(sl.firstChild);
+        sl.appendChild(cam);
+      }
+
+      // --- 镜头语言分配 ---
+      // 目的：不同的页面承担不同的任务，镜头也该不同。
+      // 章节页横向滑过（"翻到新的一章"），数据页向前推近（"看清这个数"），
+      // 封面与收束页微微上抬（"仪式感"）。
+      if (sl.classList.contains('chapter-slide')) {
+        sl.setAttribute('data-cam', 'pan');
+      } else if (sl.querySelector('.bars')) {
+        sl.setAttribute('data-cam', 'zoom');
+      } else if (sl.querySelector('.hero')) {
+        sl.setAttribute('data-cam', 'rise');
+      }
+
+      // --- 遮罩浮现标记
+      var list = sl.querySelectorAll(TEXT_SEL);
+      var n = 0;
+      Array.prototype.forEach.call(list, function (el) {
+        if (el.hasAttribute('data-rv')) return;
+        // 已经作为 FLIP 主角的、或本身是打字机的，不重复加遮罩，
+        // 否则 clip-path 会把逐字动画一起裁掉
+        if (el.classList.contains('type')) return;
+        n += 1;
+        el.setAttribute('data-rv', String(Math.min(n, 8)));
+      });
+    });
+  })();
+
+  /* 翻页时给极光一点反向位移，强化"镜头在移动"的错觉 */
+  function auroraParallax(dir) {
+    var au = document.querySelector('.aurora');
+    if (!au || reduce) return;
+    var d = dir === 'prev' ? 1 : -1;
+    au.style.transition = 'transform 1.1s cubic-bezier(.16,1,.3,1)';
+    au.style.transform = 'translate3d(' + (d * 1.2) + '%,0,0)';
+    setTimeout(function () {
+      au.style.transform = 'translate3d(0,0,0)';
+    }, 260);
+  }
+
   function resetCarrier(el) {
     el.style.transition = 'none';
     el.style.transform = '';
@@ -1548,6 +2045,7 @@ body{
 
     // 前进 / 后退：驱动方向感知的运镜
     if (stageEl) stageEl.setAttribute('data-dir', dir === 'prev' ? 'prev' : 'next');
+    auroraParallax(dir);
 
     var fromSlide = slides[idx];
     var toSlide = slides[n];
@@ -1724,6 +2222,26 @@ body{
   document.getElementById('btnFull').addEventListener('click', function (e) {
     e.stopPropagation(); toggleFull();
   });
+
+  /* ============================================================
+     讲者工具自动隐藏
+     目的：台下观众看到的是"内容"，不是"讲者的操作台"。
+     鼠标一动 / 按键就立刻回来，讲者不会因此失去控制。
+     讲稿面板打开时永不隐藏 —— 那时讲者正在看稿。
+     ============================================================ */
+  var uiTimer = null;
+  function showChrome() {
+    document.body.classList.remove('ui-hidden');
+    clearTimeout(uiTimer);
+    uiTimer = setTimeout(function () {
+      if (notesEl.classList.contains('open')) return;  // 看稿时不藏
+      document.body.classList.add('ui-hidden');
+    }, 2800);
+  }
+  ['mousemove', 'keydown', 'touchstart', 'click'].forEach(function (ev) {
+    document.addEventListener(ev, showChrome, { passive: true });
+  });
+  showChrome();
 
   /* ---------- URL 定位：index.html#7 直达第 7 页，便于分享与验收 ---------- */
   function fromHash() {
