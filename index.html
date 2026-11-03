@@ -1372,6 +1372,119 @@ body::after{content:none !important}
   -webkit-background-clip:text;background-clip:text;
   -webkit-text-fill-color:transparent;color:transparent;
 }
+
+/* ============================================================
+   17. 发布会式图形演示
+   ------------------------------------------------------------
+   苹果在台上讲数据从不用表格，而是用最少的几何形状：
+   一个环说一个比例、一条分段条说一个构成、
+   一组点阵说「每 100 人里有几个」。
+   三者共用同一套冷色，保证通篇一致。
+   ============================================================ */
+
+/* --- 17.1 环形图：一个比例 ---
+   @property 让 --p 成为可过渡的数值，环才会"长"出来；
+   否则 CSS 变量不能插值，环会直接蹦到终值。 */
+@property --p{syntax:'<number>';inherits:false;initial-value:0}
+
+.donut{
+  --size:clamp(150px,16vw,250px);
+  --p:0;
+  width:var(--size);height:var(--size);border-radius:50%;
+  position:relative;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;flex:0 0 auto;
+  background:conic-gradient(from -90deg,
+    #a78bfa 0%,
+    #818cf8 calc(var(--p) * 0.58%),
+    #22d3ee calc(var(--p) * 1%),
+    rgba(255,255,255,.07) calc(var(--p) * 1%),
+    rgba(255,255,255,.07) 100%);
+  transition:--p 1.7s cubic-bezier(.22,.61,.36,1) .3s;
+}
+.slide.active .donut{--p:var(--target,0)}
+.donut::after{
+  content:"";position:absolute;inset:13%;border-radius:50%;
+  background:radial-gradient(circle at 50% 30%,#12121c,#06060a 72%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.donut .dv{
+  position:relative;z-index:1;font-weight:800;line-height:1;
+  font-size:calc(var(--size) * .195);letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#ffffff,#c9cede);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+.donut .dk{
+  position:relative;z-index:1;margin-top:.55em;
+  font-size:calc(var(--size) * .058);color:#8e8e93;font-weight:600;
+  letter-spacing:.04em;
+}
+
+/* --- 17.2 分段条：一个构成 --- */
+.segbar{
+  display:flex;height:clamp(14px,1.9vh,24px);border-radius:999px;
+  overflow:hidden;background:rgba(255,255,255,.05);
+}
+.segbar i{
+  display:block;height:100%;width:0;
+  transition:width 1.3s cubic-bezier(.22,.61,.36,1);
+}
+.slide.active .segbar i{width:var(--w,0%)}
+.segbar i:nth-child(1){background:linear-gradient(90deg,#b49dfb,#8b7cf6);transition-delay:.25s}
+.segbar i:nth-child(2){background:#818cf8;transition-delay:.37s}
+.segbar i:nth-child(3){background:#5eb0f0;transition-delay:.49s}
+.segbar i:nth-child(4){background:#3fc8e8;transition-delay:.61s}
+.segbar i:nth-child(5){background:#22d3ee;transition-delay:.73s}
+.seglegend{
+  display:flex;flex-wrap:wrap;gap:clamp(10px,1.5vw,30px);
+  margin-top:clamp(12px,2vh,24px);
+}
+.seglegend b{
+  display:inline-flex;align-items:center;gap:.5em;font-weight:600;
+  font-size:clamp(11px,1.1vw,15px);color:#8e8e93;
+}
+.seglegend b::before{
+  content:"";width:.62em;height:.62em;border-radius:2px;
+  background:var(--c,#fff);display:block;flex:0 0 auto;
+}
+.seglegend u{
+  text-decoration:none;color:#d6d8e0;font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+/* --- 17.3 点阵图：每 100 人里有几个 --- */
+.dotchart{
+  display:grid;grid-template-columns:repeat(10,auto);
+  gap:clamp(5px,.7vw,10px);width:fit-content;
+}
+.dotchart i{
+  width:clamp(9px,1vw,15px);height:clamp(9px,1vw,15px);
+  border-radius:50%;background:rgba(255,255,255,.09);
+  display:block;opacity:0;transform:scale(.35);
+  transition:opacity .45s var(--ease),transform .45s var(--ease);
+}
+.slide.active .dotchart i{opacity:1;transform:scale(1)}
+.dotchart i.on{
+  background:linear-gradient(150deg,#b49dfb,#22d3ee);
+  box-shadow:0 0 10px rgba(160,140,250,.45);
+}
+
+/* --- 17.4 图形 + 数据的双栏 --- */
+.gsplit{
+  display:grid;grid-template-columns:auto 1fr;
+  gap:clamp(28px,4vw,84px);align-items:center;
+}
+@media (max-width:760px){
+  .gsplit{grid-template-columns:1fr;gap:var(--s-lg);justify-items:start}
+}
+
+/* 减弱动态时，图形直接呈现终态 */
+@media (prefers-reduced-motion:reduce){
+  .donut{transition:none !important}
+  .segbar i{transition:none !important;width:var(--w,0%) !important}
+  .dotchart i{transition:none !important;opacity:1 !important;transform:none !important}
+}
 </style>
 </head>
 <body>
@@ -1483,22 +1596,22 @@ body::after{content:none !important}
       <div class="stat"><div class="v">10</div><div class="k">个省份参与</div></div>
       <div class="stat"><div class="v">10</div><div class="k">道核心题目</div></div>
     </div>
-    <div class="bars" data-anim="5">
-      <div class="brow hot"><div class="lab">18 岁以下</div>
-        <div class="track"><i class="fill" style="--w:47.37%"></i></div>
-        <div class="val">47.37%</div></div>
-      <div class="brow"><div class="lab">31–50 岁</div>
-        <div class="track"><i class="fill" style="--w:33.08%"></i></div>
-        <div class="val">33.08%</div></div>
-      <div class="brow"><div class="lab">51–65 岁</div>
-        <div class="track"><i class="fill" style="--w:7.52%"></i></div>
-        <div class="val">7.52%</div></div>
-      <div class="brow"><div class="lab">18–31 岁</div>
-        <div class="track"><i class="fill" style="--w:6.77%"></i></div>
-        <div class="val">6.77%</div></div>
-      <div class="brow"><div class="lab">65 岁以上</div>
-        <div class="track"><i class="fill" style="--w:5.26%"></i></div>
-        <div class="val">5.26%</div></div>
+    <!-- 分段条：一条线说清「年龄构成」，比 5 根独立条形更容易一眼看懂 -->
+    <div data-anim="5" style="margin-top:4vh">
+      <div class="segbar">
+        <i style="--w:47.37%"></i>
+        <i style="--w:33.08%"></i>
+        <i style="--w:7.52%"></i>
+        <i style="--w:6.77%"></i>
+        <i style="--w:5.26%"></i>
+      </div>
+      <div class="seglegend">
+        <b style="--c:#b49dfb">18 岁以下 <u>47.37%</u></b>
+        <b style="--c:#818cf8">31–50 岁 <u>33.08%</u></b>
+        <b style="--c:#5eb0f0">51–65 岁 <u>7.52%</u></b>
+        <b style="--c:#3fc8e8">18–31 岁 <u>6.77%</u></b>
+        <b style="--c:#22d3ee">65 岁以上 <u>5.26%</u></b>
+      </div>
     </div>
     <p class="sub dim" data-anim="7">年龄分布 · 学生与中年群体合计超过 80%</p>
   </section>
@@ -1577,7 +1690,13 @@ body::after{content:none !important}
            data-notes="第 8 题是我们最在意的一组数据。&#10;‘非常担心’24.81%，‘比较担心’49.62% —— 加起来 74.43%。&#10;也就是说，将近四分之三的人，即使会操作，也会因为怕担责任而犹豫。&#10;这正是‘好人法’要解决的问题，也必须写进培训里。">
     <p class="kicker" data-anim="1">第 8 题 · 是否担心因使用 AED 承担法律责任</p>
     <h2 class="h2 grad" data-anim="2">74.43% 担心承担责任</h2>
-    <div class="bars" data-anim="3">
+    <!-- 环形图：一个比例一个环，比五根条形更快传达「近四分之三」 -->
+    <div class="gsplit" data-anim="3" style="margin-top:3vh">
+      <div class="donut" style="--target:74.43">
+        <div class="dv">74.43%</div>
+        <div class="dk">担心承担责任</div>
+      </div>
+      <div class="bars">
       <div class="brow hot"><div class="lab">非常担心</div>
         <div class="track"><i class="fill" style="--w:24.81%"></i></div>
         <div class="val">24.81%</div></div>
@@ -1593,6 +1712,7 @@ body::after{content:none !important}
       <div class="brow"><div class="lab">完全不担心</div>
         <div class="track"><i class="fill" style="--w:8.27%"></i></div>
         <div class="val">8.27%</div></div>
+      </div>
     </div>
     <p class="sub" data-anim="7" style="margin-top:3vh">
       即使会操作，也有近四分之三的人会因为怕担责而犹豫
@@ -1604,12 +1724,18 @@ body::after{content:none !important}
            data-notes="第 4 题：你居住的地方或学校有没有配 AED？&#10;注意这个数字：27.82% 的人回答‘已配备，但我不清楚位置’。还有约 22.5% 说‘不清楚有没有配’。&#10;第 10 题问是否醒目，多数人的答案是‘一般，要仔细看’或者‘不醒目’。&#10;这就引出了我们的第一个断点：不是没有设备，是找不到。">
     <p class="kicker" data-anim="1">第 4、10 题 · 配置与醒目度</p>
     <h2 class="h2 grad" data-anim="2">配了，但你可能找不到</h2>
-    <div class="numwrap" data-anim="3" style="margin-top:4vh">
-      <span class="bignum" data-count="27.82">0</span><span class="unit">%</span>
+    <!-- 点阵图：把 27.82% 还原成「100 个人里约 28 个不知道位置」 -->
+    <div class="gsplit" data-anim="3" style="margin-top:4vh">
+      <div class="dotchart" data-dots="27.82"></div>
+      <div>
+        <div class="numwrap">
+          <span class="bignum" data-count="27.82">0</span><span class="unit">%</span>
+        </div>
+        <p class="sub solid" style="margin-top:1.4vh;font-weight:700">
+          回答「已配备，但我不知道在哪」
+        </p>
+      </div>
     </div>
-    <p class="sub solid" data-anim="4" style="margin-top:1.6vh;font-weight:700">
-      回答「已配备，但我不知道在哪」
-    </p>
     <div class="case" data-anim="6">
       <p class="sub" style="margin-top:0">
         另有约 <b class="solid">22.5%</b> 的人说：不清楚自己所在社区或学校到底有没有配<br>
@@ -2081,7 +2207,24 @@ body::after{content:none !important}
     });
   })();
 
-  /* 翻页时给极光一点反向位移，强化"镜头在移动"的错觉 */
+  /* ============================================================
+     点阵图：每 100 人里有几个
+     目的：把百分比还原成"人"。观众对"15%"无感，
+     但看到 100 个点里亮起 15 个，立刻有体感。
+     ============================================================ */
+  Array.prototype.forEach.call(document.querySelectorAll('[data-dots]'), function (el) {
+    var v = parseFloat(el.getAttribute('data-dots')) || 0;
+    var n = Math.max(0, Math.min(100, Math.round(v)));
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < 100; i++) {
+      var d = document.createElement('i');
+      if (i < n) d.className = 'on';
+      d.style.transitionDelay = (0.12 + i * 0.0055).toFixed(3) + 's';
+      frag.appendChild(d);
+    }
+    el.appendChild(frag);
+  });
+
   function auroraParallax(dir) {
     var au = document.querySelector('.aurora');
     if (!au || reduce) return;
