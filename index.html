@@ -1519,8 +1519,37 @@ body::after{content:none !important}
   from{stroke-dashoffset:1000}
   to{stroke-dashoffset:0}
 }
-.slide.active .ecg path{
+.slide.active .ecg path:not(.pulse){
   animation:ecgDraw 2.9s cubic-bezier(.33,.02,.28,1) .35s both;
+}
+
+/* ---------- 持续跳动 ----------
+   画完之后不能死在那儿。做法：再叠一层"亮段"，
+   用 stroke-dasharray 只留一小段实线，然后让 dashoffset 无限循环 ——
+   亮段就会沿着曲线一直往前走，像监护仪上的扫描光。
+   比用 mask 渐变稳，因为 dash 动画是 SVG 的核心能力。 */
+.ecg .pulse{
+  stroke:url(#ecgGrad);stroke-width:3.4;
+  stroke-dasharray:130 870;
+  stroke-dashoffset:0;
+  /* 这里不能写 transition：和前面 dashoffset 的坑一样，
+     元素刚可见时 transition 不会启动，opacity 会永远停在 0。
+     直接由 .live 一次性赋值。 */
+  opacity:0;
+}
+.ecg .pulse.glowp{
+  stroke:#a5b4fc;stroke-width:13;
+  filter:blur(9px);
+  stroke-dasharray:130 870;
+  opacity:0;
+}
+.ecg.live .pulse{opacity:1;animation:ecgMarch 2.4s linear infinite}
+.ecg.live .pulse.glowp{opacity:.40;animation:ecgMarch 2.4s linear infinite}
+/* 亮段走起来之后，底纹压暗一档，让"光"成为主角 */
+.ecg.live .line{opacity:.52}
+@keyframes ecgMarch{
+  from{stroke-dashoffset:1000}
+  to{stroke-dashoffset:0}
 }
 
 /* 心跳标记：曲线画完之后，末端有一个持续的光点 */
@@ -1593,6 +1622,17 @@ body::after{content:none !important}
                L532 70 L540 46 L548 94 L556 70 L568 70 H700
                L712 70 L720 30 L728 110 L736 70 L748 70 H1200"/>
       <path class="line" pathLength="1000" vector-effect="non-scaling-stroke"
+            d="M0 70 H150 L162 70 L170 44 L178 96 L186 70 L198 70 H330
+               L342 70 L350 38 L358 102 L366 70 L378 70 H520
+               L532 70 L540 46 L548 94 L556 70 L568 70 H700
+               L712 70 L720 30 L728 110 L736 70 L748 70 H1200"/>
+      <!-- 亮点：画完之后沿曲线持续行进，让心跳"活着" -->
+      <path class="pulse glowp" pathLength="1000" vector-effect="non-scaling-stroke"
+            d="M0 70 H150 L162 70 L170 44 L178 96 L186 70 L198 70 H330
+               L342 70 L350 38 L358 102 L366 70 L378 70 H520
+               L532 70 L540 46 L548 94 L556 70 L568 70 H700
+               L712 70 L720 30 L728 110 L736 70 L748 70 H1200"/>
+      <path class="pulse" pathLength="1000" vector-effect="non-scaling-stroke"
             d="M0 70 H150 L162 70 L170 44 L178 96 L186 70 L198 70 H330
                L342 70 L350 38 L358 102 L366 70 L378 70 H520
                L532 70 L540 46 L548 94 L556 70 L568 70 H700
@@ -2449,20 +2489,27 @@ body::after{content:none !important}
     });
     idx = n;
 
-    /* 心电图的重播交给 CSS 关键帧（见 .slide.active .ecg path）。
-       这里只需要在重新进入本页时把动画时间轴清零，
-       否则第二次进来动画不会重放，线会静止。 */
+    /* 心电图：
+       1) 先清掉上一次的"持续跳动"，避免多页同时有光在跑；
+       2) 重播绘制动画（清内联 animation 强制重置时间轴）；
+       3) 画完之后加 .live，亮段开始无限行进 —— 心跳不能停。 */
+    Array.prototype.forEach.call(document.querySelectorAll('.ecg.live'), function (e) {
+      e.classList.remove('live');
+    });
+
     var ecgEl = slides[n].querySelector('.ecg');
     if (ecgEl) {
-      Array.prototype.forEach.call(ecgEl.querySelectorAll('path'), function (p) {
+      Array.prototype.forEach.call(ecgEl.querySelectorAll('path:not(.pulse)'), function (p) {
         p.style.animation = 'none';
         void p.getBoundingClientRect();   // 强制重排，重置动画时间轴
         p.style.animation = '';           // 交还给 CSS 规则重新触发
       });
+      // 3.4s 时曲线画完（0.35s 延迟 + 2.9s），接上持续跳动
+      setTimeout(function () { ecgEl.classList.add('live'); }, 3400);
       // 兜底：后台标签页 / 节流环境里动画可能不推进。
       // 宁可不动，也不能让线永远停在"未画"的初始态。
       setTimeout(function () {
-        Array.prototype.forEach.call(ecgEl.querySelectorAll('path'), function (p) {
+        Array.prototype.forEach.call(ecgEl.querySelectorAll('path:not(.pulse)'), function (p) {
           var v = parseFloat(getComputedStyle(p).strokeDashoffset) || 0;
           if (v > 5) {
             p.style.animation = 'none';
