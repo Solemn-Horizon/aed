@@ -1506,11 +1506,22 @@ body::after{content:none !important}
 .ecg path{
   fill:none;stroke-linecap:round;stroke-linejoin:round;
   stroke-dasharray:1000;stroke-dashoffset:1000;
-  transition:stroke-dashoffset 2.9s cubic-bezier(.33,.02,.28,1) .35s;
 }
-.ecg .line{stroke:url(#ecgGrad);stroke-width:2.4}
-.ecg .glow{stroke:#8b9cf7;stroke-width:9;opacity:.30;filter:blur(7px)}
-.slide.active .ecg path{stroke-dashoffset:0}
+.ecg .line{stroke:url(#ecgGrad);stroke-width:3}
+.ecg .glow{stroke:#8b9cf7;stroke-width:11;opacity:.34;filter:blur(8px)}
+
+/* 关键：这里必须用 animation，不能用 transition。
+   transition 要有"上一帧已渲染的起点"才会插值，而这条线所在的页
+   刚由 visibility:hidden 变为可见，起点从未被渲染过 ——
+   浏览器直接跳到终点，线就"不动"（实测确认）。
+   animation 是时间驱动的，只要元素可见就会跑。 */
+@keyframes ecgDraw{
+  from{stroke-dashoffset:1000}
+  to{stroke-dashoffset:0}
+}
+.slide.active .ecg path{
+  animation:ecgDraw 2.9s cubic-bezier(.33,.02,.28,1) .35s both;
+}
 
 /* 心跳标记：曲线画完之后，末端有一个持续的光点 */
 .ecg .beat{
@@ -2437,6 +2448,29 @@ body::after{content:none !important}
       s.classList.toggle('prev', i < n);
     });
     idx = n;
+
+    /* 心电图的重播交给 CSS 关键帧（见 .slide.active .ecg path）。
+       这里只需要在重新进入本页时把动画时间轴清零，
+       否则第二次进来动画不会重放，线会静止。 */
+    var ecgEl = slides[n].querySelector('.ecg');
+    if (ecgEl) {
+      Array.prototype.forEach.call(ecgEl.querySelectorAll('path'), function (p) {
+        p.style.animation = 'none';
+        void p.getBoundingClientRect();   // 强制重排，重置动画时间轴
+        p.style.animation = '';           // 交还给 CSS 规则重新触发
+      });
+      // 兜底：后台标签页 / 节流环境里动画可能不推进。
+      // 宁可不动，也不能让线永远停在"未画"的初始态。
+      setTimeout(function () {
+        Array.prototype.forEach.call(ecgEl.querySelectorAll('path'), function (p) {
+          var v = parseFloat(getComputedStyle(p).strokeDashoffset) || 0;
+          if (v > 5) {
+            p.style.animation = 'none';
+            p.style.strokeDashoffset = '0';
+          }
+        });
+      }, 4200);
+    }
 
     // 3) 界面状态
     // 章节与讲者只在「真的变了」时才重放出入动画 ——
