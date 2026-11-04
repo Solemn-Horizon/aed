@@ -86,45 +86,59 @@ body{
    转场：旧页淡出并轻微后退，新页淡入并轻微推近 —— 模拟运镜
    只用 opacity + transform（合成器属性），不触发重排重绘
    ============================================================ */
+/* ============================================================
+    一镜到底：页面不是"切换"，而是相机持续推近时经过的"场景"
+    ------------------------------------------------------------
+    旧版是 cross-fade：旧页淡出到黑、新页从黑淡入，中间有一瞬空档，
+    这正是"切页感"的来源。一镜到底要做到三件事：
+    1. 无黑场：新页在旧页还没退干净时就已到位，画面始终是满的；
+    2. 同一条运动：旧页被推远、新页被推近，方向一致、首尾相接；
+    3. 位移与缩放同步（景深）：镜头向前，远处场景因透视而放大/后退。
+    主角元素另由 FLIP（Magic Move）连续飞过，见脚本 handoff()。
+    ============================================================ */
 .slide{
   position:absolute;inset:0;
   display:flex;flex-direction:column;justify-content:center;
   padding:8vh 9vw;
   opacity:0;visibility:hidden;
-  transform:translate3d(0,1.6%,0) scale(1.035);
+  /* 尚未抵达的场景：在镜头前方、偏远（scale>1） */
+  transform:translate3d(var(--sx,2.4%),0,0) scale(1.025);
   transition:
-    opacity .72s var(--ease),
-    transform 1.05s var(--ease),
-    visibility 0s linear .72s;
+    opacity .78s cubic-bezier(.4,0,1,1),      /* 离场：前慢后快，晚点才走 */
+    transform 1.02s cubic-bezier(.76,0,.24,1);
   will-change:opacity,transform;
   backface-visibility:hidden;
 }
 .slide.active{
-  opacity:1;visibility:visible;transform:translate3d(0,0,0) scale(1);
+  opacity:1;visibility:visible;z-index:2;   /* 新场景始终在上层：主角交接不会被旧页内容盖住 */
+  transform:translate3d(0,0,0) scale(1);
   transition:
-    opacity .72s var(--ease),
-    transform 1.05s var(--ease),
-    visibility 0s;
+    transform 1.02s cubic-bezier(.76,0,.24,1);  /* 只让推镜有过渡 */
+  /* 当前页的可见性由 class 直接锁定，不交给 opacity transition：
+     快速连翻 / 后台标签页节流时 transition 可能不推进，
+     若依赖它就会出现"整屏透明"的黑场（实测 8 连翻复现过）。 */
 }
-/* 已经翻过去的页：向后轻微退开，形成纵深 */
+/* 已经翻过去的场景：被镜头甩到后方、缩小（景深）。
+   注意：visibility 延迟到推镜结束(1.02s)才生效，所以退场全过程
+   旧场景一直看得见 —— 这正是"镜头连续经过"而非"切黑"的关键。 */
 .slide.prev{
-  opacity:0;visibility:hidden;
-  transform:translate3d(0,-1.2%,0) scale(.985);
+  opacity:0;z-index:1;
+  transform:translate3d(var(--px,-2.4%),0,0) scale(.965);
+  transition:
+    opacity .92s cubic-bezier(.4,0,1,1),     /* 前慢后快：先还在，最后才淡掉 */
+    transform 1.02s cubic-bezier(.76,0,.24,1);
 }
+/* 无黑场：所有"看得见或正在退场"的页一律 visibility:visible，
+   只靠 opacity 表达淡出。visibility 用 transition 延迟在快速连翻时
+   会被反复重置，导致整屏卡在 hidden（实测 8 连翻后总 opacity=0）。 */
+.slide.active,.slide.prev,.slide.leaving{visibility:visible}
 
-/* 方向感知：前进时新页从右侧略偏进入，后退时从左侧 —— 运镜有方向感 */
-#stage[data-dir="next"] .slide:not(.active):not(.prev){
-  transform:translate3d(2.2%,1.6%,0) scale(1.035);
-}
-#stage[data-dir="prev"] .slide:not(.active):not(.prev){
-  transform:translate3d(-2.2%,1.6%,0) scale(1.035);
-}
-#stage[data-dir="next"] .slide.prev{
-  transform:translate3d(-1.6%,-1.2%,0) scale(.985);
-}
-#stage[data-dir="prev"] .slide.prev{
-  transform:translate3d(1.6%,-1.2%,0) scale(.985);
-}
+/* 方向感知：前进时未来在右、过去在左；后退时镜像。
+   只需换 --sx / --px，位移曲线本身共用一条 —— 这就是"同一镜头"。 */
+#stage[data-dir="next"] .slide:not(.active):not(.prev){--sx:2.4%}
+#stage[data-dir="prev"] .slide:not(.active):not(.prev){--sx:-2.4%}
+#stage[data-dir="next"] .slide.prev{--px:-2.4%;--sx:2.4%}
+#stage[data-dir="prev"] .slide.prev{--px:2.4%;--sx:-2.4%}
 
 /* ============================================================
    Apple 式动效层
@@ -135,9 +149,11 @@ body{
    3. 节奏统一：先骨架（容器）→ 再主句（遮罩浮现）→ 最后细节。
    ============================================================ */
 
-/* ---------- 1. 运镜：镜头缓慢推近 ----------
-   .cam 是每页的「镜头层」。进入后 14 秒内极缓慢地推近 3.2%，
-   像摄影机在轨道上慢慢前移 —— 静态页因此有了"呼吸"。 */
+/* ---------- 1. 镜头层 ----------
+   .cam 是每页的「镜头层」。transform 由全片共享的 --cam-scale /
+   --cam-y 驱动（见后面「一镜到底」段），这里只负责布局。
+   注意：此处不再声明任何 animation —— 早期版本在这里给每页各跑
+   一次 dolly，导致切页时镜头归零重来，正是"切页感"的根源。 */
 .cam{
   flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;
   min-height:0;transform-origin:50% 45%;will-change:transform;
@@ -145,13 +161,6 @@ body{
 .chapter-slide .cam{
   flex-direction:row;align-items:center;justify-content:space-between;
   gap:var(--s-2xl);
-}
-.slide.active .cam{
-  animation:dolly 14s cubic-bezier(.22,.61,.36,1) both;
-}
-@keyframes dolly{
-  from{transform:scale(1) translate3d(0,0,0)}
-  to{transform:scale(1.032) translate3d(0,-0.7%,0)}
 }
 
 /* ---------- 2. 文字从遮罩里浮现 ----------
@@ -1096,14 +1105,13 @@ body::after{
    「动效必须可中断、可即时响应」。
    ============================================================ */
 
-/* --- 运镜：14 秒极缓推近 --- */
+/* --- 一镜到底：全片共享一条相机时间轴 ---
+   旧版每页各自 dolly（1 → 1.032），切页时归零重来 —— 镜头会"跳一下"。
+   现在相机位置只由 JS 算好的 --cam-scale / --cam-y 决定，随翻页单调
+   累加、永不回退：页面在变，镜头始终沿同一条轨道向前，感觉不到"切"。 */
 .cam{
-  transform:scale(1) translate3d(0,0,0);
-  transition:transform 14s cubic-bezier(.22,.61,.36,1);
-  animation:none !important;
-}
-.slide.active .cam{
-  transform:scale(1.032) translate3d(0,-0.7%,0);
+  transform:scale(var(--cam-scale,1)) translate3d(0,var(--cam-y,0px),0);
+  transition:transform 1.15s cubic-bezier(.76,0,.24,1);
   animation:none !important;
 }
 
@@ -1165,28 +1173,13 @@ body::after{
 .slide.active .h2.grad,
 .slide.active .quote{background-position:0% 0}
 
-/* --- 离场时镜头快速归位 ---
-   否则退出页要花 14 秒慢慢缩回去，下次进来会从"半途"起步。 */
-.slide:not(.active) .cam{transition:transform .24s linear}
-
-/* --- 运镜的四种变体 ---
-   全都推近会显得单调。按页面类型分配镜头语言：
-   pan  = 章节页，横向缓移（像镜头沿轨道滑过）
-   zoom = 数据页，向前推近（强调"看清这个数"）
-   rise = 封面/收束页，微微上抬推近（有仪式感）
-   默认 = 极缓推近 */
-.slide[data-cam="pan"].active .cam{
-  transform:scale(1.07) translate3d(-2.2%,-0.5%,0);
-  transition:transform 16s cubic-bezier(.33,.02,.28,1);
-}
-.slide[data-cam="zoom"].active .cam{
-  transform:scale(1.062) translate3d(0,-1.1%,0);
-  transition:transform 15s cubic-bezier(.22,.61,.36,1);
-}
-.slide[data-cam="rise"].active .cam{
-  transform:scale(1.038) translate3d(0,-1.5%,0);
-  transition:transform 17s cubic-bezier(.22,.61,.36,1);
-}
+/* --- 四种镜头语言：只"叠加"在共享轨道上，不重写 transform ---
+   共享轨道负责"一直向前"，变体负责"这一段的姿态"。
+   用 margin / letter-spacing 这类不冲突的属性，避免互相覆盖。 */
+.slide[data-cam="pan"].active .cam{margin-left:-.8vw}
+.slide[data-cam="zoom"].active .cam{margin-left:0}
+.slide[data-cam="rise"].active .cam{margin-left:0}
+.slide:not(.active) .cam{margin-left:0;transition:transform 1.15s cubic-bezier(.76,0,.24,1),margin-left .5s ease}
 
 /* --- 减弱动态效果时全部归位 --- */
 @media (prefers-reduced-motion:reduce){
@@ -2460,15 +2453,18 @@ body::after{content:none !important}
     el.appendChild(frag);
   });
 
-  function auroraParallax(dir) {
+  /* 一镜到底：极光也活在"同一个空间"里。
+     旧版每次翻页抖一下再回零，等于背景重新对齐了一次 —— 会被察觉为切换。
+     现在与相机共用同一个收敛量 --cam-e，单向缓移、永不回弹。 */
+  function auroraParallax() {
     var au = document.querySelector('.aurora');
     if (!au || reduce) return;
-    var d = dir === 'prev' ? 1 : -1;
-    au.style.transition = 'transform 1.1s cubic-bezier(.16,1,.3,1)';
-    au.style.transform = 'translate3d(' + (d * 1.2) + '%,0,0)';
-    setTimeout(function () {
-      au.style.transform = 'translate3d(0,0,0)';
-    }, 260);
+    var cs = getComputedStyle(document.documentElement);
+    var e = parseFloat(cs.getPropertyValue('--cam-e')) || 0;
+    au.style.transition = 'transform 1.25s cubic-bezier(.76,0,.24,1)';
+    au.style.transform = 'translate3d(' + (-e * 7).toFixed(2) + '%,'
+                       + (-e * 4.5).toFixed(2) + '%,0) scale('
+                       + (1 + e * 0.07).toFixed(4) + ')';
   }
 
   function resetCarrier(el) {
@@ -2506,11 +2502,11 @@ body::after{content:none !important}
 
     to.animate([
       { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')',
-        opacity: 0, filter: 'blur(7px)' },
+        opacity: 0.35, filter: 'blur(6px)' },
       { transform: 'translate3d(0,0,0) scale(1)', opacity: 1, filter: 'blur(0px)' }
     ], {
-      duration: 920,
-      easing: 'cubic-bezier(.16,1,.3,1)',
+      duration: 1000,
+      easing: 'cubic-bezier(.76,0,.24,1)',   /* 与整页推镜同一条缓动 = 同一镜头 */
       fill: 'none'
     });
     return true;
@@ -2541,11 +2537,15 @@ body::after{content:none !important}
 
   /* ---------- 翻页 ---------- */
   var stageEl = document.getElementById('stage');
-  var navLock = false;      // 转场进行中不接受新的翻页指令
-  var LOCK_MS = 600;        // 略短于交接时长，连按仍跟手
+  var navLock = false;      // 极短防抖，只挡同一帧的重复输入
+  /* 一镜到底：转场可被随时打断（所有动画是 transition / WAAPI，
+     基准态即终态，连按不会错位）。旧版 600ms 长锁会吞掉快速翻页，
+     让镜头"停一下再走" —— 那正是切页感来源，故缩短到 200ms。 */
+  var LOCK_MS = 200;
   var booted = false;       // 首次进入不做交接（直接跳页时不该从封面飞过来）
   var lastChapter = null;   // 上一页的章节标签，值没变就不重放动画
   var lastSpeaker = null;   // 上一页的讲者，同上
+  var camProgress = 0;      // 全片共享的相机位置：只增不减，镜头从不"回退"
 
   function show(n, dir) {
     n = Math.max(0, Math.min(slides.length - 1, n));
@@ -2555,9 +2555,21 @@ body::after{content:none !important}
     navLock = true;
     setTimeout(function () { navLock = false; }, LOCK_MS);
 
-    // 前进 / 后退：驱动方向感知的运镜
+    // 前进 / 后退：驱动方向感知的推镜
     if (stageEl) stageEl.setAttribute('data-dir', dir === 'prev' ? 'prev' : 'next');
-    auroraParallax(dir);
+
+    /* 一镜到底的核心：相机位置只增不减、单调收敛。
+       用指数趋近而不是取模 —— 取模会在第 25 页回绕，
+       镜头突然缩回起点，那正是最刺眼的"跳切"。
+       e = 1 - e^(-k/12) 永远递增且渐近 1，翻多少页都不会跳。 */
+    if (booted) camProgress += 1;
+    var e = 1 - Math.exp(-camProgress / 12);
+    document.documentElement.style.setProperty('--cam-scale', (1 + e * 0.11).toFixed(4));
+    document.documentElement.style.setProperty('--cam-y', (-e * 22).toFixed(2) + 'px');
+    document.documentElement.style.setProperty('--cam-e', e.toFixed(4));
+
+    // 整片共用的镜头层：极光随之缓慢改变尺度，强化"同一个空间"
+    auroraParallax();
 
     var fromSlide = slides[idx];
     var toSlide = slides[n];
@@ -2630,7 +2642,7 @@ body::after{content:none !important}
     runCounters(slides[n]);
     runType(slides[n]);
 
-    // 5) 元素交接
+    // 5) 元素交接（Magic Move）
     if (toC) {
       toC.classList.remove('enter');
       var flew = false;
@@ -2641,10 +2653,17 @@ body::after{content:none !important}
         toC.classList.add('enter');
         setTimeout(function () { toC.classList.remove('enter'); }, 1000);
       }
-      // 上一页的主角快速"交出"，避免与来者叠成双影
-      if (fromC && fromC !== toC) {
+      /* 一镜到底：只有当"没有发生交接"时，旧主角才需要自己淡出。
+         发生交接时旧主角保持可见 —— 它由整页推镜带走，新主角在同一
+         时刻从它的位置起飞，两者首尾相接，画面里主角从不消失。 */
+      if (fromC && fromC !== toC && !flew) {
         fromC.style.transition = 'opacity .32s var(--ease-in)';
         fromC.style.opacity = '0';
+      }
+      // 复位上一页主角残留的内联 opacity（来回翻页时会用到）
+      if (flew && fromC && fromC !== toC) {
+        fromC.style.transition = '';
+        fromC.style.opacity = '';
       }
     }
 
@@ -2679,7 +2698,7 @@ body::after{content:none !important}
     if (Math.abs(e.deltaY) < 12) return;
     wheelLock = true;
     if (e.deltaY > 0) next(); else prev();
-    setTimeout(function () { wheelLock = false; }, 750);
+    setTimeout(function () { wheelLock = false; }, 260);
   }, { passive: true });
 
   /* ---------- 触摸滑动翻页（手机主要靠这个） ---------- */
