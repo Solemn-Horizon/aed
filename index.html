@@ -1589,6 +1589,65 @@ body::after{content:none !important}
   .ecg .beat circle{animation:none !important}
   .chapter-slide .initial{transition:none !important;background-position:0 0 !important}
 }
+
+/* ============================================================
+   20. 文字动效词汇表（按语义角色分配，不再千篇一律"从下浮起"）
+   ------------------------------------------------------------
+   研究苹果发布会 / Keynote 后归纳的文字动作：
+   - tag   ：小标签从左侧滑入 —— 像"贴标签"
+   - focus ：大标题先虚焦、再聚焦 —— 苹果官网产品页的标志动作
+   - wipe  ：引言横向擦除揭示 —— 像从左到右"写"出来
+   - pop   ：数字弹入，带轻微过冲 —— 强调一个数字时用
+   底层仍是"文字浮现"，但方向与质感因角色而异，节奏就有了层次。
+   全部用 @keyframes（时间驱动），绕开"元素刚由隐藏变可见时
+   transition 不启动"的坑。
+   ============================================================ */
+[data-motion]{opacity:0;will-change:transform,opacity,filter,clip-path}
+
+.slide.active [data-motion="tag"]{animation:mTag .72s var(--ease) .14s both}
+.slide.active [data-motion="focus"]{animation:mFocus 1.15s var(--ease) .05s both}
+.slide.active [data-motion="wipe"]{animation:mWipe .95s var(--ease) .22s both}
+.slide.active [data-motion="pop"]{animation:mPop .9s var(--ease) .26s both}
+
+@keyframes mTag{
+  from{opacity:0;transform:translate3d(-30px,0,0)}
+  to{opacity:1;transform:none}
+}
+@keyframes mFocus{
+  from{opacity:0;transform:scale(1.07);filter:blur(16px)}
+  55%{opacity:1}
+  to{opacity:1;transform:scale(1);filter:blur(0)}
+}
+@keyframes mWipe{
+  from{opacity:0;clip-path:inset(0 100% 0 0)}
+  55%{opacity:1}
+  to{opacity:1;clip-path:inset(0 -24% 0 -24%)}
+}
+@keyframes mPop{
+  0%{opacity:0;transform:scale(.8)}
+  62%{opacity:1;transform:scale(1.055)}
+  100%{opacity:1;transform:scale(1)}
+}
+
+/* ============================================================
+   21. 方向感知的文字退场
+   前进时旧页文字向左、向后退走；后退时向右 ——
+   翻页不再只是"淡出"，而是有方向的"离开"。
+   作用于 [data-anim] / [data-motion] / [data-rv] 三类文字。
+   ============================================================ */
+#stage[data-dir="next"] .slide.prev [data-anim],
+#stage[data-dir="next"] .slide.prev [data-motion]{
+  transform:translate3d(-3.2%,0,0);
+}
+#stage[data-dir="prev"] .slide.prev [data-anim],
+#stage[data-dir="prev"] .slide.prev [data-motion]{
+  transform:translate3d(3.2%,0,0);
+}
+
+@media (prefers-reduced-motion:reduce){
+  [data-motion]{opacity:1 !important}
+  .slide.active [data-motion]{animation:none !important}
+}
 </style>
 </head>
 <body>
@@ -2355,6 +2414,35 @@ body::after{content:none !important}
   })();
 
   /* ============================================================
+     文字动效按角色分配
+     目的：让"文字浮现"这件事因语义而异 ——
+     标签滑入、引言擦除、数字弹入 —— 而不是所有字都从下往上浮。
+     ============================================================ */
+  (function initTextMotion() {
+    // 角色 → 动作 的映射。主角（.hero/.h2/.bignum）多数被 FLIP 接管，
+    // 这里只处理"配角文字"，避免和交接动画打架。
+    var MAP = [
+      ['.kicker', 'tag'],
+      ['.quote', 'wipe'],
+      ['.sub.solid', 'wipe'],
+      ['.stat .v', 'pop'],
+      ['.bignum', 'pop']
+    ];
+    slides.forEach(function (sl) {
+      MAP.forEach(function (pair) {
+        var sel = pair[0], motion = pair[1];
+        Array.prototype.forEach.call(sl.querySelectorAll(sel), function (el) {
+          // 已经是 FLIP 主角的、或打字机的，不动
+          if (el.classList.contains('carrier') || el.classList.contains('type')) return;
+          el.removeAttribute('data-anim');
+          el.removeAttribute('data-rv');
+          el.setAttribute('data-motion', motion);
+        });
+      });
+    });
+  })();
+
+  /* ============================================================
      点阵图：每 100 人里有几个
      目的：把百分比还原成"人"。观众对"15%"无感，
      但看到 100 个点里亮起 15 个，立刻有体感。
@@ -2418,8 +2506,8 @@ body::after{content:none !important}
 
     to.animate([
       { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')',
-        opacity: 0 },
-      { transform: 'translate3d(0,0,0) scale(1)', opacity: 1 }
+        opacity: 0, filter: 'blur(7px)' },
+      { transform: 'translate3d(0,0,0) scale(1)', opacity: 1, filter: 'blur(0px)' }
     ], {
       duration: 920,
       easing: 'cubic-bezier(.16,1,.3,1)',
