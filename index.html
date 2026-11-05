@@ -84,23 +84,44 @@ body{
 #stage{position:fixed;inset:0;z-index:2}
 
 /* ============================================================
+   27. 衔接丝滑度：消除翻页瞬间的"阶跃"
+   ------------------------------------------------------------
+   逐帧实测（video/_smooth_analyze.py）发现翻页那一帧三个量同时跳变：
+     lit 0.102→0.220、dx +2.50→-0.65 —— 一步到位，没有插值。
+   相机 scale 有 transition，但亮度是全局 CSS 变量（默认不可插值），
+   于是"镜头在动、光却突然换了"，这就是不丝滑的来源。
+   修法：@property 把 --lit 声明成 <number>，交给 transition 平滑过渡。
+   ============================================================ */
+@property --lit{syntax:'<number>';inherits:true;initial-value:0.12}
+:root{
+  --lit:.12;
+  --lit-breathe:0;
+  transition:--lit 1.35s cubic-bezier(.76,0,.24,1);
+}
+@media (prefers-reduced-motion:reduce){
+  :root{transition:none !important}
+}
+
+/* ============================================================
    亮度包络 —— 逐帧拆解发现：参考片 80% 时间极暗(亮度 3~13)，
    仅 7% 时间亮到 180+。层次不靠"渐变背景"，而靠一束光。
-   这里在舞台上层叠一层随相位变化的柔光，模拟"场景里的光变了"。
    --lit 由 JS 按相位写入（暗场约 .10，爆发约 .85）。
    ============================================================ */
 #stage::after{
   content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
   background:radial-gradient(ellipse 80% 62% at 50% 38%,
-    rgba(190,205,255,calc((var(--lit,.12) + var(--lit-breathe,0)) * .30)) 0%,
-    rgba(120,140,220,calc((var(--lit,.12) + var(--lit-breathe,0)) * .10)) 42%,
+    rgba(190,205,255,calc((var(--lit,.12) + var(--lit-breathe,0)) * .34)) 0%,
+    rgba(120,140,220,calc((var(--lit,.12) + var(--lit-breathe,0)) * .11)) 42%,
     rgba(0,0,0,0) 72%);
-  transition:background 1.4s ease;
+  /* 亮度由 --lit 的 transition 驱动，这里不再用 background 过渡：
+     换整套 background 会让 radial-gradient 无法插值，反而产生硬切。 */
 }
+/* 爆发相位只把光的范围略微放大，亮度仍由同一个 --lit 连续变化 */
 #stage[data-shot="burst"]::after{
   background:radial-gradient(ellipse 92% 78% at 50% 42%,
-    rgba(220,232,255,.20) 0%,rgba(150,170,240,.07) 45%,rgba(0,0,0,0) 74%);
-  transition:background .55s ease;
+    rgba(200,216,255,calc((var(--lit,.12) + var(--lit-breathe,0)) * .30)) 0%,
+    rgba(150,170,240,calc((var(--lit,.12) + var(--lit-breathe,0)) * .09)) 45%,
+    rgba(0,0,0,0) 74%);
 }
 
 /* ============================================================
@@ -616,7 +637,7 @@ body{
 }
 .chapter-slide .right{flex:0 0 auto;width:min(42%,520px)}
 .chapter-slide .right img{
-  width:100%;height:auto;display:block;border-radius:16px;
+  width:100%;height:auto;display:block;border-radius:var(--card-r);
   opacity:0;transform:translate3d(0,4%,0) scale(1.04);
   transition:opacity 1s var(--ease) .25s,transform 1.4s var(--ease) .25s;
 }
@@ -633,7 +654,7 @@ body{
 /* ============================================================
    图片组件
    ============================================================ */
-.figure{margin:0;position:relative;overflow:hidden;border-radius:16px}
+.figure{margin:0;position:relative;overflow:hidden;border-radius:var(--card-r)}
 .figure img{
   width:100%;height:100%;display:block;object-fit:cover;
   transform:scale(1.06);opacity:.0;
@@ -1016,7 +1037,7 @@ body{
 body::after{
   content:"";position:fixed;inset:34px;z-index:6;pointer-events:none;
   border:1px solid rgba(255,255,255,.06);
-  border-radius:3px;
+  border-radius:var(--r-xs);
 }
 
 /* ---------- 5. 数据条：细线 + 微光 ---------- */
@@ -1735,6 +1756,16 @@ body::after{content:none !important}
 /* iris：从中心显影，用于结论页 */
 #stage[data-trans="iris"] .slide:not(.active):not(.prev){--sx:0%;--sy:0%}
 
+/* slide：竖向滑过，与 pan 的横向形成对比 */
+#stage[data-trans="slide"] .slide:not(.active):not(.prev){--sx:0%;--sy:5%}
+#stage[data-trans="slide"] .slide.prev{--px:0%;--py:-5%}
+
+/* zoom：从更小处推近（新页起点更小，旧页退得更远） */
+#stage[data-trans="zoom"] .slide:not(.active):not(.prev){--sx:0%;--sy:0%}
+#stage[data-trans="zoom"] .slide.prev{--px:0%;--py:0%}
+#stage[data-trans="zoom"] .slide:not(.active):not(.prev){transform:scale(1.075)}
+#stage[data-trans="zoom"] .slide.prev{transform:scale(.93)}
+
 .slide{
   transform:translate3d(var(--sx,2.4%),var(--sy,0%),0) scale(1.025);
 }
@@ -1754,6 +1785,7 @@ body::after{content:none !important}
 @media (prefers-reduced-motion:reduce){
   #stage[data-trans="iris"] .slide.active{animation:none !important;clip-path:none !important}
   #stage[data-trans="rack"] .slide:not(.active) .cam{filter:none !important}
+  #stage[data-trans="zoom"] .slide{transform:none !important}
 }
 
 /* ============================================================
@@ -1774,7 +1806,7 @@ body::after{content:none !important}
   width:min(880px,88vw);max-height:82vh;overflow:auto;
   padding:36px 40px;color:#e8eaf2;
   font-family:var(--font-cn);
-  border:1px solid rgba(255,255,255,.10);border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);border-radius:var(--card-r);
   background:linear-gradient(160deg,rgba(22,24,38,.96),rgba(10,10,18,.96));
 }
 #xray h3{margin:0 0 6px;font-size:22px;font-weight:700;letter-spacing:-.01em}
@@ -1786,7 +1818,7 @@ body::after{content:none !important}
 /* 实时 4 分钟倒计时：全片唯一随时间真实流动的数字 */
 #xray .clock{
   display:flex;align-items:baseline;gap:14px;margin-bottom:28px;
-  padding:20px 24px;border-radius:12px;background:rgba(255,255,255,.035);
+  padding:20px 24px;border-radius:var(--card-r-in);background:rgba(255,255,255,.035);
   border:1px solid rgba(255,255,255,.06);
 }
 #xray .clock b{
@@ -1801,7 +1833,7 @@ body::after{content:none !important}
 /* 可交互数据表：悬停任意一行，高亮并给出精确数值 */
 #xray .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 #xray .cell{
-  padding:14px 16px;border-radius:10px;cursor:default;
+  padding:14px 16px;border-radius:var(--card-r-in);cursor:default;
   background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);
   transition:background .25s ease,border-color .25s ease,transform .25s ease;
 }
@@ -1816,7 +1848,7 @@ body::after{content:none !important}
 /* 非线性导航：26 页缩略索引，点任意一页直达 */
 #xray .nav{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;margin-top:26px}
 #xray .nav button{
-  aspect-ratio:1;border:1px solid rgba(255,255,255,.09);border-radius:6px;
+  aspect-ratio:1;border:1px solid rgba(255,255,255,.09);border-radius:var(--r-xs);
   background:rgba(255,255,255,.025);color:#8e8e93;font-size:11px;
   font-family:var(--font-num);cursor:pointer;transition:all .2s ease;
 }
@@ -1908,6 +1940,164 @@ body::after{content:none !important}
   .slide.active .donut,.slide.active .segbar,
   .slide.active .figure img,.slide.active .bignum{animation:none !important}
   #stage::after{--lx:0% !important;--ly:0% !important}
+}
+
+/* ============================================================
+   25. 苹果卡片公式（依据 video/苹果卡片公式.md）
+   ------------------------------------------------------------
+   抖音「PT老农」拆解出的六条，逐条落地：
+   ① 背景非黑即白       -> 卡片只用灰度，不叠彩色渐变
+   ② 圆角短边×18%       -> --card-r，且不超过外层
+   ③ Bento Grid          -> 大格跨 2 列 2 行，小格填四周
+   ④ 横向 16 / 纵向 16·24 -> --gx / --gy，4 倍数体系
+   ⑤ 图也是卡片           -> figure 统一圆角与间距
+   ⑥ 四组精确灰度色值     -> 暗色方案采用「深灰底 + 亮一档卡片」
+
+   暗色对应原图「黑底×深灰卡 / 黑底×纯黑卡」：
+   页面底 #0B0B0F（参考 #1D1D1F 深灰思路，避免死黑压迫感），
+   卡片底 #16161D（比背景亮一档），靠色差浮起而非边框。
+   ============================================================ */
+:root{
+  --card-bg:#16161D;          /* 卡片：比背景亮一档 */
+  --card-bg-2:#1C1C24;        /* 第二层卡片（Bento 大格） */
+  --card-r:clamp(18px,2.2vw,30px);   /* 短边×18% 的近似 */
+  --gx:16px;                  /* 横向严格 16 */
+  --gy:24px;                  /* 纵向 16 或 24，这里取 24 做分层 */
+  --card-edge:rgba(255,255,255,.055);  /* 极弱描边，只辅助边界 */
+  --card-shadow:0 18px 48px rgba(0,0,0,.42);
+}
+
+/* 卡片基类：不靠边框，靠"比背景亮一档 + 极柔阴影"浮起 */
+.acard{
+  position:relative;
+  background:var(--card-bg);
+  border-radius:var(--card-r);
+  border:1px solid var(--card-edge);
+  box-shadow:var(--card-shadow);
+  padding:clamp(20px,2.4vw,36px);
+  /* 顶部一道极淡的高光：模拟"光打在卡片边缘"，是苹果的硬件质感 */
+  background-image:linear-gradient(180deg,
+    rgba(255,255,255,.035) 0%,rgba(255,255,255,0) 34%);
+}
+/* Bento 便当格：面积差制造主次 */
+.bento{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  grid-auto-rows:minmax(96px,auto);
+  gap:var(--gy) var(--gx);          /* 纵向 24 / 横向 16 —— 横竖有别 */
+  margin-top:clamp(24px,4vh,52px);
+}
+.bento > .acard{display:flex;flex-direction:column;justify-content:center}
+/* Hero 大格：跨 2 列 2 行，抢视觉焦点 */
+.bento > .acard.span2{grid-column:span 2;grid-row:span 2;
+  background:var(--card-bg-2);padding:clamp(26px,3vw,48px)}
+/* 卡片里的数字是唯一强调色，其余全白 —— 局部高亮 */
+.bento .k{font-size:clamp(11px,1.05vw,14px);color:#86868b;
+  letter-spacing:.06em;font-weight:600;margin-bottom:.5em}
+.bento .v{font-family:var(--font-num);font-size:clamp(26px,3.6vw,58px);
+  font-weight:800;letter-spacing:-.035em;line-height:1;
+  font-variant-numeric:tabular-nums;color:#f5f5f7}
+.bento .acard.span2 .v{font-size:clamp(40px,6.4vw,104px);
+  background:linear-gradient(178deg,#fff,#c9cede 60%,#8e95a6);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+.bento .d{font-size:clamp(11px,1vw,14px);color:#8e8e93;margin-top:.7em;
+  line-height:1.6}
+/* hover 1.02 —— 网页独有的回应，PPT 做不到 */
+.bento .acard{
+  transition:transform .35s var(--ease),box-shadow .35s var(--ease),
+             border-color .35s var(--ease);
+}
+.bento .acard:hover{
+  transform:translateY(-3px) scale(1.012);
+  border-color:rgba(167,139,250,.30);
+  box-shadow:0 26px 64px rgba(0,0,0,.55);
+}
+/* 卡片错落浮现：stagger 0.03s（设计库规范：长列表不超过 0.1s/item） */
+.slide.active .bento .acard{animation:cardRise .7s var(--ease) both}
+.slide.active .bento .acard:nth-child(1){animation-delay:.10s}
+.slide.active .bento .acard:nth-child(2){animation-delay:.13s}
+.slide.active .bento .acard:nth-child(3){animation-delay:.16s}
+.slide.active .bento .acard:nth-child(4){animation-delay:.19s}
+.slide.active .bento .acard:nth-child(5){animation-delay:.22s}
+.slide.active .bento .acard:nth-child(6){animation-delay:.25s}
+@keyframes cardRise{
+  from{opacity:0;transform:translate3d(0,18px,0) scale(.985)}
+  to{opacity:1;transform:none}
+}
+
+/* ⑤ 图也是卡片：统一圆角，且与卡片共用间距 */
+.figure,.figure img{border-radius:var(--card-r)}
+.figure{overflow:hidden;box-shadow:var(--card-shadow);
+  border:1px solid var(--card-edge)}
+
+/* 现有分组容器也套上卡片皮（不改内容结构，只加视觉层） */
+.stats,.case{
+  border-radius:var(--card-r);
+  background:var(--card-bg);
+  border:1px solid var(--card-edge);
+  box-shadow:var(--card-shadow);
+  padding:clamp(20px,2.6vw,40px);
+}
+.stats{gap:var(--gy)}
+.grid.g2,.grid.g3{gap:var(--gx)}
+.grid.g2 > *,.grid.g3 > *{border-radius:var(--card-r)}
+
+/* 响应式：4→2→1 列（设计库实现清单） */
+@media (max-width:900px){
+  .bento{grid-template-columns:repeat(2,1fr)}
+  .bento > .acard.span2{grid-column:span 2;grid-row:span 1}
+}
+@media (max-width:760px){
+  :root{--card-r:18px;--gx:12px;--gy:16px}
+  .bento{grid-template-columns:repeat(2,1fr);grid-auto-rows:minmax(84px,auto)}
+  .bento > .acard{padding:16px}
+  .bento > .acard.span2{grid-column:span 2;grid-row:span 1}
+}
+@media (max-width:420px){
+  .bento{grid-template-columns:1fr}
+  .bento > .acard.span2{grid-column:span 1}
+}
+/* ============================================================
+   26. 全局圆角体系（苹果卡片公式 ②：短边×18%，且不得超过外层）
+   ------------------------------------------------------------
+   之前 999px / 16px / 12px / 10px / 6px 混用，没有层级。
+   统一为一套语义令牌，且遵循"内层 ≤ 外层"：
+     外层容器 --card-r          卡片、图片、大面板
+     内层控件 --card-r-in       按钮、格子、小卡
+     胶囊     --r-pill          只给条形与标签（本来就该是胶囊）
+   曲率连续：CSS 无法直接画 squircle，但统一半径 + 连续过渡，
+   可避免"折角处有折痕"的不协调感。
+   ============================================================ */
+:root{
+  --r-pill:999px;
+  --card-r-in:clamp(10px,1.2vw,16px);   /* 内层：约外层的一半 */
+  --r-xs:4px;                            /* 极小圆点/色块 */
+}
+/* 图片与 figure：与卡片同圆角（公式 ⑤ 图也是卡片） */
+.figure,.figure img,
+.chapter-slide .right img{border-radius:var(--card-r)}
+/* 数据条 / 分段条 / 胶囊：保持胶囊，但统一到令牌 */
+.brow .track,.brow .fill,.segbar,.track,
+.capsule{border-radius:var(--r-pill)}
+/* 面板类：统一外层圆角 */
+#xray .panel{border-radius:var(--card-r)}
+#xray .clock,#xray .cell{border-radius:var(--card-r-in)}
+#xray .nav button{border-radius:var(--r-xs)}
+body::after{border-radius:var(--r-xs)}
+/* 焦点环用小圆角 */
+:focus-visible{outline:2px solid var(--pink);outline-offset:3px;
+  border-radius:var(--r-xs)}
+/* 分段条图例色块：小圆角 */
+.seglegend b::before{border-radius:var(--r-xs)}
+/* 环形图与点阵保持正圆（50% 是几何需要，不参与层级） */
+
+@media (max-width:760px){
+  :root{--card-r-in:10px}
+}
+@media (prefers-reduced-motion:reduce){
+  .slide.active .bento .acard{animation:none !important;opacity:1 !important}
+  .bento .acard:hover{transform:none !important}
 }
 </style>
 </head>
@@ -2013,6 +2203,46 @@ body::after{content:none !important}
         <img src="img/interview-notes.webp" alt="问卷与访谈提纲记录" loading="lazy">
         <figcaption>组员手写的访谈提纲与记录</figcaption>
       </figure>
+    </div>
+  </section>
+
+  <!-- ====== 05 数据总览 · Bento Grid（苹果卡片公式）====== -->
+  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="梅艺馨"
+           data-notes="先用一页把三周问卷的全貌摆出来。&#10;133 份有效回答，覆盖 10 个省份、10 道核心题目。&#10;最值得记住的是这三个断点：找不到、不敢用、不会用。&#10;后面每一页，都是把其中一格拆开讲。">
+    <p class="kicker" data-anim="1">三周问卷 · 一页看全貌</p>
+    <h2 class="h2 grad" data-anim="2">133 份回答，三个断点</h2>
+    <!-- Bento：大格跨 2 列 2 行抢焦点，小格填四周，用面积差制造主次 -->
+    <div class="bento">
+      <div class="acard span2">
+        <div class="k">有效问卷</div>
+        <div class="v">133</div>
+        <div class="d">截至 2026.10.04 · 覆盖 10 个省份 · 10 道核心题目</div>
+      </div>
+      <div class="acard">
+        <div class="k">找不到</div>
+        <div class="v">27.82%</div>
+        <div class="d">已配备，但不清楚位置</div>
+      </div>
+      <div class="acard">
+        <div class="k">不敢用</div>
+        <div class="v">74.43%</div>
+        <div class="d">担心承担法律责任</div>
+      </div>
+      <div class="acard">
+        <div class="k">不会用</div>
+        <div class="v">19.55%</div>
+        <div class="d">敢说能独立操作</div>
+      </div>
+      <div class="acard">
+        <div class="k">非常了解 AED</div>
+        <div class="v">15.04%</div>
+        <div class="d">第 3 题</div>
+      </div>
+      <div class="acard">
+        <div class="k">可能需要指导</div>
+        <div class="v">54.89%</div>
+        <div class="d">第 7 题</div>
+      </div>
     </div>
   </section>
 
@@ -2479,7 +2709,7 @@ body::after{content:none !important}
 </main>
 
 <div id="speaker">讲者 <span id="speakerName"><b>—</b></span></div>
-<div id="pager"><span id="pagerNum"><b>01</b></span> / 26</div>
+<div id="pager"><span id="pagerNum"><b>01</b></span> / <span id="pagerTotal">26</span></div>
 <div id="tools">
   <button id="btnNotes" type="button">讲稿 N</button>
   <button id="btnAuto" type="button">自动播放 A</button>
@@ -2536,9 +2766,11 @@ body::after{content:none !important}
   var hint = document.getElementById('hint');
   var idx = 0;
   var autoplayTimer = null;
+  var pagerTotalEl = document.getElementById('pagerTotal');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  if (pagerTotalEl) pagerTotalEl.textContent = pad(slides.length);
 
   /* ---------- 数字滚动 ---------- */
   /* 用 easeOutExpo 的连续函数，并在整数变化时才写 DOM，
@@ -2875,6 +3107,14 @@ body::after{content:none !important}
     var e = 1 - Math.exp(-camProgress / 14);
     var S = 1 + e * 0.075;
     var X = 0, Y = 0, R = 0, BLUR = 0, DUR = '1.9s', LIT = 0.10;
+    /* 个体差异：13 页同为 'push'，若参数完全一样必然雷同。
+       用确定性的低频正弦（以页索引为相位）给每页一点自己的构图，
+       幅度很小但足以让相邻两页"不是同一张"：
+         v1 横向偏移、v2 纵向偏移、v3 亮度、v4 倾角、v5 过渡时长。 */
+    var v1 = Math.sin(n * 1.37 + 0.4);
+    var v2 = Math.sin(n * 0.89 + 1.9);
+    var v3 = Math.sin(n * 2.11 + 0.7);
+    var v4 = Math.sin(n * 1.71 + 2.6);
 
     switch (shot) {
       case 'establish':                         // 0–2s：从暗场拉出全幅
@@ -2909,6 +3149,18 @@ body::after{content:none !important}
         break;
     }
 
+    /* 把个体差异叠到基线上（定格页除外，它必须真的静止）。
+       幅度刻意极小：横向 ±0.8%、纵向 ±0.6%、亮度 ±0.03、
+       倾角 ±0.12°、时长 ±0.35s —— 察觉但说不出，不会显杂。 */
+    if (shot !== 'hold') {
+      X += v1 * 0.8;
+      Y += v2 * 0.6;
+      R += v4 * 0.12;
+      LIT = Math.max(0.04, Math.min(0.95, LIT + v3 * 0.03));
+      var baseDur = parseFloat(DUR) || 1.5;
+      DUR = Math.max(0.5, baseDur + v2 * 0.35).toFixed(2) + 's';
+    }
+
     var st = sl.style;
     st.setProperty('--cam-s', S.toFixed(4));
     st.setProperty('--cam-x', X.toFixed(2) + '%');
@@ -2937,6 +3189,8 @@ body::after{content:none !important}
   var driftT0 = 0;
   var driftRaf = null;
   var driftEl = null;
+  // 低通状态：换轨道时从"上一帧的实际值"平滑接续，不瞬间跳到新轨道起点
+  var sm = { dx: 0, dy: 0, dz: 1, dr: 0, lit: 0 };
 
   // 每种镜头动词的轨道参数：周期(s)、幅度、相位
   var TRACKS = {
@@ -2970,14 +3224,22 @@ body::after{content:none !important}
            + trk.ay * 0.30 * Math.sin(w * 1.91 * t + 2.0);
     var dz = 1 + trk.az * Math.sin(w * 0.55 * t + 0.4);
     var dr = trk.ar * Math.sin(w * 0.61 * t + 1.7);
-    driftEl.style.setProperty('--dx', dx.toFixed(2) + 'px');
-    driftEl.style.setProperty('--dy', dy.toFixed(2) + 'px');
-    driftEl.style.setProperty('--dz', dz.toFixed(5));
-    driftEl.style.setProperty('--dr', dr.toFixed(3) + 'deg');
     // 光也随时间呼吸：参考片暗部亮度在 3~13 之间缓慢起伏，
     // 不是恒定值。用极慢的正弦叠在基线亮度上（±0.025）。
     var breathe = 0.025 * Math.sin(w * 0.33 * t + 0.9);
-    document.documentElement.style.setProperty('--lit-breathe', breathe.toFixed(4));
+    // 低通滤波：新轨道的目标值只以 6% 的权重逐帧逼近，
+    // 于是翻页换轨道时位移连续，不再出现 +2.50→-0.65 的阶跃。
+    var k = 0.06;
+    sm.dx += (dx - sm.dx) * k;
+    sm.dy += (dy - sm.dy) * k;
+    sm.dz += (dz - sm.dz) * k;
+    sm.dr += (dr - sm.dr) * k;
+    sm.lit += (breathe - sm.lit) * k;
+    driftEl.style.setProperty('--dx', sm.dx.toFixed(2) + 'px');
+    driftEl.style.setProperty('--dy', sm.dy.toFixed(2) + 'px');
+    driftEl.style.setProperty('--dz', sm.dz.toFixed(5));
+    driftEl.style.setProperty('--dr', sm.dr.toFixed(3) + 'deg');
+    document.documentElement.style.setProperty('--lit-breathe', sm.lit.toFixed(4));
     driftRaf = requestAnimationFrame(driftTick);
   }
 
@@ -3022,13 +3284,15 @@ body::after{content:none !important}
        后退时统一用 pan 的镜像，让"回头看"和"往前走"有区别。 */
     var toShot = slides[n].getAttribute('data-shot') || 'push';
     var trans;
+    /* 六种转场按页索引轮换（确定性，但相邻几乎不重复）。
+       语义优先，其余用序列打散，避免"连续五页都是 dolly"。 */
+    var CYCLE = ['dolly', 'slide', 'rack', 'pan', 'zoom', 'iris'];
+    var seq = CYCLE[n % CYCLE.length];
     if (dir === 'prev') trans = 'pan';
     else if (toShot === 'burst') trans = 'pan';
-    else if (toShot === 'tilt' || toShot === 'pan') trans = 'rack';
     else if (toShot === 'hold') trans = 'iris';
-    else if (n % 4 === 0) trans = 'rack';        // 每隔几页换一次"经过方式"
-    else if (n % 5 === 0) trans = 'iris';
-    else trans = 'dolly';
+    else if (toShot === 'tilt' || toShot === 'pan') trans = 'rack';
+    else trans = seq;
     if (stageEl) stageEl.setAttribute('data-trans', trans);
 
     /* 相机累计步数：只增不减，供相位计算与极光共用 */
