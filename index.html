@@ -1967,26 +1967,34 @@ body::after{content:none !important}
   --card-shadow:0 18px 48px rgba(0,0,0,.42);
 }
 
-/* 卡片基类：不靠边框，靠"比背景亮一档 + 极柔阴影"浮起 */
+/* ② 圆角密码：短边×18% + 曲率连续（squircle）
+   corner-shape:squircle 让圆角与直边之间曲率连续过渡，
+   消除普通 border-radius 在折角处的"折痕"（原图强调看反光）。
+   不支持的浏览器自动降级回普通圆角。 */
 .acard{
   position:relative;
   background:var(--card-bg);
   border-radius:var(--card-r);
+  corner-shape:squircle;
   border:1px solid var(--card-edge);
   box-shadow:var(--card-shadow);
   padding:clamp(20px,2.4vw,36px);
-  /* 顶部一道极淡的高光：模拟"光打在卡片边缘"，是苹果的硬件质感 */
+  overflow:hidden;
   background-image:linear-gradient(180deg,
     rgba(255,255,255,.035) 0%,rgba(255,255,255,0) 34%);
 }
+/* 图片也用同一套 squircle，⑤ 图也是卡片 */
+.figure,.figure img,.chapter-slide .right img,
+.acard-photo img{border-radius:var(--card-r);corner-shape:squircle}
 /* Bento 便当格：面积差制造主次 */
 .bento{
   display:grid;
   grid-template-columns:repeat(4,1fr);
-  grid-auto-rows:minmax(96px,auto);
+  grid-auto-rows:minmax(80px,auto);
   gap:var(--gy) var(--gx);          /* 纵向 24 / 横向 16 —— 横竖有别 */
-  margin-top:clamp(24px,4vh,52px);
+  margin-top:clamp(10px,1.6vh,22px);
 }
+.bento > .acard{padding:clamp(12px,1.6vw,22px)}
 .bento > .acard{display:flex;flex-direction:column;justify-content:center}
 /* Hero 大格：跨 2 列 2 行，抢视觉焦点 */
 .bento > .acard.span2{grid-column:span 2;grid-row:span 2;
@@ -2013,7 +2021,78 @@ body::after{content:none !important}
   border-color:rgba(167,139,250,.30);
   box-shadow:0 26px 64px rgba(0,0,0,.55);
 }
-/* 卡片错落浮现：stagger 0.03s（设计库规范：长列表不超过 0.1s/item） */
+/* ---- 卡片变体：内容形态各异，避免"全是纯数字"的平庸 ---- */
+
+/* ⑤ 图卡：图片铺满卡片，共用圆角与间距；底部压一层渐变让文字可读 */
+.acard-photo{padding:0 !important;background:#000}
+.acard-photo img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center;
+  /* 图也是卡片，但镜头在停留时仍极缓推近 */
+  transition:transform 1.6s var(--ease);
+}
+.bento .acard-photo:hover img{transform:scale(1.045)}
+.photo-scrim{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(6,6,12,.10) 0%,
+    rgba(6,6,12,.30) 42%,rgba(6,6,12,.90) 100%);
+}
+.photo-body{position:absolute;left:0;right:0;bottom:0;
+  padding:clamp(20px,2.6vw,40px);z-index:2}
+.photo-body .k{color:rgba(255,255,255,.72)}
+.photo-body .d{color:rgba(255,255,255,.66)}
+.acard-photo .v{font-size:clamp(52px,7vw,116px);
+  background:linear-gradient(178deg,#fff,#d7dae3 62%,#9aa0b0);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent}
+.acard-photo.acard-small .photo-body{padding:16px 18px}
+.acard-photo.acard-small .d{font-size:clamp(10px,.9vw,12px);line-height:1.5}
+
+/* ④ 数据量化：卡内微型图表，不是装饰，是"数字有来源" */
+.mini-bars{
+  position:absolute;right:clamp(20px,2.6vw,40px);
+  bottom:clamp(22px,2.8vw,44px);
+  display:flex;align-items:flex-end;gap:5px;height:46px;z-index:2;
+}
+.mini-bars i{display:block;width:clamp(6px,.7vw,10px);
+  height:var(--h);border-radius:var(--r-xs);
+  background:linear-gradient(180deg,rgba(199,184,253,.9),rgba(34,211,238,.55));
+  opacity:.75}
+.mini-track{margin-top:14px;height:4px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.09);overflow:hidden}
+.mini-track i{display:block;height:100%;width:0;border-radius:var(--r-pill);
+  background:linear-gradient(90deg,#a78bfa,#22d3ee);
+  transition:width 1.1s var(--ease) .4s}
+.slide.active .mini-track i{width:var(--w)}
+/* 折线微图：一条线说趋势，不给坐标轴（发布会式克制） */
+.spark{width:100%;height:22px;margin-top:12px;overflow:visible}
+.spark polyline{fill:none;stroke:rgba(167,139,250,.75);
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+  stroke-dasharray:140;stroke-dashoffset:140;
+  transition:stroke-dashoffset 1.4s var(--ease) .5s}
+.slide.active .spark polyline{stroke-dashoffset:0}
+
+/* ⑥ 色块区分层级：第二档底色给"三个断点"，与主卡拉开 */
+.acard-tone2{background:var(--card-bg-2)}
+
+/* 图标卡：② 曲率连续的超椭圆底板 + 线性图标（不用 emoji） */
+.acard-icon{display:flex;flex-direction:column;align-items:flex-start;
+  justify-content:center !important}
+.acard-icon .squircle{
+  position:absolute;width:64px;height:64px;right:clamp(16px,2vw,30px);
+  top:clamp(16px,2vw,30px);opacity:.16;
+}
+.acard-icon .squircle path{
+  fill:none;stroke:currentColor;stroke-width:1.4;
+  color:#a78bfa;
+}
+.acard-icon .glyph{width:26px;height:26px;color:#c7b8fd;margin-bottom:14px;
+  position:relative;z-index:1}
+.acard-icon .unit{font-size:.34em;font-weight:600;margin-left:.16em;
+  letter-spacing:0;color:#8e8e93}
+
+/* 错落浮现：stagger 0.03s（设计库规范：长列表不超过 0.1s/item） */
 .slide.active .bento .acard{animation:cardRise .7s var(--ease) both}
 .slide.active .bento .acard:nth-child(1){animation-delay:.10s}
 .slide.active .bento .acard:nth-child(2){animation-delay:.13s}
@@ -2021,13 +2100,14 @@ body::after{content:none !important}
 .slide.active .bento .acard:nth-child(4){animation-delay:.19s}
 .slide.active .bento .acard:nth-child(5){animation-delay:.22s}
 .slide.active .bento .acard:nth-child(6){animation-delay:.25s}
+.slide.active .bento .acard:nth-child(7){animation-delay:.28s}
+.slide.active .bento .acard:nth-child(8){animation-delay:.31s}
 @keyframes cardRise{
   from{opacity:0;transform:translate3d(0,18px,0) scale(.985)}
   to{opacity:1;transform:none}
 }
 
 /* ⑤ 图也是卡片：统一圆角，且与卡片共用间距 */
-.figure,.figure img{border-radius:var(--card-r)}
 .figure{overflow:hidden;box-shadow:var(--card-shadow);
   border:1px solid var(--card-edge)}
 
@@ -2206,42 +2286,94 @@ body::after{border-radius:var(--r-xs)}
     </div>
   </section>
 
-  <!-- ====== 05 数据总览 · Bento Grid（苹果卡片公式）====== -->
+  <!-- ====== 05 数据总览 · Bento Grid（苹果卡片公式，六条齐备）====== -->
   <section class="slide" data-chapter="02 / 三周问卷" data-speaker="梅艺馨"
            data-notes="先用一页把三周问卷的全貌摆出来。&#10;133 份有效回答，覆盖 10 个省份、10 道核心题目。&#10;最值得记住的是这三个断点：找不到、不敢用、不会用。&#10;后面每一页，都是把其中一格拆开讲。">
     <p class="kicker" data-anim="1">三周问卷 · 一页看全貌</p>
     <h2 class="h2 grad" data-anim="2">133 份回答，三个断点</h2>
-    <!-- Bento：大格跨 2 列 2 行抢焦点，小格填四周，用面积差制造主次 -->
+    <!-- ⑥ 便当布局：大格跨 2 列 2 行，小格填四周，用面积差制造绝对主次。
+         ⑤ 图也是卡片：照片与卡片共用同一圆角、同一间距。
+         ⑥ 色块区分层级：主卡用第二档底色，辅助卡用第一档，图卡靠画面本身。 -->
     <div class="bento">
-      <div class="acard span2">
-        <div class="k">有效问卷</div>
-        <div class="v">133</div>
-        <div class="d">截至 2026.10.04 · 覆盖 10 个省份 · 10 道核心题目</div>
+
+      <!-- Hero 大格：实拍 AED + 主数字，跨 2×2 -->
+      <div class="acard acard-photo span2">
+        <img src="img/aed-cabinet-1.webp" alt="京华城实地拍摄到的 AED 设备" loading="lazy">
+        <div class="photo-scrim"></div>
+        <div class="photo-body">
+          <div class="k">有效问卷 · 截至 2026.10.04</div>
+          <div class="v">133</div>
+          <div class="d">覆盖 10 个省份 · 10 道核心题目<br>图为京华城实地拍摄到的 AED</div>
+        </div>
+        <!-- ④ 数据量化：卡内一条微型分布条 -->
+        <div class="mini-bars" aria-hidden="true">
+          <i style="--h:47%"></i><i style="--h:33%"></i><i style="--h:8%"></i>
+          <i style="--h:7%"></i><i style="--h:5%"></i>
+        </div>
       </div>
-      <div class="acard">
+
+      <!-- 三个断点：小格，纯数字 + 微图 -->
+      <div class="acard acard-tone2">
         <div class="k">找不到</div>
         <div class="v">27.82%</div>
-        <div class="d">已配备，但不清楚位置</div>
+        <div class="d">已配备，不清楚位置</div>
+        <svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,20 18,18 36,15 54,13 72,9 100,4"/>
+        </svg>
       </div>
-      <div class="acard">
+      <div class="acard acard-tone2">
         <div class="k">不敢用</div>
         <div class="v">74.43%</div>
-        <div class="d">担心承担法律责任</div>
+        <div class="d">担心承担责任</div>
+        <svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,21 18,19 36,16 54,12 72,7 100,3"/>
+        </svg>
       </div>
-      <div class="acard">
+      <div class="acard acard-tone2">
         <div class="k">不会用</div>
         <div class="v">19.55%</div>
-        <div class="d">敢说能独立操作</div>
+        <div class="d">敢独立操作</div>
+        <svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,6 18,8 36,11 54,14 72,17 100,20"/>
+        </svg>
       </div>
+
+      <!-- 第二排：图卡 + 图标卡 + 数字卡，内容形态各异 -->
+      <div class="acard acard-photo acard-small">
+        <img src="img/interview-notes.webp" alt="组员手写的访谈提纲与记录" loading="lazy">
+        <div class="photo-scrim"></div>
+        <div class="photo-body">
+          <div class="k">一手资料</div>
+          <div class="d">组员手写的访谈提纲与记录</div>
+        </div>
+      </div>
+
+      <div class="acard acard-icon">
+        <!-- ② 曲率连续：图标底板用 SVG 超椭圆，不是普通圆角矩形 -->
+        <svg class="squircle" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M32 2 C50 2 62 14 62 32 C62 50 50 62 32 62 C14 62 2 50 2 32 C2 14 14 2 32 2 Z"/>
+        </svg>
+        <svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.65-7 10-7 10z"/>
+          <path d="M3 12h4l1.5-3 2.5 6 2-4 1.5 2H21"/>
+        </svg>
+        <div class="k">急救窗口</div>
+        <div class="v">4<span class="unit">分钟</span></div>
+        <div class="d">脑细胞开始不可逆死亡</div>
+      </div>
+
       <div class="acard">
         <div class="k">非常了解 AED</div>
         <div class="v">15.04%</div>
         <div class="d">第 3 题</div>
+        <div class="mini-track"><i style="--w:15.04%"></i></div>
       </div>
       <div class="acard">
         <div class="k">可能需要指导</div>
         <div class="v">54.89%</div>
         <div class="d">第 7 题</div>
+        <div class="mini-track"><i style="--w:54.89%"></i></div>
       </div>
     </div>
   </section>
