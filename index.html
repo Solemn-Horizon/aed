@@ -147,11 +147,16 @@ body{
   will-change:opacity,transform;
   backface-visibility:hidden;
 }
-.slide.active{
-  opacity:1;visibility:visible;z-index:2;   /* 新场景始终在上层：主角交接不会被旧页内容盖住 */
+/* 用 #stage 前缀提高特异性，压过后面第 22 段的 .slide 基规则，
+   但不用 !important，这样 data-trans 的入场动画仍能作用。 */
+#stage .slide.active{
+  opacity:1;visibility:visible;z-index:2;
+  /* 当前页的 transform 不参与 transition：
+     若从"离场姿态"插值回来，后台标签页/虚拟时钟下 transition 不推进，
+     页面会永久停在 translate3d(2.4%) 的错位状态（实测复现）。
+     归位交给 CSS 直接生效；运镜由内层 .cam 的 transition 承担。 */
   transform:translate3d(0,0,0) scale(1);
-  transition:
-    transform 1.02s cubic-bezier(.76,0,.24,1);  /* 只让推镜有过渡 */
+  transition:none;
   /* 当前页的可见性由 class 直接锁定，不交给 opacity transition：
      快速连翻 / 后台标签页节流时 transition 可能不推进，
      若依赖它就会出现"整屏透明"的黑场（实测 8 连翻复现过）。 */
@@ -1786,6 +1791,81 @@ body::after{content:none !important}
   #stage[data-trans="iris"] .slide.active{animation:none !important;clip-path:none !important}
   #stage[data-trans="rack"] .slide:not(.active) .cam{filter:none !important}
   #stage[data-trans="zoom"] .slide{transform:none !important}
+  #stage[data-trans="orbit"] .slide,
+  #stage[data-trans="tilt3d"] .slide,
+  #stage[data-trans="flip"] .slide,
+  #stage[data-trans="dive"] .slide{transform:none !important;filter:none !important}
+}
+
+/* ============================================================
+   28. 大角度镜头迁移 —— 从"温和推镜"升级到"惊艳转场"
+   ------------------------------------------------------------
+   之前 6 种转场都是 2~5% 的小位移 + 淡入淡出，观感雷同。
+   这里引入真正的 3D 相机运动：绕 Y 轴环绕、绕 X 轴俯冲、
+   边缘翻转、Z 轴冲击，角度做到 28~42°。
+
+   【重要设计】3D 姿态挂在 .cam（内层），不挂 .slide：
+   .slide 自身带 opacity/transform transition，若把 3D transform 放它上面，
+   后台标签页或虚拟时钟下 transition 不推进，当前页会永久卡在
+   rotateY(-38deg) 的离场姿态（实测复现）。.cam 没有 opacity transition，
+   且 .slide.active .cam 可强制归零，任何环境都不会错位。
+   ============================================================ */
+#stage{perspective:1400px;perspective-origin:50% 45%}
+.slide{transform-style:preserve-3d}
+.cam{transform-style:preserve-3d}
+
+/* 当前页的 .cam 不保留离场姿态：3D 规则只匹配 :not(.active)，
+   激活后由 applyCamera 写入的相位变量（--cam-s/x/y/r）接管，
+   这些值恒接近 1，不会残留 rotateY。 */
+.slide.active .cam{filter:none !important}
+
+/* orbit：绕 Y 轴环绕 ±38° */
+#stage[data-trans="orbit"] .slide:not(.active):not(.prev) .cam{
+  transform:translate3d(9%,0,-260px) rotateY(38deg) scale(.92);
+}
+#stage[data-trans="orbit"] .slide.prev .cam{
+  transform:translate3d(-9%,0,-260px) rotateY(-38deg) scale(.92);
+}
+
+/* tilt3d：绕 X 轴俯冲 ±30° */
+#stage[data-trans="tilt3d"] .slide:not(.active):not(.prev) .cam{
+  transform:translate3d(0,-9%,-220px) rotateX(30deg) scale(.94);
+}
+#stage[data-trans="tilt3d"] .slide.prev .cam{
+  transform:translate3d(0,9%,-220px) rotateX(-30deg) scale(.94);
+}
+
+/* flip：绕 Y 轴大幅翻转 */
+#stage[data-trans="flip"] .slide:not(.active):not(.prev) .cam{
+  transform:translate3d(0,0,-320px) rotateY(-42deg);
+}
+#stage[data-trans="flip"] .slide.prev .cam{
+  transform:translate3d(0,0,-320px) rotateY(42deg);
+}
+
+/* dive：Z 轴冲击 + 虚焦 */
+#stage[data-trans="dive"] .slide:not(.active):not(.prev) .cam{
+  transform:translate3d(0,0,420px) scale(1.28);filter:blur(9px);
+}
+#stage[data-trans="dive"] .slide.prev .cam{
+  transform:translate3d(0,0,-520px) scale(.78);filter:blur(7px);
+}
+/* dive 的对焦只做 filter/opacity，不碰 transform */
+#stage[data-trans="dive"] .slide.active{
+  animation:diveFocus .8s ease-out;
+}
+@keyframes diveFocus{
+  from{filter:blur(5px);opacity:.78}
+  to{filter:blur(0);opacity:1}
+}
+
+/* .slide 本身只做位移/淡入淡出，不再承载 3D，避免 CSSTransition 卡死 */
+.slide.active{
+  opacity:1 !important;
+}
+@media (prefers-reduced-motion:reduce){
+  #stage[data-trans="dive"] .slide.active{animation:none !important}
+  .slide .cam{transform:none !important;filter:none !important}
 }
 
 /* ============================================================
@@ -2179,11 +2259,74 @@ body::after{border-radius:var(--r-xs)}
   .slide.active .bento .acard{animation:none !important;opacity:1 !important}
   .bento .acard:hover{transform:none !important}
 }
+/* ============================================================
+   29. 背景变换：每页一个"场景"，不再一成不变
+   ------------------------------------------------------------
+   之前全片只有两个固定光斑 + 一个亮度值，翻到哪页背景都一样。
+   现在由 --scene（0..5）驱动四件事，全部是 CSS 变量、可 transition：
+     · 主光位置 --gx1/--gy1、副光位置 --gx2/--gy2
+     · 色温 --hue1/--hue2（冷紫→青→暖白，仍是低饱和）
+     · 网格密度 --grid（技术章节给极淡的网格，叙事章节还给纯色）
+     · 边缘暗角 --vig
+   关键是"变但不抢"：所有变化都在背景层，透明度仍压得很低。
+   ============================================================ */
+@property --hue1{syntax:'<number>';inherits:true;initial-value:255}
+@property --hue2{syntax:'<number>';inherits:true;initial-value:200}
+@property --gx1{syntax:'<percentage>';inherits:true;initial-value:22%}
+@property --gy1{syntax:'<percentage>';inherits:true;initial-value:18%}
+@property --gx2{syntax:'<percentage>';inherits:true;initial-value:82%}
+@property --gy2{syntax:'<percentage>';inherits:true;initial-value:82%}
+@property --vig{syntax:'<number>';inherits:true;initial-value:0.55}
+@property --grid-a{syntax:'<number>';inherits:true;initial-value:0}
+
+:root{
+  --hue1:255; --hue2:200;
+  --gx1:22%; --gy1:18%; --gx2:82%; --gy2:82%;
+  --vig:.55; --grid-a:0;
+  transition:--hue1 1.6s ease,--hue2 1.6s ease,
+             --gx1 1.8s ease,--gy1 1.8s ease,
+             --gx2 1.8s ease,--gy2 1.8s ease,
+             --vig 1.6s ease,--grid-a 1.6s ease;
+}
+
+/* 主光斑：位置与色温随场景变化 */
+.aurora i:nth-child(1){
+  left:calc(var(--gx1) - 42vmax);
+  top:calc(var(--gy1) - 42vmax);
+  background:radial-gradient(circle,
+    hsla(var(--hue1),62%,62%,.82) 0%,
+    hsla(var(--hue1),62%,62%,0) 66%);
+}
+.aurora i:nth-child(2){
+  right:calc(100% - var(--gx2) - 40vmax);
+  bottom:calc(100% - var(--gy2) - 40vmax);
+  background:radial-gradient(circle,
+    hsla(var(--hue2),58%,58%,.72) 0%,
+    hsla(var(--hue2),58%,58%,0) 68%);
+}
+
+/* 场景层：一层随页面变化的极淡网格 + 边缘暗角，铺在极光之上 */
+#scene{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    linear-gradient(rgba(255,255,255,calc(var(--grid-a) * .030)) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,calc(var(--grid-a) * .030)) 1px,transparent 1px),
+    radial-gradient(ellipse 90% 75% at 50% 45%,
+      rgba(0,0,0,0) 40%,
+      rgba(0,0,0,calc(var(--vig) * .55)) 100%);
+  background-size:clamp(48px,6vw,110px) clamp(48px,6vw,110px),
+                  clamp(48px,6vw,110px) clamp(48px,6vw,110px),
+                  100% 100%;
+}
+@media (prefers-reduced-motion:reduce){
+  :root{transition:none !important}
+}
 </style>
 </head>
 <body>
 
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div id="scene" aria-hidden="true"></div>
 <div id="bar"></div>
 <div id="chapter"><span class="sw">01 / 问题的起点</span></div>
 
@@ -3230,6 +3373,37 @@ body::after{border-radius:var(--r-xs)}
      · 84s 后完全定格
        -> 收尾必须停住
      ============================================================ */
+  /* ============================================================
+     场景（背景）配置：6 种光位/色温/网格/暗角
+     ------------------------------------------------------------
+     逐帧拆解里参考片的构图中心在 X 0.50↔0.88、Y 0.49↔0.73 间变化，
+     亮度在 3~205 间起伏。这里把"场景变了"落到背景层：
+       A 左上冷紫  B 右上青蓝  C 中央柔白  D 下方暖白
+       E 极暗网格  F 双侧对光
+     按页索引轮换，且保证相邻两页不同（避免连续几页看着一样）。
+     ============================================================ */
+  var SCENES = [
+    { h1:255, h2:205, gx1:'20%', gy1:'16%', gx2:'84%', gy2:'84%', vig:.55, grid:0   },
+    { h1:200, h2:265, gx1:'78%', gy1:'22%', gx2:'18%', gy2:'80%', vig:.48, grid:0   },
+    { h1:230, h2:230, gx1:'50%', gy1:'12%', gx2:'50%', gy2:'88%', vig:.42, grid:.35 },
+    { h1:35,  h2:215, gx1:'50%', gy1:'82%', gx2:'20%', gy2:'20%', vig:.60, grid:0   },
+    { h1:265, h2:190, gx1:'12%', gy1:'50%', gx2:'88%', gy2:'50%', vig:.72, grid:1   },
+    { h1:190, h2:280, gx1:'30%', gy1:'28%', gx2:'70%', gy2:'72%', vig:.50, grid:.55 }
+  ];
+
+  function applyScene(n) {
+    var s = SCENES[n % SCENES.length];
+    var r = document.documentElement.style;
+    r.setProperty('--hue1', s.h1);
+    r.setProperty('--hue2', s.h2);
+    r.setProperty('--gx1', s.gx1);
+    r.setProperty('--gy1', s.gy1);
+    r.setProperty('--gx2', s.gx2);
+    r.setProperty('--gy2', s.gy2);
+    r.setProperty('--vig', s.vig);
+    r.setProperty('--grid-a', s.grid);
+  }
+
   function applyCamera(n) {
     var sl = slides[n];
     var shot = sl.getAttribute('data-shot') || 'push';
@@ -3418,17 +3592,19 @@ body::after{border-radius:var(--r-xs)}
     var trans;
     /* 六种转场按页索引轮换（确定性，但相邻几乎不重复）。
        语义优先，其余用序列打散，避免"连续五页都是 dolly"。 */
-    var CYCLE = ['dolly', 'slide', 'rack', 'pan', 'zoom', 'iris'];
+    var CYCLE = ['orbit', 'dolly', 'flip', 'slide', 'tilt3d', 'rack',
+                 'dive', 'pan', 'zoom', 'iris'];
     var seq = CYCLE[n % CYCLE.length];
-    if (dir === 'prev') trans = 'pan';
-    else if (toShot === 'burst') trans = 'pan';
-    else if (toShot === 'hold') trans = 'iris';
-    else if (toShot === 'tilt' || toShot === 'pan') trans = 'rack';
+    if (dir === 'prev') trans = 'orbit';           // 后退：镜头绕回去
+    else if (toShot === 'burst') trans = 'dive';    // 章节爆发：冲击式进场
+    else if (toShot === 'hold') trans = 'iris';     // 收尾：中心显影定格
+    else if (toShot === 'tilt') trans = 'tilt3d';   // 构图重置：俯冲
+    else if (toShot === 'pan') trans = 'orbit';     // 摇镜：环绕
     else trans = seq;
-    if (stageEl) stageEl.setAttribute('data-trans', trans);
 
     /* 相机累计步数：只增不减，供相位计算与极光共用 */
     if (booted) camProgress += 1;
+    applyScene(n);           // 背景场景：光位/色温/网格/暗角逐页变化
     applyCamera(n);          // 相位化相机：5 个变量 + 亮度包络
     startDrift(n);           // 持续运镜：停留期间镜头仍沿轨道漂移
     auroraParallax();        // 极光与相机共用进度，活在"同一个空间"
@@ -3450,6 +3626,10 @@ body::after{border-radius:var(--r-xs)}
       s.classList.toggle('prev', i < n);
     });
     idx = n;
+    /* 关键顺序：必须先切完 .active/.prev，再设置 data-trans。
+       否则新转场规则会在"类还没切换"的那一帧命中当前页，
+       把它 rotateY(-42deg) 转走（实测 flip 转场复现过）。 */
+    if (stageEl) stageEl.setAttribute('data-trans', trans);
     if (window.markXrayPage) window.markXrayPage(n);   // 面板若开着，同步高亮
     /* 心电图：
        1) 先清掉上一次的"持续跳动"，避免多页同时有光在跑；
