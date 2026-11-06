@@ -96,7 +96,20 @@ body{
 :root{
   --lit:.12;
   --lit-breathe:0;
-  transition:--lit 1.35s cubic-bezier(.76,0,.24,1);
+  --act-base:#070710;
+  --act-x:0%;
+  --act-z:1;
+  --act-tint:0;
+  /* 所有可插值的自定义属性统一在这里声明 transition；
+     后面第 29/32 段若再写 transition 会互相覆盖，务必只保留这一处。 */
+  transition:
+    --lit 1.35s cubic-bezier(.76,0,.24,1),
+    --hue1 1.6s ease,--hue2 1.6s ease,
+    --gx1 1.8s ease,--gy1 1.8s ease,
+    --gx2 1.8s ease,--gy2 1.8s ease,
+    --vig 1.6s ease,--grid-a 1.6s ease,
+    --act-base 1.7s ease,--act-x 1.9s ease,
+    --act-z 1.9s ease,--act-tint 1.7s ease;
 }
 @media (prefers-reduced-motion:reduce){
   :root{transition:none !important}
@@ -2304,10 +2317,7 @@ body::after{border-radius:var(--r-xs)}
   --hue1:255; --hue2:200;
   --gx1:22%; --gy1:18%; --gx2:82%; --gy2:82%;
   --vig:.55; --grid-a:0;
-  transition:--hue1 1.6s ease,--hue2 1.6s ease,
-             --gx1 1.8s ease,--gy1 1.8s ease,
-             --gx2 1.8s ease,--gy2 1.8s ease,
-             --vig 1.6s ease,--grid-a 1.6s ease;
+  /* transition 统一在文件开头的 :root 声明，此处不再重复 */
 }
 
 /* 主光斑：位置与色温随场景变化 */
@@ -2416,10 +2426,128 @@ body::after{border-radius:var(--r-xs)}
 @media (prefers-reduced-motion:reduce){
   .bento .acard-photo.acard-small{transform:none !important}
 }
+/* ============================================================
+   32. 「幕」级大转折 —— 相机 / 背景 / 内容 三者同步
+   ------------------------------------------------------------
+   之前的问题是"处处有变化 = 处处无变化"：每页都微调一点光位，
+   观众反而觉得一成不变。参考片逐帧数据也印证：长静 80%，爆发 7%。
+
+   所以改成"幕"结构：27 页分 4 幕，只有跨幕那一刻才发生大转折 ——
+     ① 相机大范围移动：整幕横移 --act-x + 大幅缩放 --act-z
+     ② 背景大变化：整片底色 --act-base 换肤（不只是光斑挪位）
+     ③ 内容形态切换：由 .act-* 类给每幕一种排版气质
+   其余页保持克制，转折才显得惊艳。
+
+   四个幕：
+     I   暗夜 · 冷紫   (问题的起点)     深黑底，字为主
+     II  展台 · 亮白   (问卷数据)       浅灰底，卡片为主
+     III 现场 · 暖调   (访谈/案例)      暖灰底，图为主
+     IV  收束 · 极暗   (结论致谢)       近黑底，留白为主
+   ============================================================ */
+@property --act-base{syntax:'<color>';inherits:true;initial-value:#070710}
+@property --act-x{syntax:'<percentage>';inherits:true;initial-value:0%}
+@property --act-z{syntax:'<number>';inherits:true;initial-value:1}
+@property --act-tint{syntax:'<number>';inherits:true;initial-value:0}
+
+/* 整片世界的底色：跨幕时整体换肤，1.6s 缓变 */
+#world{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:var(--act-base);
+  transform:translate3d(var(--act-x),0,0) scale(var(--act-z));
+  transition:background 1.7s cubic-bezier(.76,0,.24,1),
+             transform 1.9s cubic-bezier(.76,0,.24,1);
+  will-change:background,transform;
+}
+/* 幕 tint：给暗幕/亮幕一层极淡的整体色偏，换幕时一起呼吸 */
+#world::after{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 70% at 50% 40%,
+    rgba(150,130,255,calc(var(--act-tint) * .09)) 0%,
+    rgba(0,0,0,0) 70%);
+}
+/* --act-* 的初值与 transition 已在文件开头的 :root 统一声明 */
+
+/* 跨幕瞬间的一次性大动作：整幕被"推开"再落定 */
+@keyframes actSweep{
+  0%{transform:translate3d(var(--act-from,14%),0,0) scale(1.12);opacity:.25}
+  100%{transform:translate3d(0,0,0) scale(1);opacity:1}
+}
+.slide.act-enter .cam{animation:actSweep 1.35s cubic-bezier(.16,1,.3,1) both}
+
+@media (prefers-reduced-motion:reduce){
+  #world,:root{transition:none !important}
+  .slide.act-enter .cam{animation:none !important}
+}
+
+/* ============================================================
+   33. 内容形态：每一幕一种气质（跨幕时"内容也变了"）
+   ------------------------------------------------------------
+   只换背景和相机还不够惊艳 —— 内容本身的形态要跟着变：
+     form-word  幕 I   : 超大字、极疏、无卡片（叙事）
+     form-card  幕 II  : 亮底、深色字、卡片密集（数据）
+     form-field 幕 III : 暖调、图片占比大、字略收（现场）
+     form-still 幕 IV  : 极暗、字距拉开、几乎无装饰（收束）
+   用 CSS 变量 --ink / --ink-sub 统一驱动，避免逐页改色。
+   ============================================================ */
+:root{--ink:#F5F5F7;--ink-sub:#A1A1A6;--ink-dim:#6E6E73}
+
+/* 幕 II 亮底：整幕文字反转为深色，否则白字不可读 */
+#stage[data-form="form-card"]{
+  --ink:#1D1D1F; --ink-sub:#515154; --ink-dim:#6E6E73;
+}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .kicker{color:#6E6E73}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .h2,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .h2.grad{
+  color:#1D1D1F;background:none;-webkit-text-fill-color:#1D1D1F}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .sub,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .sub.dim{color:#515154}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .brow .lab{color:#6E6E73}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .brow .val{color:#1D1D1F}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .brow .track{
+  background:rgba(29,29,31,.10)}
+/* 渐变字在亮底上必须取消透明填充，否则几乎不可见 */
+#stage[data-form="form-card"] .slide:not(.bento-slide) .brow.hot .val,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .bignum,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .quote,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .item .t.grad,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .row .txt.grad{
+  background:none;
+  -webkit-text-fill-color:#1D1D1F;
+  color:#1D1D1F;
+}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .rule,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .row{
+  border-color:rgba(29,29,31,.10)}
+
+/* 幕 I：超大字、极疏 —— 用字距与行高表达"开场" */
+#stage[data-form="form-word"] .hero{letter-spacing:-.045em}
+#stage[data-form="form-word"] .sub{letter-spacing:.02em}
+
+/* 幕 III：现场感 —— 图片更大、说明更紧 */
+#stage[data-form="form-field"] .figure{transform:scale(1.015)}
+
+/* 幕 IV：收束 —— 字距拉开、几乎无装饰 */
+#stage[data-form="form-still"] .sub{letter-spacing:.06em}
+#stage[data-form="form-still"] .case::before{opacity:.35}
+
+/* 幕 II 亮底：光斑与亮度包络都要收敛，否则浅底会显得脏。
+   .aurora 是 #stage 的兄弟，用 body[data-form] 不行，改在 body 上挂形态。
+   JS 里同步给 document.body 写 data-form。 */
+body[data-form="form-card"] .aurora i{opacity:.06 !important}
+#stage[data-form="form-card"]::after{opacity:.25}
+body[data-form="form-field"] .aurora i:nth-child(1){opacity:.20 !important}
+body[data-form="form-still"] .aurora i{opacity:.10 !important}
+
+/* 内容形态切换时，文字有一次极轻的"重新落位" */
+#stage[data-form] .slide.active .kicker,
+#stage[data-form] .slide.active .h2{
+  transition:color 1.2s ease,letter-spacing 1.2s ease;
+}
 </style>
 </head>
 <body>
 
+<div id="world" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 <div id="scene" aria-hidden="true"></div>
 <div id="bar"></div>
@@ -3486,6 +3614,62 @@ body::after{border-radius:var(--r-xs)}
     { h1:190, h2:280, gx1:'30%', gy1:'28%', gx2:'70%', gy2:'72%', vig:.50, grid:.55 }
   ];
 
+  /* ============================================================
+     「幕」系统：只有跨幕才发生大转折（相机+背景+内容 三者同步）
+     ------------------------------------------------------------
+     参考片逐帧结论：长静 80%、爆发 7%。处处微调反而显得一成不变。
+     所以每幕内部保持克制，只在 3→4、13→14、25→26 三个跨幕点
+     做一次"整个世界被换掉"的大动作。
+
+     每幕定义：
+       base  整片底色（换肤，不是挪光斑）
+       tint  整体色偏强度
+       x     相机大范围横移（±，跨幕时整幕被推开）
+       z     相机大幅缩放
+       form  内容形态类，挂到 stage 上让 CSS 调整排版气质
+       lit   亮度包络基线
+     ============================================================ */
+  var ACTS = [
+    { until:3,  base:'#070710', tint:0.9, x:'-2%', z:1.00, form:'form-word',  lit:0.10 },
+    { until:13, base:'#ECECF1', tint:0.1, x:'2%',  z:1.06, form:'form-card',  lit:0.62 },
+    { until:25, base:'#1B1712', tint:0.5, x:'-3%', z:1.03, form:'form-field', lit:0.34 },
+    { until:99, base:'#030306', tint:0.2, x:'0%',  z:1.00, form:'form-still', lit:0.12 }
+  ];
+  function actOf(n) {
+    // n 是 0-based；ACTS.until 是 1-based 页码
+    for (var j = 0; j < ACTS.length; j++) if (n + 1 <= ACTS[j].until) return j;
+    return ACTS.length - 1;
+  }
+
+  var lastAct = -1;
+  function applyAct(n, dir) {
+    var a = actOf(n);
+    var A = ACTS[a];
+    // 首次进入（lastAct=-1）只建立世界观，不算"跨幕"，不触发大动作
+    var changed = (lastAct !== -1 && a !== lastAct);
+    var r = document.documentElement.style;
+    r.setProperty('--act-base', A.base);
+    r.setProperty('--act-tint', A.tint);
+    r.setProperty('--act-x', A.x);
+    r.setProperty('--act-z', A.z);
+    if (stageEl) stageEl.setAttribute('data-form', A.form);
+    document.body.setAttribute('data-form', A.form);   // .aurora 是 #stage 兄弟，需同步
+
+    /* 跨幕：给进入页挂一次性大动作 + 记录"从哪边推开" */
+    if (changed && lastAct !== -1 && stageEl) {
+      var from = (a > lastAct) ? '18%' : '-18%';
+      slides[n].style.setProperty('--act-from', from);
+      slides[n].classList.remove('act-enter');
+      void slides[n].offsetWidth;              // 重排，确保动画重播
+      slides[n].classList.add('act-enter');
+      setTimeout(function () {
+        if (slides[n]) slides[n].classList.remove('act-enter');
+      }, 1500);
+    }
+    lastAct = a;
+    return { act: a, changed: changed, lit: A.lit };
+  }
+
   function applyScene(n) {
     var s = SCENES[n % SCENES.length];
     var r = document.documentElement.style;
@@ -3569,6 +3753,10 @@ body::after{border-radius:var(--r-xs)}
     st.setProperty('--cam-r', R.toFixed(3) + 'deg');
     st.setProperty('--cam-blur', BLUR.toFixed(2) + 'px');
     st.setProperty('--cam-dur', DUR);
+    /* 幕的亮度基线压过镜头动词：跨幕时整片明暗换挡，
+       幕内则保留每页的细微起伏。这是"背景大变化"的第三层。 */
+    var actLit = ACTS[actOf(n)].lit;
+    LIT = LIT * 0.35 + actLit * 0.65;
     document.documentElement.style.setProperty('--lit', LIT.toFixed(3));
     if (stageEl) stageEl.setAttribute('data-shot', shot);
   }
@@ -3690,12 +3878,18 @@ body::after{border-radius:var(--r-xs)}
     var CYCLE = ['orbit', 'dolly', 'flip', 'slide', 'tilt3d', 'rack',
                  'dive', 'pan', 'zoom', 'iris'];
     var seq = CYCLE[n % CYCLE.length];
-    if (dir === 'prev') trans = 'orbit';           // 后退：镜头绕回去
-    else if (toShot === 'burst') trans = 'dive';    // 章节爆发：冲击式进场
-    else if (toShot === 'hold') trans = 'iris';     // 收尾：中心显影定格
-    else if (toShot === 'tilt') trans = 'tilt3d';   // 构图重置：俯冲
-    else if (toShot === 'pan') trans = 'orbit';     // 摇镜：环绕
+    if (dir === 'prev') trans = 'orbit';
+    else if (toShot === 'burst') trans = 'dive';
+    else if (toShot === 'hold') trans = 'iris';
+    else if (toShot === 'tilt') trans = 'tilt3d';
+    else if (toShot === 'pan') trans = 'orbit';
     else trans = seq;
+
+    /* 跨幕 = 大转折：三者同步发生
+       相机 -> 强制大角度迁移；背景 -> applyAct 换肤；内容 -> data-form 切换。
+       幕 I→II flip（翻进展台）、II→III orbit（绕到现场）、III→IV tilt3d（俯冲收束）。 */
+    var actInfo = applyAct(n, dir);
+    if (actInfo.changed) trans = ['flip', 'orbit', 'tilt3d'][actInfo.act % 3];
 
     /* 相机累计步数：只增不减，供相位计算与极光共用 */
     if (booted) camProgress += 1;
