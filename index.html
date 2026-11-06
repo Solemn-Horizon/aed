@@ -2038,13 +2038,22 @@ body::after{content:none !important}
    卡片底 #16161D（比背景亮一档），靠色差浮起而非边框。
    ============================================================ */
 :root{
-  --card-bg:#16161D;          /* 卡片：比背景亮一档 */
-  --card-bg-2:#1C1C24;        /* 第二层卡片（Bento 大格） */
+  /* 公式⑥ 第一组：#F5F5F7 浅灰底 + #FFFFFF 纯白卡片「轻盈浮起」。
+     上一版把卡片做成近黑(#16161D)，明暗关系被抹平 —— 那是平庸的根因。
+     现在 Bento 页自带明亮岛，深色舞美留在岛外，形成"被照亮的展台"。 */
+  --bento-bg:#F5F5F7;          /* 浅灰底兜底 */
+  --card-bg:#FFFFFF;           /* 纯白卡片 */
+  --card-bg-2:#F6F5F8;         /* 极浅微紫灰，第二档（公式⑥ 灰底×纯白卡）*/
+  --card-bg-3:#EDEDF2;         /* 第三档，用于强调色块 */
   --card-r:clamp(18px,2.2vw,30px);   /* 短边×18% 的近似 */
   --gx:16px;                  /* 横向严格 16 */
   --gy:24px;                  /* 纵向 16 或 24，这里取 24 做分层 */
-  --card-edge:rgba(255,255,255,.055);  /* 极弱描边，只辅助边界 */
-  --card-shadow:0 18px 48px rgba(0,0,0,.42);
+  --card-edge:rgba(20,20,40,.06);     /* 浅底上的极弱描边 */
+  --card-shadow:0 2px 8px rgba(20,20,45,.05),0 18px 44px rgba(20,20,45,.09);
+  --card-ink:#1D1D1F;         /* 卡片正文：苹果的近黑 */
+  --card-ink-2:#6E6E73;       /* 卡片次级文字 */
+  --card-ink-3:#86868B;       /* 卡片说明文字 */
+  --card-accent:#5B4BD6;      /* 卡片里唯一的强调色（数字）*/
 }
 
 /* ② 圆角密码：短边×18% + 曲率连续（squircle）
@@ -2060,8 +2069,10 @@ body::after{content:none !important}
   box-shadow:var(--card-shadow);
   padding:clamp(20px,2.4vw,36px);
   overflow:hidden;
+  color:var(--card-ink);
+  /* 浅色卡片的浮起靠"顶部一线亮 + 底部柔和投影"，不是靠描边。 */
   background-image:linear-gradient(180deg,
-    rgba(255,255,255,.035) 0%,rgba(255,255,255,0) 34%);
+    rgba(255,255,255,.9) 0%,rgba(255,255,255,0) 22%);
 }
 /* 图片也用同一套 squircle，⑤ 图也是卡片 */
 .figure,.figure img,.chapter-slide .right img,
@@ -2070,26 +2081,35 @@ body::after{content:none !important}
 .bento{
   display:grid;
   grid-template-columns:repeat(4,1fr);
-  grid-auto-rows:minmax(80px,auto);
-  gap:var(--gy) var(--gx);          /* 纵向 24 / 横向 16 —— 横竖有别 */
-  margin-top:clamp(10px,1.6vh,22px);
+  grid-auto-rows:minmax(64px,auto);
+  gap:var(--gy) var(--gx);
+  margin-top:clamp(8px,1.2vh,16px);
 }
-.bento > .acard{padding:clamp(12px,1.6vw,22px)}
-.bento > .acard{display:flex;flex-direction:column;justify-content:center}
-/* Hero 大格：跨 2 列 2 行，抢视觉焦点 */
+/* 卡片里所有文字统一左对齐 —— 苹果官网的卡片从不居中对齐文字，
+   左对齐才是"排版"，居中是"海报"。 */
+.bento > .acard{align-items:flex-start;text-align:left}
+/* Hero 大格：跨 2 列 2 行，抢视觉焦点。用第三档灰度做色块层级。 */
 .bento > .acard.span2{grid-column:span 2;grid-row:span 2;
-  background:var(--card-bg-2);padding:clamp(26px,3vw,48px)}
-/* 卡片里的数字是唯一强调色，其余全白 —— 局部高亮 */
-.bento .k{font-size:clamp(11px,1.05vw,14px);color:#86868b;
-  letter-spacing:.06em;font-weight:600;margin-bottom:.5em}
-.bento .v{font-family:var(--font-num);font-size:clamp(26px,3.6vw,58px);
-  font-weight:800;letter-spacing:-.035em;line-height:1;
-  font-variant-numeric:tabular-nums;color:#f5f5f7}
-.bento .acard.span2 .v{font-size:clamp(40px,6.4vw,104px);
-  background:linear-gradient(178deg,#fff,#c9cede 60%,#8e95a6);
-  -webkit-background-clip:text;background-clip:text;
-  -webkit-text-fill-color:transparent}
-.bento .d{font-size:clamp(11px,1vw,14px);color:#8e8e93;margin-top:.7em;
+  background:var(--card-bg-3);padding:clamp(26px,3vw,48px)}
+/* 标签：小、灰、克制 */
+.bento .k{font-size:clamp(11px,1.05vw,14px);color:var(--card-ink-2);
+  letter-spacing:.02em;font-weight:600;margin-bottom:.55em}
+/* 数字：卡片里唯一有重量的元素 */
+.bento .v{font-family:var(--font-num);font-size:clamp(28px,3.8vw,62px);
+  font-weight:700;letter-spacing:-.045em;line-height:1;
+  font-variant-numeric:tabular-nums;color:var(--card-ink)}
+/* 大格数字用强调色，是全页唯一一处彩色 —— 局部高亮 */
+.bento .acard.span2 .v{font-size:clamp(48px,7.2vw,120px);
+  color:var(--card-accent);
+  background:none;-webkit-text-fill-color:var(--card-accent)}
+/* 但 Hero 是照片卡（深色遮罩），紫色看不清 —— 换回白色 */
+.bento .acard.span2.acard-photo .v{
+  color:#FFFFFF;
+  -webkit-text-fill-color:#FFFFFF;
+  background:none;
+  text-shadow:0 4px 30px rgba(0,0,0,.35);
+}
+.bento .d{font-size:clamp(11px,1vw,14px);color:var(--card-ink-3);margin-top:.7em;
   line-height:1.6}
 /* hover 1.02 —— 网页独有的回应，PPT 做不到 */
 .bento .acard{
@@ -2187,18 +2207,19 @@ body::after{content:none !important}
   to{opacity:1;transform:none}
 }
 
-/* ⑤ 图也是卡片：统一圆角，且与卡片共用间距 */
-.figure{overflow:hidden;box-shadow:var(--card-shadow);
-  border:1px solid var(--card-edge)}
-
-/* 现有分组容器也套上卡片皮（不改内容结构，只加视觉层） */
+/* 深色页上的分组容器：用独立的暗色令牌，不共用 Bento 的白卡。
+   （--card-bg 已改为白色用于浅色展台，这里若共用会变成刺眼白块） */
 .stats,.case{
   border-radius:var(--card-r);
-  background:var(--card-bg);
-  border:1px solid var(--card-edge);
-  box-shadow:var(--card-shadow);
+  corner-shape:squircle;
+  background:#16161D;
+  border:1px solid rgba(255,255,255,.055);
+  box-shadow:0 18px 48px rgba(0,0,0,.42);
   padding:clamp(20px,2.6vw,40px);
 }
+/* .figure 同理：深色页的图片框用暗色边线 */
+.figure{overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,.42);
+  border:1px solid rgba(255,255,255,.055)}
 .stats{gap:var(--gy)}
 .grid.g2,.grid.g3{gap:var(--gx)}
 .grid.g2 > *,.grid.g3 > *{border-radius:var(--card-r)}
@@ -2321,6 +2342,80 @@ body::after{border-radius:var(--r-xs)}
 @media (prefers-reduced-motion:reduce){
   :root{transition:none !important}
 }
+/* ============================================================
+   30. Bento 页 = 一间被照亮的展台（公式①⑥ 的真正落地）
+   ------------------------------------------------------------
+   苹果官网卡片是「浅灰底 + 纯白卡片浮起」。深色舞美留在外围，
+   这一页的 .cam 内铺一块浅灰面板，四周保留深色边缘 ——
+   像镜头推进一间被灯照亮的展厅，而不是整屏刷白。
+   ============================================================ */
+.bento-slide{padding:5vh 6vw}
+.bento-slide .cam{
+  background:var(--bento-bg);
+  border-radius:calc(var(--card-r) * 1.5);
+  corner-shape:squircle;
+  padding:clamp(20px,2.4vw,38px) clamp(24px,3vw,52px);
+  box-shadow:0 40px 120px rgba(0,0,0,.55),
+             inset 0 1px 0 rgba(255,255,255,.9);
+  background-image:linear-gradient(178deg,#FBFBFD 0%,#F5F5F7 62%,#ECECF1 100%);
+  /* 内容自然撑开，不被 flex 的 center 压缩 */
+  justify-content:flex-start;
+}
+/* 浅底上的文字必须换成深色，否则不可读 */
+.bento-slide .kicker{color:#86868B}
+.bento-slide .h2,.bento-slide .h2.grad{
+  color:#1D1D1F;
+  background:none;
+  -webkit-text-fill-color:#1D1D1F;
+}
+/* 展台边缘：一道极淡的高光，强化"玻璃展柜"的质感 */
+.bento-slide .cam::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  border:1px solid rgba(255,255,255,.65);pointer-events:none;
+}
+/* Bento 页专用：卡片更紧凑，让 3 行 8 格收进展台 */
+.bento-slide .bento{grid-auto-rows:minmax(56px,auto);margin-top:10px;gap:var(--gy) var(--gx)}
+.bento-slide .bento > .acard{padding:clamp(9px,1.1vw,15px)}
+.bento-slide .bento > .acard.span2{padding:clamp(14px,1.8vw,26px)}
+.bento-slide .bento .k{font-size:clamp(10px,.85vw,12px);margin-bottom:.35em}
+.bento-slide .bento .v{font-size:clamp(22px,2.6vw,40px)}
+.bento-slide .bento .acard.span2 .v{font-size:clamp(40px,5.6vw,88px)}
+.bento-slide .bento .d{font-size:clamp(10px,.85vw,12px);margin-top:.4em;line-height:1.45}
+.bento-slide .spark{height:14px;margin-top:7px}
+.bento-slide .mini-track{margin-top:8px}
+.bento-slide .acard-icon .glyph{width:20px;height:20px;margin-bottom:8px}
+.bento-slide .mini-bars{height:32px;bottom:14px}
+
+@media (max-width:760px){
+  .bento-slide .cam{padding:18px 14px}
+  .bento-slide{padding:3vh 4vw}
+}
+
+/* ============================================================
+   31. 卡片美学精修：公式⑤「错落倾斜」+ 层级留白
+   ------------------------------------------------------------
+   教学图里说图片卡「既可以严丝合缝，也可以错落倾斜，完成生动的
+   视觉拼接」。上一版 8 张卡全部正正方方对齐，这正是"平庸"的观感来源。
+   给两张图卡一点极轻的角度与错位，打破完全对称，但网格隐形线仍在。
+   ============================================================ */
+.bento .acard-photo.acard-small{transform:rotate(-1.1deg) translateY(-3px)}
+.bento .acard-photo.acard-small:hover{transform:rotate(0deg) translateY(-5px)}
+/* 第三档色块：给"断点"卡一点更明确的层级，而非全部纯白 */
+.bento .acard-tone2{background:var(--card-bg-2)}
+/* 图标卡的 squircle 底板在浅底上改用强调色描边 */
+.acard-icon .squircle{opacity:.28}
+.acard-icon .squircle path{color:var(--card-accent)}
+.acard-icon .glyph{color:var(--card-accent)}
+/* 微型图表在浅底上换成深色可见 */
+.mini-track{background:rgba(29,29,31,.09)}
+.mini-track i{background:linear-gradient(90deg,#7A6BE0,#2FB6D8)}
+.spark polyline{stroke:var(--card-accent)}
+.mini-bars i{background:linear-gradient(180deg,rgba(123,107,224,.85),rgba(47,182,216,.6))}
+.acard-icon .unit{color:var(--card-ink-2)}
+
+@media (prefers-reduced-motion:reduce){
+  .bento .acard-photo.acard-small{transform:none !important}
+}
 </style>
 </head>
 <body>
@@ -2430,7 +2525,7 @@ body::after{border-radius:var(--r-xs)}
   </section>
 
   <!-- ====== 05 数据总览 · Bento Grid（苹果卡片公式，六条齐备）====== -->
-  <section class="slide" data-chapter="02 / 三周问卷" data-speaker="梅艺馨"
+  <section class="slide bento-slide" data-chapter="02 / 三周问卷" data-speaker="梅艺馨"
            data-notes="先用一页把三周问卷的全貌摆出来。&#10;133 份有效回答，覆盖 10 个省份、10 道核心题目。&#10;最值得记住的是这三个断点：找不到、不敢用、不会用。&#10;后面每一页，都是把其中一格拆开讲。">
     <p class="kicker" data-anim="1">三周问卷 · 一页看全貌</p>
     <h2 class="h2 grad" data-anim="2">133 份回答，三个断点</h2>
