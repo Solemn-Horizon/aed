@@ -2719,9 +2719,89 @@ body[data-form="form-card"] #scene::after{opacity:.22}
 #stage[data-form] .slide.active .h2{
   transition:color 1.2s ease,letter-spacing 1.2s ease;
 }
+/* ============================================================
+   34. 片头：AED Study Group（复刻参考视频的字母+直线动画）
+   ------------------------------------------------------------
+   参考视频是抖音 PPT 动画教程录屏，四周为 UI 噪音；这里只取中间
+   的动画主体：一横排大写字母 + 一条水平直线 + "后退式"缩放。
+   实测配色：底 #0F0F14、字 #E4E9F7；3.3s 字母浮现、直线展开。
+
+   【稳健性】所有元素的 CSS 基态就是"最终可见态"，不用 CSS animation
+   驱动可见性（无头/后台标签页/省电模式下 animation 不推进，会把内容
+   永久锁在 opacity:0 —— 实测复现过两次）。动画改由 JS 的
+   element.animate() 承担，它只在基准态之上插值，动画失效也不丢内容。
+   ============================================================ */
+#intro{
+  position:fixed;inset:0;z-index:60;
+  display:flex;align-items:center;justify-content:center;
+  background:#0F0F14;
+  overflow:hidden;
+}
+#intro.intro-done{opacity:0;pointer-events:none;
+  transition:opacity .75s cubic-bezier(.4,0,.2,1)}
+.intro-inner{
+  display:flex;flex-direction:column;align-items:center;
+  transform-origin:50% 50%;
+}
+.intro-word{
+  display:flex;gap:clamp(6px,1.1vw,18px);
+  font-family:var(--font-num,"Helvetica Neue",Arial,sans-serif);
+  font-size:clamp(26px,5.4vw,86px);
+  font-weight:700;letter-spacing:.02em;
+  color:#E4E9F7;
+  white-space:nowrap;
+}
+.intro-word .ch{display:inline-block}
+/* 空格不额外加宽：flex gap 已经分隔了字符，空格 span 只留一个窄缝，
+   否则两个单词会被拉得过散（实测 "Group" 被推到 x≈990，与 AED 断开）。 */
+.intro-word .ch.space{width:.16em}
+/* 直线：从中心向两侧展开（对应参考视频 337px → 484px） */
+.intro-rule{width:min(78vw,760px);height:1px;margin-top:clamp(20px,3vh,38px);
+  background:rgba(228,233,247,.13);position:relative}
+.intro-rule i{
+  position:absolute;left:50%;top:0;height:1px;width:100%;
+  background:linear-gradient(90deg,rgba(228,233,247,0),#E4E9F7 20%,#E4E9F7 80%,rgba(228,233,247,0));
+  transform:translateX(-50%);
+  box-shadow:0 0 14px rgba(200,215,255,.45);
+}
+.intro-sub{
+  margin-top:clamp(18px,2.6vh,32px);
+  font-size:clamp(11px,1.15vw,15px);letter-spacing:.34em;
+  color:rgba(228,233,247,.42);
+}
+#introSkip{
+  position:absolute;right:clamp(16px,3vw,42px);bottom:clamp(18px,4vh,44px);
+  background:none;border:1px solid rgba(228,233,247,.18);
+  color:rgba(228,233,247,.55);
+  font:inherit;font-size:12px;letter-spacing:.12em;
+  padding:9px 18px;border-radius:999px;cursor:pointer;
+  transition:color .25s,border-color .25s,background .25s;
+}
+#introSkip:hover,#introSkip:focus-visible{
+  color:#E4E9F7;border-color:rgba(228,233,247,.5);
+  background:rgba(228,233,247,.06);outline:2px solid rgba(228,233,247,.4);outline-offset:2px;
+}
 </style>
 </head>
 <body>
+
+<!-- ============================================================
+     片头：复刻参考视频（抖音 PPT 动画教程录屏）的字母 + 直线动画，
+     文字改为 "AED Study Group"，作为演示开头引入。
+     参考视频实测：近黑底 #0F0F14 + 冷白字 #E4E9F7，
+     3.3s 起字母以"后退式"浮现、一条直线从中心展开至约 484px，
+     随后长时间稳定、直线缓慢收回，10s 切场。
+     这里压缩成 3.4s 的片头：字母逐个浮现 → 直线展开 → 整体后退 → 淡出。
+     只取动画形式，完全不复制抖音 UI 噪音。
+     ============================================================ -->
+<div id="intro" aria-label="AED Study Group 片头">
+  <div class="intro-inner">
+    <div class="intro-word" id="introWord" aria-hidden="true"></div>
+    <div class="intro-rule"><i></i></div>
+    <div class="intro-sub">扬州市 AED 安全保障项目实践</div>
+  </div>
+  <button id="introSkip" type="button" aria-label="跳过片头">跳过片头</button>
+</div>
 
 <div id="world" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -4500,6 +4580,95 @@ body[data-form="form-card"] #scene::after{opacity:.22}
     document.addEventListener(ev, showChrome, { passive: true });
   });
   showChrome();
+
+  /* ---------- 片头：AED Study Group ----------
+     只在"从首页自然进入"时播放；带 #页码 直达、或用户点跳过时立即结束。
+     动画用 Web Animations API（基准态=终态，动画只做插值）：
+     即使动画因任何原因没跑，字母/直线/副标题也已完整可见。 */
+  (function initIntro() {
+    var intro = document.getElementById('intro');
+    var word = document.getElementById('introWord');
+    var skip = document.getElementById('introSkip');
+    if (!intro || !word) return;
+    var text = 'AED Study Group';
+    var frag = document.createDocumentFragment();
+    var spans = [];
+    text.split('').forEach(function (c) {
+      var s = document.createElement('span');
+      s.className = 'ch' + (c === ' ' ? ' space' : '');
+      s.textContent = c === ' ' ? '\u00A0' : c;
+      frag.appendChild(s);
+      spans.push(s);
+    });
+    word.appendChild(frag);
+
+    var finished = false;
+    function endIntro() {
+      if (finished) return;
+      finished = true;
+      intro.classList.add('intro-done');
+      setTimeout(function () {
+        if (intro.parentNode) intro.parentNode.removeChild(intro);
+      }, 850);
+    }
+    if (skip) skip.addEventListener('click', endIntro);
+    intro.addEventListener('click', function (e) {
+      if (e.target !== skip) endIntro();
+    }, { passive: true });
+    document.addEventListener('keydown', function onKey(e) {
+      if (!finished) {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault(); e.stopPropagation(); endIntro();
+        }
+      } else {
+        document.removeEventListener('keydown', onKey);
+      }
+    }, true);
+
+    /* 有 #页码 时不播片头（分享链接直达应直接看到内容） */
+    if (/^#\d+$/.test(location.hash || '') || reduce) {
+      setTimeout(endIntro, reduce ? 1400 : 0);
+      return;
+    }
+
+    /* 用 WAAPI 编排：字母逐个浮现 → 直线展开 → 整体后退。
+       fill:'none' 让动画结束后自动回到 CSS 基态（=终态），不锁死。 */
+    if (intro.animate && !reduce) {
+      var inner = intro.querySelector('.intro-inner');
+      var rule = intro.querySelector('.intro-rule i');
+      var sub = intro.querySelector('.intro-sub');
+      var EASE = 'cubic-bezier(.16,1,.3,1)';
+
+      if (inner) inner.animate([
+        { transform: 'scale(1.16) translate3d(0,14px,0)', opacity: 0 },
+        { opacity: 1, offset: .18 },
+        { transform: 'scale(1) translate3d(0,0,0)', opacity: 1, offset: .72 },
+        { transform: 'scale(.965) translate3d(0,-6px,0)', opacity: 1 }
+      ], { duration: 3400, easing: EASE, fill: 'none' });
+
+      spans.forEach(function (s, i) {
+        if (!s.animate) return;
+        s.animate([
+          { opacity: 0, transform: 'translate3d(0,26px,0) scale(.92)' },
+          { opacity: 1, transform: 'translate3d(0,0,0) scale(1)' }
+        ], {
+          duration: 850, delay: 300 + i * 85,
+          easing: EASE, fill: 'none'
+        });
+      });
+
+      if (rule) rule.animate([
+        { width: '0%', opacity: 0 },
+        { opacity: 1, offset: .25 },
+        { width: '100%', opacity: 1 }
+      ], { duration: 1500, delay: 550, easing: EASE, fill: 'none' });
+
+      if (sub) sub.animate([
+        { opacity: 0 }, { opacity: 1 }
+      ], { duration: 1100, delay: 1350, easing: 'ease-out', fill: 'none' });
+    }
+    setTimeout(endIntro, 3400);
+  })();
 
   /* ---------- URL 定位：index.html#7 直达第 7 页，便于分享与验收 ---------- */
   function fromHash() {
