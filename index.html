@@ -100,40 +100,50 @@ body{
   --act-x:0%;
   --act-z:1;
   --act-tint:0;
-  /* 所有可插值的自定义属性统一在这里声明 transition；
-     后面第 29/32 段若再写 transition 会互相覆盖，务必只保留这一处。 */
-  transition:
-    --lit 1.35s cubic-bezier(.76,0,.24,1),
-    --hue1 1.6s ease,--hue2 1.6s ease,
-    --gx1 1.8s ease,--gy1 1.8s ease,
-    --gx2 1.8s ease,--gy2 1.8s ease,
-    --vig 1.6s ease,--grid-a 1.6s ease,
-    --act-base 1.7s ease,--act-x 1.9s ease,
-    --act-z 1.9s ease,--act-tint 1.7s ease;
+  /* 性能要点：transition 不放 :root（那会让任何变量变化触发整树重算），
+     而是放在各消费元素上：#stage::after 管 --lit/--lx，
+     .aurora i 管 --gx1/--gy1/--gx2/--gy2/--act-hue*，#scene 管 --vig/--grid-a，#world 管 --act-*。
+     :root 只做初值仓库。 */
 }
 @media (prefers-reduced-motion:reduce){
   :root{transition:none !important}
 }
 
 /* ============================================================
-   亮度包络 —— 逐帧拆解发现：参考片 80% 时间极暗(亮度 3~13)，
-   仅 7% 时间亮到 180+。层次不靠"渐变背景"，而靠一束光。
-   --lit 由 JS 按相位写入（暗场约 .10，爆发约 .85）。
+   亮度包络 —— 重写为"合成器友好"（性能优化的核心）
+   ------------------------------------------------------------
+   旧实现把 --lit/--lit-breathe/--lx/--ly 塞进 radial-gradient 的
+   color-stop 里，每帧改一个值 = 整屏重绘（gradient 不能合成），
+   rAF 循环 60fps 写 --lit-breathe 时尤为致命 —— 这就是卡顿主因。
+
+   新实现：
+   · 光斑的"形状/颜色"用固定渐变，永远不重绘；
+   · 亮度 = 该层的 opacity（合成器属性，GPU 直接叠加）；
+   · 光斑跟随指针 = 该层的 translate（同样是合成器属性）；
+   · --lit 仍用于翻页时的亮度档位切换（1.35s transition，
+     但作用在 opacity 而不是渐变，插值零成本）。
    ============================================================ */
 #stage::after{
-  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
-  background:radial-gradient(ellipse 80% 62% at 50% 38%,
-    rgba(190,205,255,calc((var(--lit,.12) + var(--lit-breathe,0)) * .34)) 0%,
-    rgba(120,140,220,calc((var(--lit,.12) + var(--lit-breathe,0)) * .11)) 42%,
+  content:"";position:absolute;pointer-events:none;z-index:1;
+  /* 画成" oversized 画布"，光斑移动只需平移本层，不用重新计算渐变 */
+  width:200%;height:200%;left:-50%;top:-50%;
+  background:radial-gradient(ellipse 34% 30% at 50% 38%,
+    rgba(190,205,255,.34) 0%,
+    rgba(120,140,220,.11) 42%,
     rgba(0,0,0,0) 72%);
-  /* 亮度由 --lit 的 transition 驱动，这里不再用 background 过渡：
-     换整套 background 会让 radial-gradient 无法插值，反而产生硬切。 */
+  /* 只动合成器属性：亮度=opacity，跟随=translate，永不重绘 */
+  opacity:calc(var(--lit,.12) + var(--lit-breathe,0));
+  transform:translate3d(calc(var(--lx,0%) * .55),calc(var(--ly,0%) * .55),0);
+  will-change:opacity,transform;
+  /* 翻页的亮度档位切换在这里过渡（作用于 opacity，插值零成本） */
+  transition:opacity 1.35s cubic-bezier(.76,0,.24,1),
+             transform 1.6s cubic-bezier(.22,.61,.36,1);
 }
-/* 爆发相位只把光的范围略微放大，亮度仍由同一个 --lit 连续变化 */
+/* 爆发相位：同一束光，只提高亮度档（仍是 opacity，可合成） */
 #stage[data-shot="burst"]::after{
-  background:radial-gradient(ellipse 92% 78% at 50% 42%,
-    rgba(200,216,255,calc((var(--lit,.12) + var(--lit-breathe,0)) * .30)) 0%,
-    rgba(150,170,240,calc((var(--lit,.12) + var(--lit-breathe,0)) * .09)) 45%,
+  background:radial-gradient(ellipse 38% 33% at 50% 42%,
+    rgba(200,216,255,.30) 0%,
+    rgba(150,170,240,.09) 45%,
     rgba(0,0,0,0) 74%);
 }
 
@@ -157,9 +167,11 @@ body{
   transition:
     opacity .78s cubic-bezier(.4,0,1,1),      /* 离场：前慢后快，晚点才走 */
     transform 1.02s cubic-bezier(.76,0,.24,1);
-  will-change:opacity,transform;
+  /* will-change 只给"正在过渡"的页：用 .active/.prev 精确提示，
+     避免给全部 27 页常驻建层（显存与合成开销都翻倍）。 */
   backface-visibility:hidden;
 }
+.slide.active,.slide.prev{will-change:opacity,transform}
 /* 用 #stage 前缀提高特异性，压过后面第 22 段的 .slide 基规则，
    但不用 !important，这样 data-trans 的入场动画仍能作用。 */
 #stage .slide.active{
@@ -411,7 +423,7 @@ body{
 [data-anim]{
   opacity:0;
   transform:translate3d(0,var(--rise,26px),0);
-  will-change:opacity,transform;
+  /* will-change 只在活动页声明（见下），避免全文档常驻建层 */
 }
 .slide.active [data-anim]{
   opacity:1;transform:translate3d(0,0,0);
@@ -419,6 +431,7 @@ body{
     opacity .78s var(--ease),
     transform 1.02s var(--ease);
 }
+.slide.active [data-anim]{will-change:opacity,transform}
 /* 元素依次浮现：间隔 150ms，比之前更紧凑，节奏更连贯 */
 .slide.active [data-anim="1"]{transition-delay:.08s}
 .slide.active [data-anim="2"]{transition-delay:.20s}
@@ -1366,23 +1379,28 @@ html,body{
     fixed no-repeat;
 }
 
-/* --- 15.2 光斑修复：去掉嵌套 filter，恢复可见度 --- */
+/* --- 15.2 光斑：去掉巨型 blur（性能优化核心之一） ---
+   blur(70~160px) 作用在 100vmax 巨元素上 = 每帧巨大的 GPU 遮罩运算。
+   而光斑本身已是径向渐变（边缘自带柔化到 0），blur 在视觉上
+   几乎不可分辨 —— 纯粹的成本。删掉后光斑由渐变自身的柔边表达。 */
 .aurora{filter:none !important;opacity:1 !important}
 .aurora i{
   opacity:.30 !important;
-  filter:blur(clamp(70px,12vmax,160px)) !important;
+  filter:none !important;
 }
 .aurora i:nth-child(1){
   width:min(100vmax,1320px);height:min(100vmax,1320px);
-  left:-24vmax;top:-32vmax;opacity:.26 !important;
   background:radial-gradient(circle,
-    rgba(124,58,237,.80) 0%,rgba(124,58,237,0) 66%);
+    rgba(124,58,237,.80) 0%,rgba(124,58,237,.0) 62%,
+    rgba(124,58,237,0) 66%);
+  opacity:.26 !important;
 }
 .aurora i:nth-child(2){
   width:min(88vmax,1160px);height:min(88vmax,1160px);
-  right:-20vmax;bottom:-26vmax;opacity:.22 !important;
   background:radial-gradient(circle,
-    rgba(14,165,233,.72) 0%,rgba(14,165,233,0) 68%);
+    rgba(14,165,233,.72) 0%,rgba(14,165,233,.0) 58%,
+    rgba(14,165,233,0) 68%);
+  opacity:.22 !important;
 }
 /* 第三个光斑删掉：三个颜色同时出现会显得热闹，
    苹果是"一束光"而不是"一片霞"。 */
@@ -1705,12 +1723,16 @@ body::after{content:none !important}
    全部用 @keyframes（时间驱动），绕开"元素刚由隐藏变可见时
    transition 不启动"的坑。
    ============================================================ */
-[data-motion]{opacity:0;will-change:transform,opacity,filter,clip-path}
+/* 基态设为可见（opacity:1），入场动画用 backwards 填充：
+   若动画因任何原因未执行（后台标签页节流、省电模式、截图工具），
+   文字仍以最终样式呈现 —— 动效可以失效，内容不能消失。
+   旧写法 [data-motion]{opacity:0} + fill:both 会导致文字永久隐形（已实测）。 */
+[data-motion]{opacity:1}
 
-.slide.active [data-motion="tag"]{animation:mTag .72s var(--ease) .14s both}
-.slide.active [data-motion="focus"]{animation:mFocus 1.15s var(--ease) .05s both}
-.slide.active [data-motion="wipe"]{animation:mWipe .95s var(--ease) .22s both}
-.slide.active [data-motion="pop"]{animation:mPop .9s var(--ease) .26s both}
+.slide.active [data-motion="tag"]{animation:mTag .72s var(--ease) .14s backwards}
+.slide.active [data-motion="focus"]{animation:mFocus 1.15s var(--ease) .05s backwards}
+.slide.active [data-motion="wipe"]{animation:mWipe .95s var(--ease) .22s backwards}
+.slide.active [data-motion="pop"]{animation:mPop .9s var(--ease) .26s backwards}
 
 @keyframes mTag{
   from{opacity:0;transform:translate3d(-30px,0,0)}
@@ -1978,19 +2000,14 @@ body::after{content:none !important}
   transform:translate3d(calc(var(--px,0) * 5px),calc(var(--py,0) * 3px),0);
   transition:transform .9s cubic-bezier(.22,.61,.36,1);
 }
-/* 背景层：速率更大，形成景深 */
+/* 背景层视差：速率更大形成景深。
+   用 CSS 变量叠加到 transform（合成器），不用 margin（会触发整层重排）。 */
 .aurora i{
-  margin-left:calc(var(--px,0) * 14px);
-  margin-top:calc(var(--py,0) * 10px);
+  --par-x:calc(var(--px,0) * 14px);
+  --par-y:calc(var(--py,0) * 10px);
 }
-/* 光跟随指针：把径向光的中心绑到 --lx/--ly */
-#stage::after{
-  background:radial-gradient(ellipse 80% 62% at
-    calc(50% + var(--lx,0%)) calc(38% + var(--ly,0%)),
-    rgba(190,205,255,calc((var(--lit,.12) + var(--lit-breathe,0)) * .30)) 0%,
-    rgba(120,140,220,calc((var(--lit,.12) + var(--lit-breathe,0)) * .10)) 42%,
-    rgba(0,0,0,0) 72%);
-}
+/* 光跟随指针：由新 #stage::after 的 translate 承担（合成器属性），
+   旧的"渐变中心跟随"方案已删除 —— 那是每帧全屏重绘的元凶。 */
 
 /* ---- 物理感：带一次极轻回弹的落定 ----
    不是反复弹跳，是"质量到位后停不住一点点"。
@@ -2054,15 +2071,15 @@ body::after{content:none !important}
   /* 公式⑥ 第一组：#F5F5F7 浅灰底 + #FFFFFF 纯白卡片「轻盈浮起」。
      上一版把卡片做成近黑(#16161D)，明暗关系被抹平 —— 那是平庸的根因。
      现在 Bento 页自带明亮岛，深色舞美留在岛外，形成"被照亮的展台"。 */
-  --bento-bg:#F5F5F7;          /* 浅灰底兜底 */
+  --bento-bg:#EDEDF2;          /* 浅灰底：比纯白深一档，白卡才"浮"得起来 */
   --card-bg:#FFFFFF;           /* 纯白卡片 */
-  --card-bg-2:#F6F5F8;         /* 极浅微紫灰，第二档（公式⑥ 灰底×纯白卡）*/
-  --card-bg-3:#EDEDF2;         /* 第三档，用于强调色块 */
+  --card-bg-2:#F7F7FA;         /* 极浅微紫灰，第二档 */
+  --card-bg-3:#E9E9EF;         /* 第三档，用于强调色块 */
   --card-r:clamp(18px,2.2vw,30px);   /* 短边×18% 的近似 */
   --gx:16px;                  /* 横向严格 16 */
   --gy:24px;                  /* 纵向 16 或 24，这里取 24 做分层 */
-  --card-edge:rgba(20,20,40,.06);     /* 浅底上的极弱描边 */
-  --card-shadow:0 2px 8px rgba(20,20,45,.05),0 18px 44px rgba(20,20,45,.09);
+  --card-edge:rgba(20,20,45,.09);     /* 浅底上的发丝描边（分离度关键） */
+  --card-shadow:0 1px 2px rgba(20,20,45,.06),0 10px 28px rgba(20,20,45,.13);
   --card-ink:#1D1D1F;         /* 卡片正文：苹果的近黑 */
   --card-ink-2:#6E6E73;       /* 卡片次级文字 */
   --card-ink-3:#86868B;       /* 卡片说明文字 */
@@ -2145,10 +2162,14 @@ body::after{content:none !important}
   transition:transform 1.6s var(--ease);
 }
 .bento .acard-photo:hover img{transform:scale(1.045)}
+/* Hero 图卡的文字压在照片上：顶部压一层更重的暗角，
+   保证 "有效问卷 · 截至…" 这类白字在亮部照片上也能读。 */
 .photo-scrim{
   position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(6,6,12,.10) 0%,
-    rgba(6,6,12,.30) 42%,rgba(6,6,12,.90) 100%);
+  background:
+    linear-gradient(180deg,rgba(6,6,12,.42) 0%,rgba(6,6,12,.06) 30%),
+    linear-gradient(180deg,rgba(6,6,12,0) 40%,rgba(6,6,12,.55) 72%,
+      rgba(6,6,12,.92) 100%);
 }
 .photo-body{position:absolute;left:0;right:0;bottom:0;
   padding:clamp(20px,2.6vw,40px);z-index:2}
@@ -2171,16 +2192,16 @@ body::after{content:none !important}
   height:var(--h);border-radius:var(--r-xs);
   background:linear-gradient(180deg,rgba(199,184,253,.9),rgba(34,211,238,.55));
   opacity:.75}
-.mini-track{margin-top:14px;height:4px;border-radius:var(--r-pill);
-  background:rgba(255,255,255,.09);overflow:hidden}
+.mini-track{margin-top:14px;height:6px;border-radius:var(--r-pill);
+  background:rgba(20,20,45,.10);overflow:hidden}
 .mini-track i{display:block;height:100%;width:0;border-radius:var(--r-pill);
-  background:linear-gradient(90deg,#a78bfa,#22d3ee);
+  background:linear-gradient(90deg,#6D5AE6,#2FA8CF);
   transition:width 1.1s var(--ease) .4s}
 .slide.active .mini-track i{width:var(--w)}
 /* 折线微图：一条线说趋势，不给坐标轴（发布会式克制） */
 .spark{width:100%;height:22px;margin-top:12px;overflow:visible}
-.spark polyline{fill:none;stroke:rgba(167,139,250,.75);
-  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+.spark polyline{fill:none;stroke:#6D5AE6;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
   vector-effect:non-scaling-stroke;
   stroke-dasharray:140;stroke-dashoffset:140;
   transition:stroke-dashoffset 1.4s var(--ease) .5s}
@@ -2189,24 +2210,28 @@ body::after{content:none !important}
 /* ⑥ 色块区分层级：第二档底色给"三个断点"，与主卡拉开 */
 .acard-tone2{background:var(--card-bg-2)}
 
-/* 图标卡：② 曲率连续的超椭圆底板 + 线性图标（不用 emoji） */
+/* 图标卡：② 曲率连续的超椭圆底板 + 线性图标（不用 emoji）
+   卡片占 2 列，补满第三行，避免右下出现空格。
+   装饰用的超椭圆环缩小并贴到右下角，只作"材质提示"，不抢内容。 */
 .acard-icon{display:flex;flex-direction:column;align-items:flex-start;
-  justify-content:center !important}
-.acard-icon .squircle{
-  position:absolute;width:64px;height:64px;right:clamp(16px,2vw,30px);
-  top:clamp(16px,2vw,30px);opacity:.16;
-}
-.acard-icon .squircle path{
-  fill:none;stroke:currentColor;stroke-width:1.4;
-  color:#a78bfa;
-}
-.acard-icon .glyph{width:26px;height:26px;color:#c7b8fd;margin-bottom:14px;
+  justify-content:center !important;grid-column:span 2}
+/* 装饰性的超椭圆环已移除：在小卡上它读作"一个空圈"，
+   反而像缺内容。曲率连续的 squircle 已由卡片本体表达。 */
+.acard-icon .squircle{display:none}
+.acard-icon .glyph{width:26px;height:26px;color:#5B4BD6;margin-bottom:14px;
   position:relative;z-index:1}
 .acard-icon .unit{font-size:.34em;font-weight:600;margin-left:.16em;
   letter-spacing:0;color:#8e8e93}
 
-/* 错落浮现：stagger 0.03s（设计库规范：长列表不超过 0.1s/item） */
-.slide.active .bento .acard{animation:cardRise .7s var(--ease) both}
+/* 错落浮现：stagger 0.03s（设计库规范：长列表不超过 0.1s/item）
+   【稳健性】fill-mode 用 backwards 而不是 both：
+   · backwards 只在"延迟等待期"套用 from 帧，动画结束后回归自然样式；
+   · both/forwards 会把终帧锁死，一旦动画被打断/冻结（后台标签页、
+     省电模式、截图工具），卡片就永久停在 opacity:0（实测：8 张卡全隐形）。
+   因此基类显式声明 opacity:1，让"动画没跑"时内容依然可见 ——
+   动效可以失效，内容不能消失。 */
+.bento .acard{opacity:1}
+.slide.active .bento .acard{animation:cardRise .7s var(--ease) backwards}
 .slide.active .bento .acard:nth-child(1){animation-delay:.10s}
 .slide.active .bento .acard:nth-child(2){animation-delay:.13s}
 .slide.active .bento .acard:nth-child(3){animation-delay:.16s}
@@ -2220,19 +2245,32 @@ body::after{content:none !important}
   to{opacity:1;transform:none}
 }
 
-/* 深色页上的分组容器：用独立的暗色令牌，不共用 Bento 的白卡。
-   （--card-bg 已改为白色用于浅色展台，这里若共用会变成刺眼白块） */
+/* 分组容器：颜色跟随"幕"，不再硬编码暗色。
+   原先硬编码 #16161D，在亮幕（幕 II）上变成黑方块 + 深色字 = 不可读（实测）。
+   现在用 --panel-bg/--panel-edge 两个令牌，由 [data-form] 切换：
+     暗幕 -> 比背景亮一档的深灰；亮幕 -> 纯白 + 发丝边 + 重阴影。 */
 .stats,.case{
   border-radius:var(--card-r);
   corner-shape:squircle;
-  background:#16161D;
-  border:1px solid rgba(255,255,255,.055);
-  box-shadow:0 18px 48px rgba(0,0,0,.42);
+  background:var(--panel-bg,#16161D);
+  border:1px solid var(--panel-edge,rgba(255,255,255,.055));
+  box-shadow:var(--panel-shadow,0 18px 48px rgba(0,0,0,.42));
   padding:clamp(20px,2.6vw,40px);
+  transition:background .8s ease,border-color .8s ease,box-shadow .8s ease;
 }
-/* .figure 同理：深色页的图片框用暗色边线 */
-.figure{overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,.42);
-  border:1px solid rgba(255,255,255,.055)}
+.figure{overflow:hidden;box-shadow:var(--panel-shadow,0 18px 48px rgba(0,0,0,.42));
+  border:1px solid var(--panel-edge,rgba(255,255,255,.055))}
+:root{
+  --panel-bg:#16161D;
+  --panel-edge:rgba(255,255,255,.055);
+  --panel-shadow:0 18px 48px rgba(0,0,0,.42);
+}
+/* 亮幕：切换成苹果式的白卡（浅灰底上纯白轻浮起） */
+#stage[data-form="form-card"]{
+  --panel-bg:#FFFFFF;
+  --panel-edge:rgba(20,20,45,.07);
+  --panel-shadow:0 1px 2px rgba(20,20,45,.05),0 12px 32px rgba(20,20,45,.10);
+}
 .stats{gap:var(--gy)}
 .grid.g2,.grid.g3{gap:var(--gx)}
 .grid.g2 > *,.grid.g3 > *{border-radius:var(--card-r)}
@@ -2297,15 +2335,14 @@ body::after{border-radius:var(--r-xs)}
    29. 背景变换：每页一个"场景"，不再一成不变
    ------------------------------------------------------------
    之前全片只有两个固定光斑 + 一个亮度值，翻到哪页背景都一样。
-   现在由 --scene（0..5）驱动四件事，全部是 CSS 变量、可 transition：
-     · 主光位置 --gx1/--gy1、副光位置 --gx2/--gy2
-     · 色温 --hue1/--hue2（冷紫→青→暖白，仍是低饱和）
-     · 网格密度 --grid（技术章节给极淡的网格，叙事章节还给纯色）
-     · 边缘暗角 --vig
-   关键是"变但不抢"：所有变化都在背景层，透明度仍压得很低。
+    现在由 --scene（0..5）驱动三件事，全部是 CSS 变量、可 transition：
+      · 主光位置 --gx1/--gy1、副光位置 --gx2/--gy2
+      · 网格密度 --grid（技术章节给极淡的网格，叙事章节还给纯色）
+      · 边缘暗角 --vig
+    极光色温另由 --act-hue1/--act-hue2 按“幕”统一换肤（见 applyAct），
+    跨幕时一次性呼吸，与相机/内容同步，做到“背景大变化”。
+    关键是“变但不抢”：所有变化都在背景层，透明度仍压得很低。
    ============================================================ */
-@property --hue1{syntax:'<number>';inherits:true;initial-value:255}
-@property --hue2{syntax:'<number>';inherits:true;initial-value:200}
 @property --gx1{syntax:'<percentage>';inherits:true;initial-value:22%}
 @property --gy1{syntax:'<percentage>';inherits:true;initial-value:18%}
 @property --gx2{syntax:'<percentage>';inherits:true;initial-value:82%}
@@ -2314,40 +2351,67 @@ body::after{border-radius:var(--r-xs)}
 @property --grid-a{syntax:'<number>';inherits:true;initial-value:0}
 
 :root{
-  --hue1:255; --hue2:200;
   --gx1:22%; --gy1:18%; --gx2:82%; --gy2:82%;
   --vig:.55; --grid-a:0;
   /* transition 统一在文件开头的 :root 声明，此处不再重复 */
 }
 
-/* 主光斑：位置与色温随场景变化 */
+/* 主光斑：位置用 transform（合成器，零重排）。
+   光位(%-50% 相对自身尺寸偏移到中心，配合负 left/top 定位) +
+   指针视差(--par) 同在一个 translate3d 里叠加，浏览器只合成一次。 */
 .aurora i:nth-child(1){
-  left:calc(var(--gx1) - 42vmax);
-  top:calc(var(--gy1) - 42vmax);
+  left:-30vmax;top:-30vmax;
+  transform:translate3d(
+    calc(var(--gx1) * 60vmax - var(--px,0) * 14px),
+    calc(var(--gy1) * 60vmax - var(--py,0) * 10px),0);
   background:radial-gradient(circle,
-    hsla(var(--hue1),62%,62%,.82) 0%,
-    hsla(var(--hue1),62%,62%,0) 66%);
+    hsla(var(--act-hue1),62%,62%,.82) 0%,
+    hsla(var(--act-hue1),62%,62%,.48) 24%,
+    hsla(var(--act-hue1),60%,62%,.22) 42%,
+    hsla(var(--act-hue1),58%,62%,.08) 55%,
+    hsla(var(--act-hue1),58%,62%,0) 68%);
+  will-change:transform;
+  /* 光位/色温的变化在消费处过渡，而不是在 :root（整树重算） */
+  transition:transform 1.8s ease,background 1.6s ease;
 }
 .aurora i:nth-child(2){
-  right:calc(100% - var(--gx2) - 40vmax);
-  bottom:calc(100% - var(--gy2) - 40vmax);
+  left:-30vmax;top:-30vmax;
+  transform:translate3d(
+    calc(var(--gx2) * 60vmax - 300vmax - var(--px,0) * 14px),
+    calc(var(--gy2) * 60vmax - 300vmax - var(--py,0) * 10px),0);
   background:radial-gradient(circle,
-    hsla(var(--hue2),58%,58%,.72) 0%,
-    hsla(var(--hue2),58%,58%,0) 68%);
+    hsla(var(--act-hue2),58%,58%,.72) 0%,
+    hsla(var(--act-hue2),58%,58%,.40) 26%,
+    hsla(var(--act-hue2),56%,58%,.17) 46%,
+    hsla(var(--act-hue2),56%,58%,.06) 58%,
+    hsla(var(--act-hue2),56%,58%,0) 70%);
+  will-change:transform;
+  transition:transform 1.8s ease,background 1.6s ease;
 }
 
-/* 场景层：一层随页面变化的极淡网格 + 边缘暗角，铺在极光之上 */
+/* 场景层拆成两个固定渐变 + opacity 驱动（合成器友好）：
+   网格 / 暗角各自的"强度"就是层的透明度，渐变永不重绘。 */
 #scene{
   position:fixed;inset:0;z-index:0;pointer-events:none;
+}
+#scene::before{    /* 网格层：强度 = --grid-a */
+  content:"";position:absolute;inset:0;
   background:
-    linear-gradient(rgba(255,255,255,calc(var(--grid-a) * .030)) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,calc(var(--grid-a) * .030)) 1px,transparent 1px),
-    radial-gradient(ellipse 90% 75% at 50% 45%,
-      rgba(0,0,0,0) 40%,
-      rgba(0,0,0,calc(var(--vig) * .55)) 100%);
-  background-size:clamp(48px,6vw,110px) clamp(48px,6vw,110px),
-                  clamp(48px,6vw,110px) clamp(48px,6vw,110px),
-                  100% 100%;
+    linear-gradient(rgba(255,255,255,.030) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.030) 1px,transparent 1px);
+  background-size:clamp(48px,6vw,110px) clamp(48px,6vw,110px);
+  opacity:var(--grid-a,0);
+  will-change:opacity;
+  transition:opacity 1.6s ease;
+}
+#scene::after{     /* 暗角层：强度 = --vig */
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse 90% 75% at 50% 45%,
+    rgba(0,0,0,0) 40%,
+    rgba(0,0,0,.55) 100%);
+  opacity:var(--vig,.55);
+  will-change:opacity;
+  transition:opacity 1.6s ease;
 }
 @media (prefers-reduced-motion:reduce){
   :root{transition:none !important}
@@ -2367,7 +2431,7 @@ body::after{border-radius:var(--r-xs)}
   padding:clamp(20px,2.4vw,38px) clamp(24px,3vw,52px);
   box-shadow:0 40px 120px rgba(0,0,0,.55),
              inset 0 1px 0 rgba(255,255,255,.9);
-  background-image:linear-gradient(178deg,#FBFBFD 0%,#F5F5F7 62%,#ECECF1 100%);
+  background-image:linear-gradient(178deg,#F3F3F7 0%,#EAEAF0 58%,#E1E1E9 100%);
   /* 内容自然撑开，不被 flex 的 center 压缩 */
   justify-content:flex-start;
 }
@@ -2448,6 +2512,11 @@ body::after{border-radius:var(--r-xs)}
 @property --act-x{syntax:'<percentage>';inherits:true;initial-value:0%}
 @property --act-z{syntax:'<number>';inherits:true;initial-value:1}
 @property --act-tint{syntax:'<number>';inherits:true;initial-value:0}
+/* 跨幕的背景「大变化」：极光的色相与亮度也按幕换肤，而非只按页微调。
+   注册成 <number>，由 .aurora i 已有的 background/opacity 过渡平滑插值，
+   跨幕时整片光色一次性呼吸，与相机大迁移、内容换形三者同步发生。 */
+@property --act-hue1{syntax:'<number>';inherits:true;initial-value:255}
+@property --act-hue2{syntax:'<number>';inherits:true;initial-value:200}
 
 /* 整片世界的底色：跨幕时整体换肤，1.6s 缓变 */
 #world{
@@ -2456,7 +2525,7 @@ body::after{border-radius:var(--r-xs)}
   transform:translate3d(var(--act-x),0,0) scale(var(--act-z));
   transition:background 1.7s cubic-bezier(.76,0,.24,1),
              transform 1.9s cubic-bezier(.76,0,.24,1);
-  will-change:background,transform;
+  will-change:transform;
 }
 /* 幕 tint：给暗幕/亮幕一层极淡的整体色偏，换幕时一起呼吸 */
 #world::after{
@@ -2467,12 +2536,20 @@ body::after{border-radius:var(--r-xs)}
 }
 /* --act-* 的初值与 transition 已在文件开头的 :root 统一声明 */
 
-/* 跨幕瞬间的一次性大动作：整幕被"推开"再落定 */
+/* 跨幕瞬间的一次性大动作：整幕被"推开"再落定。
+   加一道 3D 翻卷（perspective + preserve-3d 已在 #stage/.cam 声明），
+   让"幕与幕之间"像空间被掀开一层，比单纯平移更惊艳；幅度克制不晕。
+   旋转角用独立的 --act-rot（角度，方向感知），不能用 --act-from 百分比参与
+   calc —— rotateY 只接受角度，百分比会让整条 transform 失效。 */
 @keyframes actSweep{
-  0%{transform:translate3d(var(--act-from,14%),0,0) scale(1.12);opacity:.25}
-  100%{transform:translate3d(0,0,0) scale(1);opacity:1}
+  0%{transform:translate3d(var(--act-from,14%),0,0) scale(1.12)
+       rotateY(var(--act-rot,-7deg)) rotateX(2.4deg);opacity:.22}
+  60%{opacity:1}
+  100%{transform:translate3d(0,0,0) scale(1) rotateY(0) rotateX(0);opacity:1}
 }
-.slide.act-enter .cam{animation:actSweep 1.35s cubic-bezier(.16,1,.3,1) both}
+/* fill:none：动画结束后 transform 交还给 .cam 的 --cam-* 变量姿态，
+   否则 both 会把终态 transform 锁死、压制每页的独立机位（实测会卡）。 */
+.slide.act-enter .cam{animation:actSweep 1.45s cubic-bezier(.16,1,.3,1) none}
 
 @media (prefers-reduced-motion:reduce){
   #world,:root{transition:none !important}
@@ -2519,6 +2596,31 @@ body::after{border-radius:var(--r-xs)}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .row{
   border-color:rgba(29,29,31,.10)}
 
+/* --- 亮幕里其余"浅色元件"的补全（实测漏网项） ---
+   · .stat .v 原是紫青渐变（浅底上对比不足）-> 深紫实色
+   · .stat .k / .tl .node .s 原用 --grey（浅底上发白）
+   · .segbar 底纹是 rgba(255,255,255,.05)，白底上等于隐形
+   · .seglegend b 说明文字同样偏浅
+   · .stat 左侧竖线 --line 在白底上不可见 */
+#stage[data-form="form-card"] .slide:not(.bento-slide) .stat .v{
+  background:none;-webkit-text-fill-color:#4B3FC4;color:#4B3FC4}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .stat .k,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .tl .node .s,
+#stage[data-form="form-card"] .slide:not(.bento-slide) .tl .node .d{
+  color:#6E6E73}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .stat{
+  border-left-color:rgba(29,29,31,.12)}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .segbar{
+  background:rgba(29,29,31,.07)}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .seglegend b{color:#6E6E73}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .seglegend u{color:#1D1D1F}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .capsule{
+  background:#1D1D1F;color:#FFF}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .tl .node::before{
+  background:rgba(29,29,31,.14)}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .tl .node.done::before{
+  background:#4B3FC4}
+
 /* 幕 I：超大字、极疏 —— 用字距与行高表达"开场" */
 #stage[data-form="form-word"] .hero{letter-spacing:-.045em}
 #stage[data-form="form-word"] .sub{letter-spacing:.02em}
@@ -2532,11 +2634,15 @@ body::after{border-radius:var(--r-xs)}
 
 /* 幕 II 亮底：光斑与亮度包络都要收敛，否则浅底会显得脏。
    .aurora 是 #stage 的兄弟，用 body[data-form] 不行，改在 body 上挂形态。
-   JS 里同步给 document.body 写 data-form。 */
-body[data-form="form-card"] .aurora i{opacity:.06 !important}
+   JS 里同步给 document.body 写 data-form。
+   亮幕直接隐藏极光：苹果的"非黑即白"在浅底上就是干净平面，
+   彩色光斑叠在浅底会形成可见的椭圆带（实测），且省掉一层全屏合成。 */
+body[data-form="form-card"] .aurora{display:none}
 #stage[data-form="form-card"]::after{opacity:.25}
 body[data-form="form-field"] .aurora i:nth-child(1){opacity:.20 !important}
 body[data-form="form-still"] .aurora i{opacity:.10 !important}
+/* 亮幕的暗角也收敛：浅底上重暗角会读成"脏"而不是"景深" */
+body[data-form="form-card"] #scene::after{opacity:.22}
 
 /* 内容形态切换时，文字有一次极轻的"重新落位" */
 #stage[data-form] .slide.active .kicker,
@@ -3630,10 +3736,12 @@ body[data-form="form-still"] .aurora i{opacity:.10 !important}
        lit   亮度包络基线
      ============================================================ */
   var ACTS = [
-    { until:3,  base:'#070710', tint:0.9, x:'-2%', z:1.00, form:'form-word',  lit:0.10 },
-    { until:13, base:'#ECECF1', tint:0.1, x:'2%',  z:1.06, form:'form-card',  lit:0.62 },
-    { until:25, base:'#1B1712', tint:0.5, x:'-3%', z:1.03, form:'form-field', lit:0.34 },
-    { until:99, base:'#030306', tint:0.2, x:'0%',  z:1.00, form:'form-still', lit:0.12 }
+    { until:3,  base:'#070710', tint:0.9, x:'-2%', z:1.00, form:'form-word',  lit:0.10, h1:255, h2:200 },
+    /* 幕 II 已由浅色底自身提供亮度，--lit 只驱动"暗场补光"层，
+       设为低值，否则白蓝光晕盖在浅底上 → 整页发灰（实测均亮 184 但发雾）。 */
+    { until:13, base:'#ECECF1', tint:0.1, x:'2%',  z:1.06, form:'form-card',  lit:0.08, h1:230, h2:210 },
+    { until:25, base:'#1B1712', tint:0.5, x:'-3%', z:1.03, form:'form-field', lit:0.34, h1:35,  h2:15  },
+    { until:99, base:'#030306', tint:0.2, x:'0%',  z:1.00, form:'form-still', lit:0.12, h1:255, h2:285 }
   ];
   function actOf(n) {
     // n 是 0-based；ACTS.until 是 1-based 页码
@@ -3652,13 +3760,18 @@ body[data-form="form-still"] .aurora i{opacity:.10 !important}
     r.setProperty('--act-tint', A.tint);
     r.setProperty('--act-x', A.x);
     r.setProperty('--act-z', A.z);
+    // 背景大变化：极光色相也按幕换肤，与相机/内容同步发生（有 background 过渡）
+    r.setProperty('--act-hue1', A.h1);
+    r.setProperty('--act-hue2', A.h2);
     if (stageEl) stageEl.setAttribute('data-form', A.form);
     document.body.setAttribute('data-form', A.form);   // .aurora 是 #stage 兄弟，需同步
 
     /* 跨幕：给进入页挂一次性大动作 + 记录"从哪边推开" */
     if (changed && lastAct !== -1 && stageEl) {
       var from = (a > lastAct) ? '18%' : '-18%';
+      var rot = (a > lastAct) ? '-7deg' : '7deg';
       slides[n].style.setProperty('--act-from', from);
+      slides[n].style.setProperty('--act-rot', rot);
       slides[n].classList.remove('act-enter');
       void slides[n].offsetWidth;              // 重排，确保动画重播
       slides[n].classList.add('act-enter');
@@ -3673,8 +3786,8 @@ body[data-form="form-still"] .aurora i{opacity:.10 !important}
   function applyScene(n) {
     var s = SCENES[n % SCENES.length];
     var r = document.documentElement.style;
-    r.setProperty('--hue1', s.h1);
-    r.setProperty('--hue2', s.h2);
+    // 极光色相改由 applyAct 按"幕"统一换肤（见 --act-hue*），
+    // 这里只管每页的光位/暗角/网格，避免与跨幕大变化互相干扰。
     r.setProperty('--gx1', s.gx1);
     r.setProperty('--gy1', s.gy1);
     r.setProperty('--gx2', s.gx2);
