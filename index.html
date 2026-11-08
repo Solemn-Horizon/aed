@@ -2720,109 +2720,135 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   transition:color 1.2s ease,letter-spacing 1.2s ease;
 }
 /* ============================================================
-   34. 片头：AED Study Group（彩色字 + 镜像倒影 + 穿腰直线）
+   34. 片头：交互版（心电图 → 点击 → 运镜 → 勾线 → 上浮填色 → 倒影）
    ------------------------------------------------------------
-   逐帧看清参考视频后的还原（前五版全错，以此为准）：
-     纯黑画布 / 一条水平直线横穿字腰 / 上层逐字异色实心字 /
-     下层上下镜像倒影 / 字母先空心轮廓逐字长出再填色 / 彩色碎片飞入。
-   颜色实测（HOLDOUMEN 定格帧）：米白 青 蓝 深蓝 紫 黄 红 品红 青。
+   【稳健性原则】CSS 基态 = 最终可见态。所有入场动效由 JS 的
+   element.animate()（WAAPI, fill:none）在基准态之上插值 ——
+   动画因任何原因没跑（无头虚拟时钟 / 后台节流 / 省电模式），
+   画面依然是完整定格，不会黑屏。这是本项目处理入场动画的标准做法。
+   心电图待机用 CSS @keyframes（循环，可降级为静态波形）。
    ============================================================ */
 #intro{
   position:fixed;inset:0;z-index:60;overflow:hidden;
-  background:#000;
-  display:flex;align-items:center;justify-content:center;
+  background:#000;display:flex;align-items:center;justify-content:center;
+  perspective:1400px;cursor:pointer;
 }
-#intro.intro-done{opacity:0;pointer-events:none;transition:opacity .7s ease-out}
-.intro-canvas{
-  position:relative;
-  width:min(92vw,1180px);
-  height:min(46vh,420px);
-  display:flex;align-items:center;justify-content:center;
+#intro.intro-done{opacity:0;pointer-events:none;transition:opacity .8s ease-out}
+
+/* ---------- ① 待机心电图（基态可见，光点循环跑） ---------- */
+.intro-ecg{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:clamp(28px,5vh,60px);
 }
-/* 水平直线：穿过字腰，也是倒影分界线。
-   视频里线从画面左缘外延伸进来、右端止于字尾附近，故左对齐、宽度略大于字排。 */
+.intro-ecg svg{width:min(86vw,1100px);height:clamp(90px,15vh,170px);overflow:visible}
+.intro-ecg path{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.intro-ecg-base{stroke:rgba(120,200,230,.42);stroke-width:1.8}
+.intro-ecg-sweep{
+  stroke:#8FE3F0;stroke-width:2.6;
+  filter:drop-shadow(0 0 10px rgba(120,220,240,.85));
+  stroke-dasharray:1400;stroke-dashoffset:1400;
+  animation:ecgRun 1.7s linear infinite;
+}
+@keyframes ecgRun{
+  0%{stroke-dashoffset:1400;opacity:0}
+  8%{opacity:1} 92%{opacity:1}
+  100%{stroke-dashoffset:-1400;opacity:0}
+}
+.intro-cue{font-size:clamp(11px,1.2vw,14px);letter-spacing:.34em;
+  color:rgba(210,230,240,.55);animation:cuePulse 2.1s ease-in-out infinite}
+.cue-dot{display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:#8FE3F0;margin-right:12px;vertical-align:middle;box-shadow:0 0 10px #8FE3F0}
+@keyframes cuePulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ---------- ② 主舞台：基态 = 归位（终态），运镜由 WAAPI 插值 ---------- */
+.intro-stage{
+  position:relative;width:min(92vw,1180px);height:min(46vh,420px);
+  display:flex;align-items:center;justify-content:center;
+  transform-style:preserve-3d;
+  /* 基态即终态：无动画时直接是清晰的定格画面 */
+  transform:none;opacity:1;filter:none;
+}
+/* 待机期：主舞台隐藏（心电图独占画面）；点击后由 JS 切到 running */
+#intro[data-phase="idle"] .intro-stage{visibility:hidden}
+
+/* ③ 直线：基态 = 完整展开 */
 .intro-axis{
   position:absolute;left:0;top:50%;width:82%;height:1px;
-  background:rgba(205,220,255,.52);
-  transform:scaleX(1);transform-origin:0% 50%;
+  background:rgba(205,220,255,.55);transform:scaleX(1);transform-origin:0% 50%;
 }
-.intro-axis i{
-  position:absolute;right:0;top:-7px;width:1px;height:15px;
-  background:rgba(205,220,255,.65);
-}
-/* 上下两层字：共用同一套排版，绝对定位到中线上/下 */
-.intro-row{
+.intro-axis i{position:absolute;right:0;top:-7px;width:1px;height:15px;
+  background:rgba(205,220,255,.7)}
+
+/* ④⑤⑥ 三层字：基态 = 完整彩色定格 */
+.intro-line{
   position:absolute;left:0;width:100%;
-  display:flex;align-items:center;justify-content:center;
-  white-space:nowrap;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap;
   font-family:"Helvetica Neue",Arial,sans-serif;
-  /* 视频里字母是中等字重、字形偏窄，不是超粗黑体 */
-  font-size:clamp(30px,6.0vw,96px);
-  font-weight:600;letter-spacing:.02em;
-  will-change:transform,opacity;
+  font-size:clamp(30px,6.0vw,96px);font-weight:600;letter-spacing:.02em;
 }
-/* 上层：字的垂直中心与直线重合（直线穿过字母腰部） */
-.intro-top{top:50%;transform:translateY(-50%)}
-/* 下层：上下镜像倒影，顶边贴直线、向下延伸 */
-.intro-bottom{top:50%;transform:scaleY(-1);opacity:.62;
-  filter:blur(.35px);mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
-  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 92%);}
-/* 每个字母：基态即"彩色实心"（视频定格态）。
-   若 JS 完全没执行（无头/后台节流），字也必须可见 —— 不能靠动画呈现内容。
-   动画只是把基态临时改成"空心轮廓"，再逐字填回颜色。 */
-.intro-row .ch{
-  display:inline-block;
-  color:#F2EFDF;
-  will-change:transform,opacity,color;
-}
-/* 彩色碎片：小方块，飞入后淡出 */
+.intro-outline{top:50%;transform:translateY(-50%);opacity:0}
+.intro-solid{top:50%;transform:translateY(-50%)}
+.intro-reflect{top:50%;transform:scaleY(-1);opacity:.62;filter:blur(.35px);
+  mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 92%)}
+.intro-line .ch{display:inline-block;will-change:transform,opacity,clip-path}
+.intro-outline .ch{color:transparent;-webkit-text-stroke:1.5px rgba(220,232,255,.9)}
+
+/* 彩色碎片：基态隐藏（纯装饰，不影响主体） */
 .intro-shards{position:absolute;inset:0;pointer-events:none}
-.intro-shards i{
-  position:absolute;width:clamp(9px,1.1vw,15px);height:clamp(9px,1.1vw,15px);
-  border-radius:2px;opacity:0;
-}
+.intro-shards i{position:absolute;width:clamp(9px,1vw,14px);height:clamp(9px,1vw,14px);
+  border-radius:2px;opacity:0}
+
 #introSkip{
   position:absolute;right:clamp(16px,3vw,44px);bottom:clamp(20px,4vh,44px);
-  background:none;border:1px solid rgba(210,224,250,.25);
-  color:rgba(210,224,250,.5);font:inherit;font-size:12px;letter-spacing:.12em;
-  padding:9px 18px;border-radius:999px;cursor:pointer;opacity:.8;
-  transition:opacity .2s;
-}
+  background:none;border:1px solid rgba(210,224,250,.22);
+  color:rgba(210,224,250,.45);font:inherit;font-size:12px;letter-spacing:.12em;
+  padding:9px 18px;border-radius:999px;cursor:pointer;opacity:.7;transition:opacity .25s}
 #introSkip:hover,#introSkip:focus-visible{opacity:1;
-  outline:2px solid rgba(210,224,250,.5);outline-offset:2px}
+  outline:2px solid rgba(210,224,250,.45);outline-offset:2px}
 @media (max-width:760px){
-  /* 窄屏：15 个字母必须完整放进视口，字号按视口宽度严格收 */
-  .intro-row{font-size:clamp(14px,5.6vw,30px);letter-spacing:0}
-  .intro-canvas{width:100vw;height:34vh}
+  .intro-line{font-size:clamp(14px,5.6vw,30px);letter-spacing:0}
+  .intro-stage{width:100vw;height:34vh}
   .intro-axis{width:94%}
 }
-@media (prefers-reduced-motion:reduce){#intro.intro-done{transition:none}}
+@media (prefers-reduced-motion:reduce){
+  .intro-ecg-sweep,.intro-cue{animation:none}
+  #intro.intro-done{transition:none}
+}
 </style>
 </head>
 <body>
 
 <!-- ============================================================
-     片头：AED Study Group —— 复刻参考视频（PPT 动画教程录屏）
-     逐帧看清后的真实结构：
-       · 纯黑画布
-       · 一条水平直线横穿画面，从左延伸，末端带小竖刻度
-       · 上层：一排逐字异色的实心大写字母（穿过直线腰部）
-       · 下层：同排字的上下镜像倒影，半透明、略暗
-       · 动画：直线先出 → 字母以空心轮廓从左往右逐字长出
-               → 颜色逐字填充 → 倒影同步 → 定格
-       · 少量彩色小方块飞入（"后退动画"碎片）
-     文字改为 AED Study Group。不复制任何抖音 UI。
+     片头（交互版时序）：
+       ① 待机：一条不停跳动/扫描的心电图，等待点击
+       ② 点击：心电图向右扫出 + 电影运镜（相机从左侧推入）
+       ③ 从最左端伸出一条水平直线，横穿字腰
+       ④ 线条逐字「勾勒」出字母边框（clip-path 逐字错峰）
+       ⑤ 彩色文字由下往上浮起、逐字填色
+       ⑥ 下层镜像倒影淡入、彩色碎片飞入、定格
+     文字：AED Study Group。纯黑画布，不复制抖音 UI。
      ============================================================ -->
 <div id="intro" aria-label="AED Study Group 片头">
-  <div class="intro-canvas">
-    <!-- 水平直线：穿字腰部，也是倒影分界线 -->
+  <!-- ① 待机心电图 -->
+  <div class="intro-ecg" id="introEcg">
+    <svg viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+      <path class="intro-ecg-base" id="introEcgBase"/>
+      <path class="intro-ecg-sweep" id="introEcgSweep"/>
+    </svg>
+    <div class="intro-cue"><span class="cue-dot"></span>点击任意处开始</div>
+  </div>
+
+  <!-- ②–⑥ 主舞台 -->
+  <div class="intro-stage" id="introStage">
     <div class="intro-axis" id="introAxis"><i></i></div>
-    <!-- 上层字 / 下层镜像倒影 -->
-    <div class="intro-row intro-top" id="introTop" aria-hidden="true"></div>
-    <div class="intro-row intro-bottom" id="introBottom" aria-hidden="true"></div>
-    <!-- 飞入碎片 -->
+    <div class="intro-line intro-outline" id="introOutline" aria-hidden="true"></div>
+    <div class="intro-line intro-solid"   id="introSolid"   aria-hidden="true"></div>
+    <div class="intro-line intro-reflect" id="introReflect" aria-hidden="true"></div>
     <div class="intro-shards" id="introShards" aria-hidden="true"></div>
   </div>
+
   <button id="introSkip" type="button" aria-label="跳过片头">跳过片头 →</button>
 </div>
 <div id="world" aria-hidden="true"></div>
@@ -4603,170 +4629,190 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   });
   showChrome();
 
-  /* ---------- 片头：AED Study Group（彩色字 + 镜像倒影） ----------
-     逐帧看清后的时序（592×1280 / 30fps / 10.5s）：
-       0–3.2s  PPT 编辑器预览（不属于片头动画，略过）
-       3.3s   切到纯黑放映画面
-       4.7s   只有一条水平直线 + 右端小刻度
-       5.7s   字母以【空心轮廓】从左往右逐字长出，上下两层同步
-       6.7–8.7s 轮廓逐渐填充成【逐字异色】，零散彩色方块飞入
-       9.8s   定格：上层彩色实心 + 下层半透明镜像倒影，直线穿腰
-     实测九色（HOLDOUMEN）：米白 青 蓝 深蓝 紫 黄 红 品红 青。
-     这里压缩成 6.4s 片头，rAF 连续插值 + 墙钟打点双保险。 */
+  /* ---------- 片头：交互版（心电图 → 点击 → 运镜 → 勾线 → 上浮填色） ----------
+     丝滑实现：所有入场动效由 Web Animations API（fill:none）在
+     "CSS 基态 = 完整定格画面"之上插值。动画不跑也不会黑屏。
+     时序（秒）：
+       0.00    待机：心电图循环跳动、呼吸提示，等待点击
+       点击    startIntro()
+       0.00    心电图向右扫出；相机从左侧后方推入（1.5s expo-out）
+       0.55    直线从最左端 scaleX 0→1（1.15s）
+       1.10    轮廓逐字 clip-path 勾勒（每字 +90ms）
+       2.10    彩色实心字由下 34px 上浮 + 逐字填色（每字 +90ms）
+       2.55    轮廓淡出、倒影淡入、碎片飞入
+       6.40    淡出进入正式演示
+     直达链接 / 减弱动效：跳过待机直接定格。 */
   (function initIntro() {
     var intro = document.getElementById('intro');
-    var top = document.getElementById('introTop');
-    var bottom = document.getElementById('introBottom');
+    var ecg = document.getElementById('introEcg');
+    var stage = document.getElementById('introStage');
     var axis = document.getElementById('introAxis');
+    var outline = document.getElementById('introOutline');
+    var solid = document.getElementById('introSolid');
+    var reflect = document.getElementById('introReflect');
     var shards = document.getElementById('introShards');
     var skip = document.getElementById('introSkip');
-    if (!intro || !top || !bottom) return;
+    if (!intro || !outline) return;
 
     var TEXT = 'AED Study Group';
-    /* 逐字异色：按参考片九色循环 */
     var COLORS = [
-      '#F2EFDF', // 米白
-      '#3FD9E6', // 青
-      '#3B82F6', // 蓝
-      '#2C4BCF', // 深蓝
-      '#8B5CF6', // 紫
-      '#F5D442', // 黄
-      '#F04444', // 红
-      '#E83FA8', // 品红
-      '#35D6C3'  // 青绿
+      '#F2EFDF','#3FD9E6','#3B82F6','#2C4BCF','#8B5CF6',
+      '#F5D442','#F04444','#E83FA8','#35D6C3'
     ];
     var chars = TEXT.split('');
-    var pairs = [];   // [上层span, 下层span]
-    [top, bottom].forEach(function (row) {
+
+    /* 三层字：轮廓 / 实心 / 倒影，实心与倒影带逐字颜色 */
+    [outline, solid, reflect].forEach(function (row) {
       var frag = document.createDocumentFragment();
       chars.forEach(function (c, i) {
         var el = document.createElement('span');
         el.className = 'ch';
         el.textContent = c === ' ' ? '\u00A0' : c;
-        el.setAttribute('data-color', COLORS[i % COLORS.length]);
+        if (row === solid || row === reflect) el.style.color = COLORS[i % COLORS.length];
         frag.appendChild(el);
       });
       row.appendChild(frag);
     });
-    var topCh = top.querySelectorAll('.ch');
-    var botCh = bottom.querySelectorAll('.ch');
-    for (var i = 0; i < topCh.length; i++) pairs.push([topCh[i], botCh[i]]);
-    var total = pairs.length;
+    var outCh = outline.querySelectorAll('.ch');
+    var solCh = solid.querySelectorAll('.ch');
+    var refCh = reflect.querySelectorAll('.ch');
+    var total = solCh.length;
 
-    /* 彩色碎片：随机位置的小方块 */
     var shardEls = [];
     if (shards) {
       for (var k = 0; k < 12; k++) {
-        var s = document.createElement('i');
-        s.style.background = COLORS[k % COLORS.length];
-        s.style.left = (8 + Math.random() * 84).toFixed(1) + '%';
-        s.style.top = (18 + Math.random() * 66).toFixed(1) + '%';
-        shards.appendChild(s);
-        shardEls.push(s);
+        var sd = document.createElement('i');
+        sd.style.background = COLORS[k % COLORS.length];
+        sd.style.left = (10 + Math.random() * 80).toFixed(1) + '%';
+        sd.style.top = (16 + Math.random() * 68).toFixed(1) + '%';
+        shards.appendChild(sd);
+        shardEls.push(sd);
       }
     }
 
-    var finished = false;
+    /* 心电图 P-QRS-T 波形 */
+    var ecgD = 'M0 60 H180 l14 -2 8 6 10 -22 9 40 10 -54 11 34 9 -4 H340 '
+             + 'l16 -2 9 5 10 -20 9 38 10 -50 11 32 9 -3 H520 '
+             + 'l14 -2 8 6 10 -22 9 40 10 -54 11 34 9 -4 H700 '
+             + 'l16 -2 9 5 10 -20 9 38 10 -50 11 32 9 -3 H900 '
+             + 'l14 -2 8 6 10 -22 9 40 10 -54 11 34 9 -4 H1200';
+    ['introEcgBase', 'introEcgSweep'].forEach(function (id) {
+      var p = document.getElementById(id);
+      if (p) p.setAttribute('d', ecgD);
+    });
+
+    var EASE = 'cubic-bezier(.16,1,.3,1)';
+    var finished = false, started = false;
+    /* 待机期只显示心电图；直达/减弱动效时直接进定格 */
+    intro.setAttribute('data-phase', 'idle');
+
     function endIntro() {
       if (finished) return;
       finished = true;
       intro.classList.add('intro-done');
       setTimeout(function () {
         if (intro.parentNode) intro.parentNode.removeChild(intro);
-      }, 750);
+      }, 850);
     }
-    if (skip) skip.addEventListener('click', endIntro);
+    /* WAAPI：fill:none，动画结束自动回到 CSS 基态（=终态）。
+       返回动画对象，供 startIntro 用 finished 事件驱动收尾。 */
+    function anim(el, frames, opt) {
+      if (!el || !el.animate) return null;
+      try { return el.animate(frames, Object.assign({ fill: 'none', easing: EASE }, opt)); }
+      catch (e) { return null; }
+    }
+
+    function startIntro() {
+      if (started || finished) return;
+      started = true;
+      intro.setAttribute('data-phase', 'running');
+      /* ① 心电图向右扫出 */
+      if (ecg) {
+        anim(ecg, [
+          { transform: 'translateX(0) scale(1)', opacity: 1 },
+          { transform: 'translateX(58%) scale(1.35)', opacity: 0 }
+        ], { duration: 1100, delay: 0 });
+        setTimeout(function () { if (ecg && ecg.parentNode) ecg.style.display = 'none'; }, 1200);
+      }
+      /* ② 电影运镜：从左后方推入、虚焦到清晰。
+         opacity 起始不低于 .35 —— 即使动画被冻结，画面也不会全黑。 */
+      if (stage) anim(stage, [
+        { transform: 'translate3d(-16%,0,-260px) rotateY(14deg) scale(.92)',
+          opacity: .35, filter: 'blur(6px)' },
+        { opacity: 1, offset: .35 },
+        { transform: 'translate3d(0,0,0) rotateY(0) scale(1)',
+          opacity: 1, filter: 'blur(0)' }
+      ], { duration: 1500, delay: 0 });
+      /* ③ 直线从最左端伸出 */
+      if (axis) anim(axis, [
+        { transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }
+      ], { duration: 1150, delay: 550 });
+      /* ④ 轮廓逐字勾勒 */
+      for (var i = 0; i < total; i++) {
+        anim(outCh[i], [
+          { clipPath: 'inset(0 100% 0 0)' },
+          { clipPath: 'inset(0 -12% 0 0)' }
+        ], { duration: 850, delay: 1100 + i * 90 });
+      }
+      if (outline) anim(outline, [
+        { opacity: 1 }, { opacity: 1, offset: .78 }, { opacity: 0 }
+      ], { duration: 2600, delay: 1100 });
+      /* ⑤ 彩色实心字由下上浮（逐字）。
+         from 帧保留 opacity:1，只做位移 —— 动画冻结时字仍在，只是偏下一点。 */
+      var lastFloat = null;
+      for (var j = 0; j < total; j++) {
+        lastFloat = anim(solCh[j], [
+          { transform: 'translate3d(0,34px,0) scale(.96)', opacity: 1 },
+          { transform: 'translate3d(0,0,0) scale(1)', opacity: 1 }
+        ], { duration: 950, delay: 2100 + j * 90 });
+        anim(refCh[j], [
+          { transform: 'translate3d(0,34px,0)', opacity: .62 },
+          { transform: 'translate3d(0,0,0)', opacity: .62 }
+        ], { duration: 950, delay: 2100 + j * 90 });
+      }
+      if (reflect) anim(reflect, [
+        { opacity: 0 }, { opacity: .62 }
+      ], { duration: 900, delay: 2300 });
+      /* ⑥ 碎片飞入 */
+      shardEls.forEach(function (sd, k) {
+        anim(sd, [
+          { opacity: 0, transform: 'translate3d(0,26px,0) rotate(35deg)' },
+          { opacity: .85, transform: 'translate3d(0,0,0) rotate(0)', offset: .35 },
+          { opacity: 0, transform: 'translate3d(0,-18px,0) rotate(-15deg)' }
+        ], { duration: 1500, delay: 2300 + k * 60 });
+      });
+      /* 收尾：以"最后一个逐字动画"的 finished 事件为准，再停留 1.1s 定格。
+         这样时序跟着实际动画走，浏览器快慢都不会提前切场或拖沓。
+         setTimeout 仅作兜底（无头/计时器被冻结时仍能退出）。 */
+      if (lastFloat && lastFloat.finished && lastFloat.finished.then) {
+        lastFloat.finished.then(function () { setTimeout(endIntro, 1100); },
+                                function () { setTimeout(endIntro, 1100); });
+      }
+      setTimeout(endIntro, 6400);   /* 兜底：任何情况下都能退出片头 */
+    }
+
+    if (skip) skip.addEventListener('click', function (e) {
+      e.stopPropagation(); endIntro();
+    });
     intro.addEventListener('click', function (e) {
-      if (e.target !== skip && !skip.contains(e.target)) endIntro();
+      if (e.target !== skip && !skip.contains(e.target)) startIntro();
     }, { passive: true });
     document.addEventListener('keydown', function onKey(e) {
-      if (!finished) {
-        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault(); e.stopPropagation(); endIntro();
-        }
-      } else {
-        document.removeEventListener('keydown', onKey);
+      if (finished) { document.removeEventListener('keydown', onKey); return; }
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault(); e.stopPropagation();
+        if (e.key === 'Escape') endIntro(); else startIntro();
       }
     }, true);
 
     if (/^#\d+$/.test(location.hash || '') || reduce) {
-      applyState(1);
-      setTimeout(endIntro, reduce ? 1600 : 0);
-      return;
+      started = true;
+      intro.setAttribute('data-phase', 'running');
+      if (ecg) ecg.style.display = 'none';
+      /* 直达链接：同步结束，不依赖被虚拟时钟冻结的 setTimeout */
+      if (reduce) setTimeout(endIntro, 1600);
+      else endIntro();
     }
-
-    var DUR = 6400, T0 = null, raf = null, lastTs = null;
-    function easeOut(x) { return 1 - Math.pow(1 - x, 3); }
-    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
-
-    /* applyState(p)：p=0 只有直线；p→1 字母轮廓长出、填色、倒影、碎片 */
-    function applyState(p) {
-      p = clamp01(p);
-      var e = easeOut(p);
-      /* ① 直线从左展开（左对齐，右端刻度随宽度到位） */
-      axis.style.transform = 'scaleX(' + clamp01(p / 0.18).toFixed(3) + ')';
-      /* ② 字母从左往右逐个出现：轮廓显现 → 颜色填充 */
-      var grow = clamp01((p - 0.14) / 0.72);
-      var fill = clamp01((p - 0.46) / 0.48);
-      for (var j = 0; j < total; j++) {
-        var appear = clamp01(grow * (total + 2) - j);
-        var colorK = clamp01(fill * (total + 3) - j);
-        var pair = pairs[j];
-        for (var q = 0; q < 2; q++) {
-          var el = pair[q];
-          el.style.opacity = appear.toFixed(3);
-          el.style.transform = 'translate3d(0,' + ((1 - appear) * 20).toFixed(1) + 'px,0)' +
-            ' scale(' + (0.86 + 0.14 * appear).toFixed(3) + ')';
-          if (colorK > 0.02) {
-            /* 已填充：擦掉描边 */
-            el.style.color = el.getAttribute('data-color');
-            el.style.webkitTextStroke = (1.5 * (1 - colorK)).toFixed(2) + 'px ' +
-              'rgba(220,232,255,' + (0.85 * (1 - colorK)).toFixed(2) + ')';
-          } else {
-            /* 未填充：空心轮廓（显式写 stroke，不依赖 CSS 基态） */
-            el.style.color = 'transparent';
-            el.style.webkitTextStroke = '1.5px rgba(220,232,255,.85)';
-          }
-        }
-      }
-      /* ③ 下层倒影整体稍晚淡入 */
-      bottom.style.opacity = (0.62 * clamp01((p - 0.28) / 0.4)).toFixed(3);
-      /* ④ 彩色碎片：中段飞入、后段淡出 */
-      shardEls.forEach(function (s, i) {
-        var a = clamp01((p - 0.38 - i * 0.012) / 0.16);
-        var b = 1 - clamp01((p - 0.78) / 0.2);
-        var v = a * b;
-        s.style.opacity = (v * 0.9).toFixed(3);
-        s.style.transform = 'translate3d(' + ((1 - a) * 60).toFixed(0) + 'px,' +
-          ((1 - a) * -30).toFixed(0) + 'px,0) rotate(' + ((1 - a) * 90).toFixed(0) + 'deg)';
-      });
-    }
-
-    /* 墙钟打点：从 0.10 起（不含 p=0，否则会覆盖基态的完整定格画面）。
-       最后一项 p=1 时顺带结束片头，避免 setTimeout(endIntro) 被冻结导致卡住。 */
-    [0.10, 0.24, 0.40, 0.56, 0.72, 0.88, 1].forEach(function (v, i) {
-      setTimeout(function () {
-        if (finished) return;
-        applyState(v);
-        if (v >= 1) endIntro();
-      }, (i + 1) * 800);
-    });
-    var rafFrames = 0;
-    function frame(ts) {
-      rafFrames++;
-      if (T0 === null) T0 = ts;
-      var ms = ts - T0;
-      var fresh = (lastTs === null || ts - lastTs < 120);
-      lastTs = ts;
-      /* 跳过第 1 帧：首帧保持基态（完整定格），从第 2 帧起才写中间态，
-         避免 rAF 一启动就把画面收成"只有直线"而计时器又被冻结。 */
-      if (fresh && rafFrames > 1) applyState(ms / DUR);
-      if (ms < DUR) raf = requestAnimationFrame(frame);
-    }
-    applyState(1);
-    raf = requestAnimationFrame(frame);
-    setTimeout(endIntro, DUR + 350);
-    /* 兜底：计时器全被冻结时，rAF 帧数 < 3，保持基态（完整定格）不覆盖 */
   })();
 
   /* ---------- URL 定位：index.html#7 直达第 7 页，便于分享与验收 ---------- */
