@@ -2720,77 +2720,81 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   transition:color 1.2s ease,letter-spacing 1.2s ease;
 }
 /* ============================================================
-   34. 片头：AED Study Group —— 严格复刻参考视频的「彩色字母」动画
+   34. 片头：AED Study Group（彩色字 + 镜像倒影 + 穿腰直线）
    ------------------------------------------------------------
-   逐帧彩色还原后确认（此前两版都误判，务必以此为准）：
-     · 0–3.17s 浅灰白画面，一排【彩色】紧凑字，静止
-     · 3.33s 硬切黑场（无过渡）
-     · 3.5–9.8s 黑场里字距拉开、整体左移，字母【从左到右逐组弹入】，
-       每个字母是【六色渐变填充】，色段随字母出现而铺开
-     · 一条水平直线由短变长
-     · 10.3s 切走
-   实测六段色（BGR→RGB 换算后，f295）：
-     冷青灰 #C3C2AF → 金黄 #56C4E4 → 玫粉 #A092D6 →
-     天蓝 #CFBA9C → 紫罗兰 #DA7EAA → 琥珀 #64B6DF
-   饱和度均值 124（高饱和，不是单色白字）——这是"惊艳"的核心。
-   画面本身极干净：没有光晕/网格/描边/副标题，颜色只给字母。
-
-   动画由 rAF 连续插值 + 墙钟 setTimeout 打点双保险驱动，
-   CSS 基态即亮场完整可见，任何中断都不黑屏。
+   逐帧看清参考视频后的还原（前五版全错，以此为准）：
+     纯黑画布 / 一条水平直线横穿字腰 / 上层逐字异色实心字 /
+     下层上下镜像倒影 / 字母先空心轮廓逐字长出再填色 / 彩色碎片飞入。
+   颜色实测（HOLDOUMEN 定格帧）：米白 青 蓝 深蓝 紫 黄 红 品红 青。
    ============================================================ */
 #intro{
   position:fixed;inset:0;z-index:60;overflow:hidden;
-  background:#F5F5F7;
+  background:#000;
   display:flex;align-items:center;justify-content:center;
 }
-#intro.intro-dark{background:#000000}
-#intro.intro-done{opacity:0;pointer-events:none;transition:opacity .6s ease-out}
-.intro-frame{
-  position:relative;width:min(88vw,1180px);
-  display:flex;flex-direction:column;align-items:center;
+#intro.intro-done{opacity:0;pointer-events:none;transition:opacity .7s ease-out}
+.intro-canvas{
+  position:relative;
+  width:min(92vw,1180px);
+  height:min(46vh,420px);
+  display:flex;align-items:center;justify-content:center;
 }
-.intro-line{
-  width:100%;height:1px;background:#1D1D1F;
-  transform-origin:50% 50%;
+/* 水平直线：穿过字腰，也是倒影分界线。
+   视频里线从画面左缘外延伸进来、右端止于字尾附近，故左对齐、宽度略大于字排。 */
+.intro-axis{
+  position:absolute;left:0;top:50%;width:82%;height:1px;
+  background:rgba(205,220,255,.52);
+  transform:scaleX(1);transform-origin:0% 50%;
 }
-.intro-word{
-  margin-top:clamp(18px,3.4vh,44px);
-  display:flex;align-items:baseline;justify-content:center;
+.intro-axis i{
+  position:absolute;right:0;top:-7px;width:1px;height:15px;
+  background:rgba(205,220,255,.65);
+}
+/* 上下两层字：共用同一套排版，绝对定位到中线上/下 */
+.intro-row{
+  position:absolute;left:0;width:100%;
+  display:flex;align-items:center;justify-content:center;
   white-space:nowrap;
   font-family:"Helvetica Neue",Arial,sans-serif;
-  /* 视频里字母很大（约占画面高度 1/5），这里给足冲击力 */
-  font-size:clamp(38px,7.6vw,124px);
-  font-weight:800;letter-spacing:.02em;
-  transform-origin:0% 50%;
-}
-/* 每个字母独占一个色段，合成整排的彩虹渐变（视频实测六段色） */
-.intro-word .ch{
-  display:inline-block;
-  -webkit-background-clip:text;background-clip:text;
-  -webkit-text-fill-color:transparent;color:transparent;
+  /* 视频里字母是中等字重、字形偏窄，不是超粗黑体 */
+  font-size:clamp(30px,6.0vw,96px);
+  font-weight:600;letter-spacing:.02em;
   will-change:transform,opacity;
 }
-/* 黑场：给彩字一层极淡的同色辉光（视频里高饱和彩字在纯黑上有光感，
-   实测 f295 字边缘有明显溢光），不是加装饰，是还原原片的材质 */
-#intro.intro-dark .intro-word .ch{
-  filter:drop-shadow(0 0 14px rgba(160,190,255,.28))
-         drop-shadow(0 0 34px rgba(190,140,230,.18));
+/* 上层：字的垂直中心与直线重合（直线穿过字母腰部） */
+.intro-top{top:50%;transform:translateY(-50%)}
+/* 下层：上下镜像倒影，顶边贴直线、向下延伸 */
+.intro-bottom{top:50%;transform:scaleY(-1);opacity:.62;
+  filter:blur(.35px);mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 92%);}
+/* 每个字母：基态即"彩色实心"（视频定格态）。
+   若 JS 完全没执行（无头/后台节流），字也必须可见 —— 不能靠动画呈现内容。
+   动画只是把基态临时改成"空心轮廓"，再逐字填回颜色。 */
+.intro-row .ch{
+  display:inline-block;
+  color:#F2EFDF;
+  will-change:transform,opacity,color;
 }
-#intro.intro-dark .intro-line{background:#E4E9F7}
+/* 彩色碎片：小方块，飞入后淡出 */
+.intro-shards{position:absolute;inset:0;pointer-events:none}
+.intro-shards i{
+  position:absolute;width:clamp(9px,1.1vw,15px);height:clamp(9px,1.1vw,15px);
+  border-radius:2px;opacity:0;
+}
 #introSkip{
   position:absolute;right:clamp(16px,3vw,44px);bottom:clamp(20px,4vh,44px);
-  background:none;border:1px solid currentColor;color:rgba(29,29,31,.45);
-  font:inherit;font-size:12px;letter-spacing:.12em;
-  padding:9px 18px;border-radius:999px;cursor:pointer;opacity:.75;
+  background:none;border:1px solid rgba(210,224,250,.25);
+  color:rgba(210,224,250,.5);font:inherit;font-size:12px;letter-spacing:.12em;
+  padding:9px 18px;border-radius:999px;cursor:pointer;opacity:.8;
   transition:opacity .2s;
 }
-#intro.intro-dark #introSkip{color:rgba(228,233,247,.45)}
 #introSkip:hover,#introSkip:focus-visible{opacity:1;
-  outline:2px solid currentColor;outline-offset:2px}
+  outline:2px solid rgba(210,224,250,.5);outline-offset:2px}
 @media (max-width:760px){
-  /* 窄屏用更大相对字号，让片头也有冲击力（桌面用 vw，手机需单独抬） */
-  .intro-word{font-size:clamp(30px,9.4vw,58px)}
-  .intro-frame{width:94vw}
+  /* 窄屏：15 个字母必须完整放进视口，字号按视口宽度严格收 */
+  .intro-row{font-size:clamp(14px,5.6vw,30px);letter-spacing:0}
+  .intro-canvas{width:100vw;height:34vh}
+  .intro-axis{width:94%}
 }
 @media (prefers-reduced-motion:reduce){#intro.intro-done{transition:none}}
 </style>
@@ -2798,16 +2802,26 @@ body[data-form="form-card"] #scene::after{opacity:.22}
 <body>
 
 <!-- ============================================================
-     片头：严格复刻参考视频（抖音 PPT 动画教程录屏）的形式。
-     逐帧确认：浅色画面 → 硬切黑场 → 一排大写字母字距拉开、整体偏左、
-     从左到右逐字「后退式」进入 → 定格；配一条水平直线。
-     文字改为 AED Study Group。只取动画形式，不复制任何抖音 UI，
-     也不添加视频里没有的光晕/网格/渐变/副标题。
+     片头：AED Study Group —— 复刻参考视频（PPT 动画教程录屏）
+     逐帧看清后的真实结构：
+       · 纯黑画布
+       · 一条水平直线横穿画面，从左延伸，末端带小竖刻度
+       · 上层：一排逐字异色的实心大写字母（穿过直线腰部）
+       · 下层：同排字的上下镜像倒影，半透明、略暗
+       · 动画：直线先出 → 字母以空心轮廓从左往右逐字长出
+               → 颜色逐字填充 → 倒影同步 → 定格
+       · 少量彩色小方块飞入（"后退动画"碎片）
+     文字改为 AED Study Group。不复制任何抖音 UI。
      ============================================================ -->
 <div id="intro" aria-label="AED Study Group 片头">
-  <div class="intro-frame">
-    <div class="intro-line" id="introLine"></div>
-    <div class="intro-word" id="introWord" aria-hidden="true"></div>
+  <div class="intro-canvas">
+    <!-- 水平直线：穿字腰部，也是倒影分界线 -->
+    <div class="intro-axis" id="introAxis"><i></i></div>
+    <!-- 上层字 / 下层镜像倒影 -->
+    <div class="intro-row intro-top" id="introTop" aria-hidden="true"></div>
+    <div class="intro-row intro-bottom" id="introBottom" aria-hidden="true"></div>
+    <!-- 飞入碎片 -->
+    <div class="intro-shards" id="introShards" aria-hidden="true"></div>
   </div>
   <button id="introSkip" type="button" aria-label="跳过片头">跳过片头 →</button>
 </div>
@@ -4589,56 +4603,68 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   });
   showChrome();
 
-  /* ---------- 片头：AED Study Group（彩色字母逐组弹入） ----------
-     逐帧彩色还原确认：惊艳来自【六色渐变字母 × 逐组弹入 × 亮场→黑场反差
-     × 字距拉开】，不是单色淡入。实测六段色（f295）饱和度均值 124。
-     时序：0–3.17s 亮场静止 → 3.33s 硬切黑 → 3.5–9.8s 逐组弹入并拉开 → 10.3s 切走。
-     rAF 连续插值 + 墙钟 setTimeout 打点双保险（虚拟时钟会冻结 rAF）。 */
+  /* ---------- 片头：AED Study Group（彩色字 + 镜像倒影） ----------
+     逐帧看清后的时序（592×1280 / 30fps / 10.5s）：
+       0–3.2s  PPT 编辑器预览（不属于片头动画，略过）
+       3.3s   切到纯黑放映画面
+       4.7s   只有一条水平直线 + 右端小刻度
+       5.7s   字母以【空心轮廓】从左往右逐字长出，上下两层同步
+       6.7–8.7s 轮廓逐渐填充成【逐字异色】，零散彩色方块飞入
+       9.8s   定格：上层彩色实心 + 下层半透明镜像倒影，直线穿腰
+     实测九色（HOLDOUMEN）：米白 青 蓝 深蓝 紫 黄 红 品红 青。
+     这里压缩成 6.4s 片头，rAF 连续插值 + 墙钟打点双保险。 */
   (function initIntro() {
     var intro = document.getElementById('intro');
-    var word = document.getElementById('introWord');
-    var line = document.getElementById('introLine');
+    var top = document.getElementById('introTop');
+    var bottom = document.getElementById('introBottom');
+    var axis = document.getElementById('introAxis');
+    var shards = document.getElementById('introShards');
     var skip = document.getElementById('introSkip');
-    if (!intro || !word) return;
+    if (!intro || !top || !bottom) return;
 
     var TEXT = 'AED Study Group';
-    /* 六段实测色（f295，BGR→RGB）并提高饱和度：
-       实测渐变经 background-clip:text 渲染后饱和度只剩约 63，
-       而视频是 124 —— 所以这里预先「过饱和」补偿，落到屏幕才够艳。 */
-    var STOPS = [
-      [168,206,208],  // 冷青
-      [ 62,208,255],  // 明黄
-      [255,110,170],  // 玫粉
-      [ 96,186,255],  // 天蓝
-      [186, 92,255],  // 紫罗兰
-      [255,196, 68]   // 琥珀
+    /* 逐字异色：按参考片九色循环 */
+    var COLORS = [
+      '#F2EFDF', // 米白
+      '#3FD9E6', // 青
+      '#3B82F6', // 蓝
+      '#2C4BCF', // 深蓝
+      '#8B5CF6', // 紫
+      '#F5D442', // 黄
+      '#F04444', // 红
+      '#E83FA8', // 品红
+      '#35D6C3'  // 青绿
     ];
-    function lerpColor(t) {
-      t = Math.max(0, Math.min(1, t)) * (STOPS.length - 1);
-      var i = Math.min(STOPS.length - 2, Math.floor(t)), f = t - i;
-      var a = STOPS[i], b = STOPS[i + 1];
-      return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * f) + ',' +
-                      Math.round(a[1] + (b[1] - a[1]) * f) + ',' +
-                      Math.round(a[2] + (b[2] - a[2]) * f) + ')';
-    }
-
     var chars = TEXT.split('');
-    var spans = [];
-    var frag = document.createDocumentFragment();
-    chars.forEach(function (c, i) {
-      var el = document.createElement('span');
-      el.className = 'ch';
-      el.textContent = c === ' ' ? '\u00A0' : c;
-      var t0 = i / chars.length, t1 = (i + 1) / chars.length;
-      /* 单字内也做一段斜向渐变，让每个字母自身有明暗/色相层次，
-         而不是一整块纯色（视频里字母内部就有颜色过渡）。 */
-      el.style.backgroundImage = 'linear-gradient(115deg,' +
-        lerpColor(t0) + ' 0%,' + lerpColor(t1) + ' 100%)';
-      frag.appendChild(el);
-      spans.push(el);
+    var pairs = [];   // [上层span, 下层span]
+    [top, bottom].forEach(function (row) {
+      var frag = document.createDocumentFragment();
+      chars.forEach(function (c, i) {
+        var el = document.createElement('span');
+        el.className = 'ch';
+        el.textContent = c === ' ' ? '\u00A0' : c;
+        el.setAttribute('data-color', COLORS[i % COLORS.length]);
+        frag.appendChild(el);
+      });
+      row.appendChild(frag);
     });
-    word.appendChild(frag);
-    var total = spans.length;
+    var topCh = top.querySelectorAll('.ch');
+    var botCh = bottom.querySelectorAll('.ch');
+    for (var i = 0; i < topCh.length; i++) pairs.push([topCh[i], botCh[i]]);
+    var total = pairs.length;
+
+    /* 彩色碎片：随机位置的小方块 */
+    var shardEls = [];
+    if (shards) {
+      for (var k = 0; k < 12; k++) {
+        var s = document.createElement('i');
+        s.style.background = COLORS[k % COLORS.length];
+        s.style.left = (8 + Math.random() * 84).toFixed(1) + '%';
+        s.style.top = (18 + Math.random() * 66).toFixed(1) + '%';
+        shards.appendChild(s);
+        shardEls.push(s);
+      }
+    }
 
     var finished = false;
     function endIntro() {
@@ -4647,7 +4673,7 @@ body[data-form="form-card"] #scene::after{opacity:.22}
       intro.classList.add('intro-done');
       setTimeout(function () {
         if (intro.parentNode) intro.parentNode.removeChild(intro);
-      }, 700);
+      }, 750);
     }
     if (skip) skip.addEventListener('click', endIntro);
     intro.addEventListener('click', function (e) {
@@ -4664,65 +4690,83 @@ body[data-form="form-card"] #scene::after{opacity:.22}
     }, true);
 
     if (/^#\d+$/.test(location.hash || '') || reduce) {
-      setTimeout(endIntro, reduce ? 1200 : 0);
+      applyState(1);
+      setTimeout(endIntro, reduce ? 1600 : 0);
       return;
     }
 
-    var DUR = 10300, CUT = 3330, T0 = null, raf = null, lastTs = null;
+    var DUR = 6400, T0 = null, raf = null, lastTs = null;
     function easeOut(x) { return 1 - Math.pow(1 - x, 3); }
-    /* 过冲缓动：弹入先放大再落定，比线性淡入有力量 */
-    function overshoot(k) {
-      if (k >= 1) return 1;
-      return 1 - Math.pow(1 - k, 3) * Math.cos(k * Math.PI * 1.4);
-    }
+    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 
-    function applyState(p, dark) {
-      if (dark) intro.classList.add('intro-dark');
+    /* applyState(p)：p=0 只有直线；p→1 字母轮廓长出、填色、倒影、碎片 */
+    function applyState(p) {
+      p = clamp01(p);
       var e = easeOut(p);
-      /* 字距拉开但控制幅度：字号放大后若仍 .34em 会撑出视口 */
-      word.style.letterSpacing = (0.02 + 0.16 * e).toFixed(3) + 'em';
-      word.style.transform = 'translateX(' + (-7 * e).toFixed(2) + '%) scale(' +
-        (1.06 - 0.06 * e).toFixed(3) + ')';
-      line.style.transform = 'scaleX(' + (0.30 + 0.70 * e).toFixed(3) + ')';
-      var reveal = dark ? Math.min(1, p * 1.18) : 1;
-      for (var i = 0; i < total; i++) {
-        var k = Math.max(0, Math.min(1, reveal * (total + 3) - i));
-        var s = overshoot(k);
-        var el = spans[i];
-        el.style.opacity = k.toFixed(3);
-        el.style.transform = 'translate3d(0,' + ((1 - k) * 26).toFixed(1) + 'px,0)' +
-          ' scale(' + (0.72 + 0.28 * s).toFixed(3) + ')';
+      /* ① 直线从左展开（左对齐，右端刻度随宽度到位） */
+      axis.style.transform = 'scaleX(' + clamp01(p / 0.18).toFixed(3) + ')';
+      /* ② 字母从左往右逐个出现：轮廓显现 → 颜色填充 */
+      var grow = clamp01((p - 0.14) / 0.72);
+      var fill = clamp01((p - 0.46) / 0.48);
+      for (var j = 0; j < total; j++) {
+        var appear = clamp01(grow * (total + 2) - j);
+        var colorK = clamp01(fill * (total + 3) - j);
+        var pair = pairs[j];
+        for (var q = 0; q < 2; q++) {
+          var el = pair[q];
+          el.style.opacity = appear.toFixed(3);
+          el.style.transform = 'translate3d(0,' + ((1 - appear) * 20).toFixed(1) + 'px,0)' +
+            ' scale(' + (0.86 + 0.14 * appear).toFixed(3) + ')';
+          if (colorK > 0.02) {
+            /* 已填充：擦掉描边 */
+            el.style.color = el.getAttribute('data-color');
+            el.style.webkitTextStroke = (1.5 * (1 - colorK)).toFixed(2) + 'px ' +
+              'rgba(220,232,255,' + (0.85 * (1 - colorK)).toFixed(2) + ')';
+          } else {
+            /* 未填充：空心轮廓（显式写 stroke，不依赖 CSS 基态） */
+            el.style.color = 'transparent';
+            el.style.webkitTextStroke = '1.5px rgba(220,232,255,.85)';
+          }
+        }
       }
+      /* ③ 下层倒影整体稍晚淡入 */
+      bottom.style.opacity = (0.62 * clamp01((p - 0.28) / 0.4)).toFixed(3);
+      /* ④ 彩色碎片：中段飞入、后段淡出 */
+      shardEls.forEach(function (s, i) {
+        var a = clamp01((p - 0.38 - i * 0.012) / 0.16);
+        var b = 1 - clamp01((p - 0.78) / 0.2);
+        var v = a * b;
+        s.style.opacity = (v * 0.9).toFixed(3);
+        s.style.transform = 'translate3d(' + ((1 - a) * 60).toFixed(0) + 'px,' +
+          ((1 - a) * -30).toFixed(0) + 'px,0) rotate(' + ((1 - a) * 90).toFixed(0) + 'deg)';
+      });
     }
 
-    /* 墙钟打点：保证每个阶段一定发生（虚拟时钟冻结 rAF 时也不丢） */
-    [ { at: 0,    p: 0,    d: false },
-      { at: 3330, p: 0,    d: true  },
-      { at: 3900, p: 0.10, d: true  },
-      { at: 5000, p: 0.32, d: true  },
-      { at: 6200, p: 0.55, d: true  },
-      { at: 7400, p: 0.76, d: true  },
-      { at: 8600, p: 0.94, d: true  },
-      { at: 9700, p: 1,    d: true  }
-    ].forEach(function (st) {
-      setTimeout(function () { if (!finished) applyState(st.p, st.d); }, st.at);
+    /* 墙钟打点：从 0.10 起（不含 p=0，否则会覆盖基态的完整定格画面）。
+       最后一项 p=1 时顺带结束片头，避免 setTimeout(endIntro) 被冻结导致卡住。 */
+    [0.10, 0.24, 0.40, 0.56, 0.72, 0.88, 1].forEach(function (v, i) {
+      setTimeout(function () {
+        if (finished) return;
+        applyState(v);
+        if (v >= 1) endIntro();
+      }, (i + 1) * 800);
     });
-
-    /* rAF：帧间隔正常时连续插值，被节流则不覆盖打点值 */
+    var rafFrames = 0;
     function frame(ts) {
+      rafFrames++;
       if (T0 === null) T0 = ts;
       var ms = ts - T0;
       var fresh = (lastTs === null || ts - lastTs < 120);
       lastTs = ts;
-      if (fresh) {
-        if (ms < CUT) applyState(0, false);
-        else applyState(Math.min(1, (ms - CUT) / 6100), true);
-      }
+      /* 跳过第 1 帧：首帧保持基态（完整定格），从第 2 帧起才写中间态，
+         避免 rAF 一启动就把画面收成"只有直线"而计时器又被冻结。 */
+      if (fresh && rafFrames > 1) applyState(ms / DUR);
       if (ms < DUR) raf = requestAnimationFrame(frame);
     }
-    applyState(0, false);
+    applyState(1);
     raf = requestAnimationFrame(frame);
-    setTimeout(endIntro, DUR + 400);
+    setTimeout(endIntro, DUR + 350);
+    /* 兜底：计时器全被冻结时，rAF 帧数 < 3，保持基态（完整定格）不覆盖 */
   })();
 
   /* ---------- URL 定位：index.html#7 直达第 7 页，便于分享与验收 ---------- */
