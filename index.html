@@ -2787,17 +2787,20 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   mask-image:radial-gradient(ellipse 72% 78% at 50% 50%,#000 30%,transparent 100%);
   -webkit-mask-image:radial-gradient(ellipse 72% 78% at 50% 50%,#000 30%,transparent 100%);
 }
-/* 心跳时的整屏微光脉冲 */
+/* 心跳时的整屏微光脉冲：更真实的心跳节奏 */
 .ecg-pulse{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:52vmax;height:52vmax;border-radius:50%;
-  background:radial-gradient(circle,rgba(60,220,210,.13) 0%,transparent 62%);
+  background:radial-gradient(circle,rgba(60,220,210,.18) 0%,transparent 62%);
   animation:ecgBeat 1.15s ease-out infinite;
 }
 @keyframes ecgBeat{
   0%{opacity:0;transform:translate(-50%,-50%) scale(.82)}
-  12%{opacity:.9} 45%{opacity:0;transform:translate(-50%,-50%) scale(1.12)}
-  100%{opacity:0}
+  10%{opacity:.85;transform:translate(-50%,-50%) scale(.95)}
+  18%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
+  28%{opacity:.9;transform:translate(-50%,-50%) scale(1.02)}
+  42%{opacity:.3;transform:translate(-50%,-50%) scale(.98)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(.82)}
 }
 .intro-ecg svg{
   position:relative;width:min(88vw,1160px);height:clamp(150px,26vh,260px);overflow:visible;
@@ -2805,19 +2808,27 @@ body[data-form="form-card"] #scene::after{opacity:.22}
 }
 .intro-ecg path{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .ecg-trace-base{stroke:rgba(80,205,205,.20);stroke-width:1.4}
-/* 主波形：常亮、带缓慢明暗呼吸 */
+/* 主波形：常亮、带缓慢明暗呼吸 — 模拟呼吸节奏的缓慢明暗 */
 .ecg-trace{stroke:#5FE0D2;stroke-width:2.6;
   filter:drop-shadow(0 0 6px rgba(95,224,210,.75));
-  animation:ecgGlow 1.15s ease-in-out infinite}
-@keyframes ecgGlow{0%,100%{opacity:.72}18%{opacity:1}}
-/* 扫描亮迹：一段亮线沿波形跑 */
+  animation:ecgGlow 4.6s ease-in-out infinite}
+@keyframes ecgGlow{
+  0%,100%{opacity:.65}
+  25%{opacity:1}
+  50%{opacity:.7}
+  75%{opacity:.85}
+}
+/* 扫描亮迹：一段亮线沿波形跑 — 更自然的扫描效果 */
 .ecg-scan{stroke:#DFFFF9;stroke-width:3.4;
   filter:drop-shadow(0 0 10px rgba(150,255,240,.95));
   stroke-dasharray:90 1400;stroke-dashoffset:1400;
   animation:ecgScan 1.15s linear infinite}
 @keyframes ecgScan{
   0%{stroke-dashoffset:1400;opacity:0}
-  8%{opacity:1} 88%{opacity:1}
+  6%{opacity:.8}
+  15%{opacity:1}
+  85%{opacity:1}
+  94%{opacity:.8}
   100%{stroke-dashoffset:-90;opacity:0}
 }
 /* HUD：BPM + 导联信息 */
@@ -2892,9 +2903,11 @@ body[data-form="form-card"] #scene::after{opacity:.22}
 }
 .intro-outline{top:50%;transform:translateY(-50%);opacity:0}
 .intro-solid{top:50%;transform:translateY(-50%)}
-.intro-reflect{top:50%;transform:scaleY(-1);opacity:.62;filter:blur(.35px);
-  mask-image:linear-gradient(180deg,#000 0%,transparent 92%);
-  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 92%)}
+/* 倒影：镜像淡出。透明度压到 .45 + 更强渐隐，
+   让主字保持视觉主导，倒影只作"水映"氛围，不与主字抢读。 */
+.intro-reflect{top:50%;transform:scaleY(-1);opacity:.45;filter:blur(.6px);
+  mask-image:linear-gradient(180deg,rgba(0,0,0,.85) 0%,transparent 72%);
+  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.85) 0%,transparent 72%)}
 .intro-line .ch{display:inline-block;will-change:transform,opacity,clip-path}
 .intro-outline .ch{color:transparent;-webkit-text-stroke:1.5px rgba(220,232,255,.9)}
 /* 实心层：逐字异色渐变之上再叠一层柔和辉光，避免"平涂" */
@@ -2925,40 +2938,78 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   to{opacity:.62;transform:translate3d(0,0,0)}
 }
 @keyframes stageIn{
-  /* 起始 opacity 用 .55 而非 0 —— 即使 delay/冻结，舞台也不会全黑 */
-  from{transform:translate3d(-12%,0,-180px) rotateY(10deg) scale(.94);opacity:.55}
+  /* 从 opacity 0 开始：delay 期（0–0.30s）舞台完全不可见，
+     与仍可见的 ECG 不会叠成半透明浑浊。
+     若动画被冻结，ECG 仍在画面里，所以也不会黑屏。 */
+  from{transform:translate3d(-10%,0,-150px) rotateY(8deg) scale(.96);opacity:0}
+  60%{opacity:1}
   to{transform:translate3d(0,0,0) rotateY(0) scale(1);opacity:1}
 }
 @keyframes axisGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes outlineShow{0%{opacity:.9}70%{opacity:.9}100%{opacity:0}}
 @keyframes ecgOut{
-  from{transform:translateX(0) scale(1);opacity:1}
-  to{transform:translateX(60%) scale(1.3);opacity:0}
+  /* 快速推远淡出：先清场，把画面交给舞台。加速曲线让"离开"干脆利落。 */
+  from{transform:translate3d(0,0,0) scale(1);opacity:1}
+  30%{opacity:.85}
+  to{transform:translate3d(14%,0,-260px) scale(1.28);opacity:0}
 }
 @keyframes shardFly{
   0%{opacity:0;transform:translate3d(0,20px,0) rotate(30deg)}
   40%{opacity:.8;transform:translate3d(0,0,0) rotate(0)}
   100%{opacity:0;transform:translate3d(0,-14px,0) rotate(-12deg)}
 }
-/* 只在 .go 状态挂动画；未点击时 CSS 基态即完整定格（不黑屏） */
-#intro.go .intro-stage{animation:stageIn 1.2s cubic-bezier(.16,1,.3,1) backwards}
-/* 直线：不做 delay 动画，直接以基态(展开)显示；
-   避免被冻结在 scaleX(0) 而整条消失。 */
-#intro.go .intro-axis{animation:none;transform:scaleX(1)}
-#intro.go .intro-ecg{animation:ecgOut .7s cubic-bezier(.16,1,.3,1) forwards}
-/* 轮廓层不再单独显示（避免与实心字错位成"两排重影"）。
-   "勾边框 → 填色"改由实心字自身的 stroke 与 fill 动画完成。 */
-#intro.go .intro-outline{display:none}
+/* ============================================================
+   片头动画时间轴（点击后）—— 目标是"一次连续运镜"而非多段拼接
+   ------------------------------------------------------------
+   0.00–0.55s  ECG 快速推远淡出（先清场，避免与舞台叠成半透明浑浊）
+   0.30–1.35s  舞台镜头从左后方推入（与 ECG 尾部重叠 0.25s 形成接力）
+   0.55–1.30s  直线从左端生长（不再是硬切）
+   0.80–2.90s  彩色字逐字勾边 → 上浮填色（stagger 0.09s）
+   ~2.95s      定格
+   所有动画用 expo-out，收尾极慢，观感"滑"而不是"停"。
+   ============================================================ */
+#intro.go .intro-stage{
+  animation:stageIn 1.05s cubic-bezier(.16,1,.3,1) .30s backwards;
+}
+/* 直线：从左端生长。用 both 而非 backwards —— 终态 scaleX(1) 正是我们要的
+   永久状态，冻结也不会变成"半截线"。 */
+#intro.go .intro-axis{
+  animation:axisGrow .75s cubic-bezier(.16,1,.3,1) .55s both;
+}
+#intro.go .intro-ecg{
+  animation:ecgOut .55s cubic-bezier(.4,0,.9,.4) forwards;
+}
+/* 实心字：先描边勾勒，再上浮就位。
+   charTrace 已包含 stroke→0 与提亮，无需额外的 charFill。 */
 #intro.go .intro-solid .ch{
-  /* 两段：① 描边逐步勾勒（stroke 由细亮到无、填充由淡到实）
-           ② 由下上浮就位。不做 clip-path 裁切，文字永远完整可见。 */
-  animation:charTrace .9s cubic-bezier(.16,1,.3,1) var(--d-draw,0s) backwards,
-            charRise .6s cubic-bezier(.16,1,.3,1) var(--d-rise,0s) backwards}
+  animation:charTrace .85s cubic-bezier(.16,1,.3,1) var(--d-draw,0s) backwards,
+            charRise .62s cubic-bezier(.16,1,.3,1) var(--d-rise,0s) backwards;
+}
 /* 倒影：直接以基态显示（不做 delay 动画），保证任何时刻都有倒影 */
-#intro.go .intro-reflect{opacity:.62}
+#intro.go .intro-reflect{opacity:.45}
 #intro.go .intro-reflect .ch{animation:none}
 #intro.go .intro-shards i{
   animation:shardFly 1.2s ease var(--d-shard,0s) backwards}
+
+/* ============================================================
+   兜底：动画理应结束的时刻，用 .intro-landed 强制落到终态。
+   ------------------------------------------------------------
+   带 animation-delay 的 CSS 动画在后台标签页 / 省电模式 / 无头截图里
+   会被冻结在首帧（实测 stage opacity=0、axis scaleX(0)、字 opacity=.75）。
+   真实浏览器不受影响；这里加一道确定性兜底，保证任何环境下
+   动画走完后一定能看到完整画面，而不是停在"半透明 / 半截线"。
+   ============================================================ */
+#intro.intro-landed .intro-stage{
+  animation:none !important;opacity:1 !important;transform:none !important;
+}
+#intro.intro-landed .intro-axis{
+  animation:none !important;transform:scaleX(1) !important;
+}
+#intro.intro-landed .intro-solid .ch{
+  animation:none !important;opacity:1 !important;
+  -webkit-text-stroke:0px rgba(226,238,255,0) !important;
+}
+#intro.intro-landed .intro-ecg{display:none !important}
 
 .intro-shards{position:absolute;inset:0;pointer-events:none}
 .intro-shards i{position:absolute;width:clamp(9px,1vw,14px);height:clamp(9px,1vw,14px);
@@ -4832,7 +4883,10 @@ body[data-form="form-card"] #scene::after{opacity:.22}
       '#FF4D92','#FF6B6B','#FFC24D','#7FE3E0','#FF3D8B'
     ];
     var chars = TEXT.split('');
-    var STEP = 0.11, DRAW0 = 0.70, RISE0 = 1.10;
+    /* 逐字节奏：与 CSS 时间轴对齐（见第 34 段注释）
+       勾线 0.80s 起、每字 +0.09s；上浮 1.05s 起、每字 +0.09s。
+       15 字最末：勾线 2.06→2.91s，上浮 2.31→2.93s，约 2.95s 定格。 */
+    var STEP = 0.09, DRAW0 = 0.80, RISE0 = 1.05;
 
     /* 三层字，逐字写入颜色与动画 delay 变量 */
     [outline, solid, reflect].forEach(function (row) {
@@ -4873,11 +4927,18 @@ body[data-form="form-card"] #scene::after{opacity:.22}
       }
     }
 
-    /* 心电图：P-QRS-T 周期重复（含 T 波与舒张期） */
-    var beat = 'l16 0 8 -3 10 3 9 0 '
-             + 'l8 2 6 -8 6 30 8 -62 7 44 5 -8 8 0 '
-             + 'l14 2 12 7 14 7 16 -2 12 -6 10 0 l20 0 ';
-    var ecgD = 'M0 80 H60 ';
+    /* 心电图：标准 P-QRS-T 周期。
+       修复"左右高低不平"的三个根因：
+       ① 每周期净 y 位移必须为 0 —— 旧波形每周期 +9，5 周期累积下移 45px，
+          表现为"左边高、右边低"的斜坡；
+       ② 每周期 220 单位 × 5 = 1100，前后各留 50 → 正好 1200，左右留白对称；
+       ③ 主峰落在周期 0.46 处（接近居中），峰高 49 / 谷深 9，上下平衡。 */
+    var beat = 'l60 0 '
+             + 'l7 -3 7 1 7 2 5 0 '
+             + 'l4 3 5 -12 6 -40 5 58 4 -6 6 -3 '
+             + 'l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 '
+             + 'l33 0 ';
+    var ecgD = 'M0 80 H50 ';
     for (var b = 0; b < 5; b++) ecgD += beat;
     ecgD += 'H1200';
     ['introEcgBase', 'introEcgTrace', 'introEcgScan'].forEach(function (id) {
@@ -4892,20 +4953,28 @@ body[data-form="form-card"] #scene::after{opacity:.22}
       if (finished) return;
       finished = true;
       /* 电影运镜衔接：片头推近穿过字母 → P1 从同方向归位。
-         不再只是淡出，两个画面在同一条运动轨迹上首尾相接。 */
+         两个画面在同一条运动轨迹上首尾相接，形成一镜到底。 */
       var stage = document.getElementById('stage');
+      var cleaned = false;
+      function cleanup() {
+        if (cleaned) return;
+        cleaned = true;
+        if (intro.parentNode) intro.parentNode.removeChild(intro);
+        if (stage) stage.classList.remove('stage-arrive');
+      }
+
       if (stage && !/^#\d+$/.test(location.hash || '') && !reduce) {
         intro.classList.add('intro-exit');
         stage.classList.add('stage-arrive');
-        setTimeout(function () {
-          if (intro.parentNode) intro.parentNode.removeChild(intro);
-          if (stage) stage.classList.remove('stage-arrive');
-        }, 1250);
+        /* 主驱动：动画真正播完时移除（不依赖定时器，节流也不会漏） */
+        intro.addEventListener('animationend', function (e) {
+          if (e.animationName === 'introFlyThrough') cleanup();
+        });
+        /* 兜底：动画被跳过/禁用时也要移除，避免片头盖住内容 */
+        setTimeout(cleanup, 1400);
       } else {
         intro.classList.add('intro-done');
-        setTimeout(function () {
-          if (intro.parentNode) intro.parentNode.removeChild(intro);
-        }, 850);
+        setTimeout(cleanup, 850);
       }
     }
 
@@ -4916,10 +4985,14 @@ body[data-form="form-card"] #scene::after{opacity:.22}
       intro.setAttribute('data-phase', 'running');
       intro.classList.add('go');
       /* 心电图扫出后从 DOM 移除（不挡后续） */
-      setTimeout(function () { if (ecg && ecg.parentNode) ecg.style.display = 'none'; }, 720);
-      /* 收尾：以最长动画为准（末字上浮 1.10+14*0.11+0.6 ≈ 3.24s），
-         再停 1.2s 定格；另有 7s 兜底。 */
-      setTimeout(endIntro, 4600);
+      setTimeout(function () { if (ecg && ecg.parentNode) ecg.style.display = 'none'; }, 620);
+      /* 兜底落定：末字约 2.93s 完成，3.1s 时强制置为终态。
+         正常情况下此时动画已自然结束，强制值与终态一致，无副作用；
+         若动画被冻结，则保证不会停在半透明/半截线。 */
+      setTimeout(function () { intro.classList.add('intro-landed'); }, 3100);
+      /* 收尾：定格后停 0.9s 让观众看清，再进入运镜衔接。
+         另有 7s 兜底防止任何情况下卡住。 */
+      setTimeout(endIntro, 3900);
     }
 
     if (skip) skip.addEventListener('click', function (e) {
@@ -4936,10 +5009,11 @@ body[data-form="form-card"] #scene::after{opacity:.22}
       }
     }, true);
 
-    /* 直达链接 / 减弱动效：不加 .go（保持 CSS 基态=完整定格），直接结束 */
+    /* 直达链接 / 减弱动效：直接落定到终态，不播放动画 */
     if (/^#\d+$/.test(location.hash || '') || reduce) {
       started = true;
       intro.setAttribute('data-phase', 'running');
+      intro.classList.add('intro-landed');
       if (ecg) ecg.style.display = 'none';
       if (reduce) setTimeout(endIntro, 1600);
       else endIntro();
