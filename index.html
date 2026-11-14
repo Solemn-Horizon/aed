@@ -3032,6 +3032,143 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   .ecg-trace,.ecg-scan,.ecg-pulse,.ecg-heart,.intro-cue{animation:none}
   #intro.intro-done{transition:none}
 }
+
+/* ============================================================
+   16. 去 PPT 化 · 灵动层（2026-11-14）
+   ------------------------------------------------------------
+   目标：这是"网页"，不是翻页 PPT。让画面在浏览器里持续"活着"：
+     A 心电丝带   全片常驻的监护仪母题，把 27 个离散页连成一条生命体征
+     B 漂浮微尘   10 颗异步上浮的光点，提供自然的"空气感"
+     C 网格视差   #scene 反向微移，与极光一起补足景深
+     D 卡片光晕   指针跟随的径向光（Linear/Stripe 式），hover 才显形
+     E 进度发光头 像片头光轨的扫描点，翻页时"带着光走"
+     F 封面心跳   "你只有 4 分钟"随心率微缩放（1.2%，察觉但说不出）
+     G 章节呼吸点 章节标签前的渐变圆点缓慢明暗
+   全部低幅度、默认不抢内容；prefers-reduced-motion 一律关闭。
+   ============================================================ */
+
+/* ---- A. 心电丝带 ---- */
+.ecg-ribbon{
+  position:fixed;left:0;right:0;bottom:0;z-index:0;pointer-events:none;
+  height:clamp(72px,13vh,128px);overflow:hidden;
+  --ribbon-ink:rgba(95,224,210,.26);
+  --ribbon-glow:rgba(95,224,210,.38);
+}
+.ecg-ribbon svg{
+  position:absolute;left:0;bottom:0;width:200%;height:100%;
+  animation:ribbonScroll 30s linear infinite;
+  will-change:transform;
+}
+@keyframes ribbonScroll{to{transform:translate3d(-50%,0,0)}}
+.ecg-ribbon path{
+  fill:none;stroke:var(--ribbon-ink);stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;
+  filter:drop-shadow(0 0 6px var(--ribbon-glow));
+}
+/* 亮幕换墨：白底上青色几乎不可见，改用低饱和暗紫 */
+body[data-form="form-card"] .ecg-ribbon{
+  --ribbon-ink:rgba(96,76,170,.22);
+  --ribbon-glow:rgba(96,76,170,.16);
+}
+
+/* ---- B. 漂浮微尘 ---- */
+.dust{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.dust i{
+  position:absolute;display:block;border-radius:50%;
+  width:3px;height:3px;background:rgba(255,255,255,.85);
+  opacity:0;animation:dustFloat linear infinite;
+}
+body[data-form="form-card"] .dust i{background:rgba(70,60,120,.55)}
+@keyframes dustFloat{
+  0%{transform:translate3d(0,8vh,0);opacity:0}
+  12%{opacity:.12}
+  50%{transform:translate3d(14px,-42vh,0);opacity:.10}
+  88%{opacity:.06}
+  100%{transform:translate3d(-8px,-86vh,0);opacity:0}
+}
+.dust i:nth-child(1){left:8%;bottom:-4vh;animation-duration:26s;animation-delay:-3s}
+.dust i:nth-child(2){left:19%;bottom:-2vh;animation-duration:34s;animation-delay:-19s;width:2px;height:2px}
+.dust i:nth-child(3){left:31%;bottom:-5vh;animation-duration:29s;animation-delay:-11s}
+.dust i:nth-child(4){left:44%;bottom:-3vh;animation-duration:38s;animation-delay:-27s;width:2px;height:2px}
+.dust i:nth-child(5){left:57%;bottom:-4vh;animation-duration:24s;animation-delay:-8s}
+.dust i:nth-child(6){left:66%;bottom:-2vh;animation-duration:31s;animation-delay:-22s}
+.dust i:nth-child(7){left:74%;bottom:-5vh;animation-duration:27s;animation-delay:-15s;width:2px;height:2px}
+.dust i:nth-child(8){left:82%;bottom:-3vh;animation-duration:36s;animation-delay:-30s}
+.dust i:nth-child(9){left:90%;bottom:-4vh;animation-duration:25s;animation-delay:-6s;width:2px;height:2px}
+.dust i:nth-child(10){left:96%;bottom:-2vh;animation-duration:33s;animation-delay:-24s}
+
+/* ---- C. 网格视差（与极光同层反向，幅度略小） ---- */
+#scene{transform:translate3d(calc(var(--px,0) * -9px),calc(var(--py,0) * -6px),0)}
+
+/* ---- D. 卡片光晕跟随 ---- */
+.acard{position:relative}
+.acard::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(240px circle at var(--mx,50%) var(--my,40%),
+    rgba(255,255,255,.14),transparent 62%);
+  opacity:0;transition:opacity .5s var(--ease);pointer-events:none;
+}
+.acard:hover::after{opacity:1}
+body[data-form="form-card"] .acard::after{
+  background:radial-gradient(240px circle at var(--mx,50%) var(--my,40%),
+    rgba(120,90,220,.12),transparent 62%);
+}
+
+/* ---- E. 进度条发光头 + 幕刻度 ---- */
+#bar::after{
+  content:"";position:absolute;right:-2px;top:50%;
+  width:7px;height:7px;border-radius:50%;transform:translateY(-50%);
+  background:#fff;
+  box-shadow:0 0 10px 2px rgba(255,110,180,.75),0 0 22px 6px rgba(190,150,255,.35);
+}
+#ticks{position:fixed;left:0;top:0;right:0;height:3px;z-index:8;pointer-events:none}
+#ticks i{
+  position:absolute;top:0;width:2px;height:2px;border-radius:50%;
+  background:rgba(255,255,255,.34);
+}
+body[data-form="form-card"] #ticks i{background:rgba(30,20,70,.30)}
+
+/* 情绪点：让丝带在三个"心跳更强"的页明显一些 ——
+   P1「你只有 4 分钟」的紧迫、P20「三处断点」的诊断、P26「得有人敢按下去」的落点。
+   其余页保持极淡，避免全片都在发光而失去重点。 */
+body[data-slide="1"] .ecg-ribbon,
+body[data-slide="20"] .ecg-ribbon,
+body[data-slide="26"] .ecg-ribbon{
+  --ribbon-ink:rgba(95,224,210,.44);
+  --ribbon-glow:rgba(95,224,210,.62);
+}
+
+/* ---- F. 封面心跳 ---- */
+#stage > section:first-of-type .hero{
+  animation:zoomIn 1.45s var(--ease) both,
+            heroBeat 1.15s ease-in-out 2.6s infinite;
+}
+@keyframes heroBeat{
+  0%,100%{transform:scale(1)}
+  14%{transform:scale(1.012)}
+  28%{transform:scale(1.004)}
+  42%{transform:scale(1.010)}
+}
+
+/* ---- G. 章节呼吸点 ---- */
+#chapter .sw::before{
+  content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+  margin-right:9px;vertical-align:1px;
+  background:var(--grad-main);
+  animation:dotBreath 2.4s ease-in-out infinite;
+}
+@keyframes dotBreath{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+
+/* ---- H. 减弱动效：环境层静止或隐藏 ---- */
+@media (prefers-reduced-motion:reduce){
+  .ecg-ribbon svg{animation:none}
+  .ecg-ribbon{--ribbon-ink:rgba(95,224,210,.14);--ribbon-glow:transparent}
+  .dust{display:none}
+  #stage > section:first-of-type .hero{animation:zoomIn 1.45s var(--ease) both}
+  #chapter .sw::before{animation:none}
+  #scene{transform:none}
+}
+
 </style>
 </head>
 <body>
@@ -3077,7 +3214,14 @@ body[data-form="form-card"] #scene::after{opacity:.22}
 <div id="world" aria-hidden="true"></div>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 <div id="scene" aria-hidden="true"></div>
+<div class="ecg-ribbon" aria-hidden="true">
+  <svg viewBox="0 0 2400 160" preserveAspectRatio="none">
+    <path d="M0 80 H50 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 H1200 M1200 80 H1250 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 H2400"/>
+  </svg>
+</div>
+<div class="dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div id="bar"></div>
+<div id="ticks" aria-hidden="true"><i style="left:11.1%"></i><i style="left:48.1%"></i><i style="left:92.6%"></i></div>
 <div id="chapter"><span class="sw">01 / 问题的起点</span></div>
 
 <main id="stage">
@@ -4406,6 +4550,10 @@ body[data-form="form-card"] #scene::after{opacity:.22}
     driftRaf = requestAnimationFrame(driftTick);
   }
 
+  /* 网页原生导航状态（见 show() 内的 URL 同步）。
+     pushState 让浏览器前进/后退能翻页，这是 PPT 做不到的"网页感"。 */
+  var suppressHistory = false, firstHistory = true;
+
   function show(n, dir) {
     n = Math.max(0, Math.min(slides.length - 1, n));
     if (n === idx && slides[n].classList.contains('active')) return;
@@ -4416,6 +4564,23 @@ body[data-form="form-card"] #scene::after{opacity:.22}
 
     // 前进 / 后退：驱动方向感知的推镜
     if (stageEl) stageEl.setAttribute('data-dir', dir === 'prev' ? 'prev' : 'next');
+
+    /* 当前页码挂到 body：供环境层按页响应（如心电丝带在情绪点搏动更明显）。 */
+    document.body.setAttribute('data-slide', String(n + 1));
+
+    /* URL 与页同步：首屏用 replaceState（不污染历史），之后 pushState。
+       这样每条内容都有可分享的 #页码，且浏览器后退=上一页（PPT 做不到）。 */
+    if (!suppressHistory) {
+      var hashTarget = '#' + (n + 1);
+      if (location.hash !== hashTarget) {
+        try {
+          if (firstHistory) { history.replaceState({ s: n }, '', hashTarget); firstHistory = false; }
+          else history.pushState({ s: n }, '', hashTarget);
+        } catch (err) { location.hash = hashTarget; }   // file:// 等受限环境退回 hash
+      } else {
+        firstHistory = false;
+      }
+    }
 
     /* 转场形态：由"目标页的语义"决定镜头如何经过，而不是每页都一样。
        · 章节/爆发页 -> pan（横向滑过，像镜头转向新的一章）
@@ -4786,6 +4951,26 @@ body[data-form="form-card"] #scene::after{opacity:.22}
     });
   })();
 
+  /* ============================================================
+     卡片光晕跟随（Linear / Stripe 式微交互）
+     ------------------------------------------------------------
+     一个委托监听服务所有 .acard，不逐个绑定，卡片即便被重建也不会失效。
+     只写 --mx/--my 两个 CSS 变量，光晕本身由 CSS 渐变承担，
+     指针移动不触发任何布局计算（getBoundingClientRect 仅在卡内移动时调）。
+     ============================================================ */
+  (function initCardGlow() {
+    if (reduce) return;
+    document.addEventListener('pointermove', function (e) {
+      var t = e.target;
+      var card = t && t.closest ? t.closest('.acard') : null;
+      if (!card) return;
+      var r = card.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+    }, { passive: true });
+  })();
+
   /* 主角交接落定后，给一次极轻的物理回弹 */
   function addSettle(el) {
     if (!el || reduce) return;
@@ -5027,6 +5212,15 @@ body[data-form="form-card"] #scene::after{opacity:.22}
   }
   window.addEventListener('hashchange', function () {
     show(fromHash());
+  });
+
+  /* 浏览器前进/后退 -> 翻到对应页。suppressHistory 防止回写历史造成死循环。 */
+  window.addEventListener('popstate', function (e) {
+    var t = (e.state && typeof e.state.s === 'number') ? e.state.s : fromHash();
+    if (t === idx) return;
+    suppressHistory = true;
+    show(t, t > idx ? 'next' : 'prev');
+    suppressHistory = false;
   });
 
   /* ---------- 启动 ---------- */
