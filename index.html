@@ -28,6 +28,40 @@ html,body{margin:0;height:100%;background:var(--black);color:var(--ink);
   font-family:var(--font);overflow:hidden;-webkit-font-smoothing:antialiased}
 body{position:relative}
 
+/* ---------- 代码装饰带：从 AeD 演示里截取的真实片段 ----------
+   把演示自身的实现代码当作"数据"漂在光场里 —— 既是装饰，也是元叙事。
+   8 条带子各自低速漂移、极低透明度，绝不抢主标题与卡片。
+   用 transform 位移（合成器友好），不用 filter。 */
+.codecrain{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.codecrain .row{
+  position:absolute;white-space:nowrap;
+  font-family:"JetBrains Mono",Consolas,"SF Mono",monospace;
+  font-size:clamp(9px,.85vw,12px);letter-spacing:.06em;
+  color:rgba(190,170,240,.14);
+  animation:codeDrift linear infinite;
+  will-change:transform;
+}
+.codecrain .row b{color:rgba(255,120,190,.22);font-weight:500}
+.codecrain .row i{color:rgba(95,224,210,.20);font-style:normal}
+@keyframes codeDrift{
+  0%{transform:translate3d(-8%,0,0);opacity:0}
+  12%{opacity:1}
+  88%{opacity:.7}
+  100%{transform:translate3d(8%,0,0);opacity:0}
+}
+.codecrain .row:nth-child(1){top:12%;left:4%;animation-duration:52s;animation-delay:-6s}
+.codecrain .row:nth-child(2){top:23%;right:6%;animation-duration:61s;animation-delay:-28s}
+.codecrain .row:nth-child(3){top:38%;left:2%;animation-duration:47s;animation-delay:-14s}
+.codecrain .row:nth-child(4){top:54%;right:3%;animation-duration:68s;animation-delay:-40s}
+.codecrain .row:nth-child(5){top:69%;left:7%;animation-duration:55s;animation-delay:-22s}
+.codecrain .row:nth-child(6){top:81%;right:9%;animation-duration:58s;animation-delay:-33s}
+.codecrain .row:nth-child(7){top:31%;left:38%;animation-duration:73s;animation-delay:-9s}
+.codecrain .row:nth-child(8){top:74%;left:44%;animation-duration:64s;animation-delay:-48s}
+/* 地图/内容页：代码装饰淡出，避免与文字打架 */
+body.in-sheet .codecrain,body.in-map .codecrain{opacity:.25;transition:opacity 1s var(--ease)}
+@media (prefers-reduced-motion:reduce){.codecrain{display:none}}
+html.lite .codecrain{display:none}
+
 /* ---------- 生命层：HALOFLUX 光场 Canvas ---------- */
 #halo{position:fixed;inset:0;z-index:0;pointer-events:none;display:block}
 /* 幕光 / 暗角：给 Canvas 上一层"空气" */
@@ -174,8 +208,8 @@ body{position:relative}
   opacity:0;visibility:hidden;transition:opacity .9s var(--ease),visibility .9s}
 .demo-frame.on{opacity:1 !important;visibility:visible !importanttransition:none !important}
 #demoExit{position:fixed;right:clamp(16px,2.4vw,36px);top:clamp(16px,2.4vh,32px);
-  z-index:9;pointer-events:none;opacity:0;transition:opacity .6s var(--ease)}
-#demoExit.on{pointer-events:auto;opacity:1 !important;transition:none !important}
+  z-index:9;pointer-events:none;opacity:0 !important}
+body #demoExit.on{pointer-events:auto;opacity:1 !important;transition:none !important}
 
 /* ---------- 地图：电影运镜 ---------- */
 #mapScene{z-index:3}
@@ -216,8 +250,17 @@ body{position:relative}
   background-clip:text;-webkit-text-fill-color:transparent}
 #mapHud .small{font-size:clamp(11px,1.05vw,14px);color:var(--dim);line-height:1.8;letter-spacing:.03em}
 #mapReset{position:fixed;right:clamp(20px,4vw,64px);bottom:clamp(70px,12vh,120px);
-  z-index:8;opacity:0;pointer-events:none;transition:opacity .8s var(--ease)}
-#mapReset.on{opacity:1 !important;pointer-events:auto;transition:none !important}
+  z-index:8;opacity:0 !important;pointer-events:none}
+body #mapReset.on{opacity:1 !important;pointer-events:auto;transition:none !important}
+
+/* ---------- 统一返回控件 ---------- */
+#globalBack{position:fixed;left:clamp(20px,4vw,64px);bottom:clamp(70px,11vh,110px);
+  z-index:14;opacity:0;pointer-events:none;transform:translate3d(0,10px,0);
+  transition:opacity .6s var(--ease),transform .6s var(--ease)}
+#globalBack.on{opacity:1 !important;pointer-events:auto;transform:none !important;
+  transition:none !important}
+/* 地图已有专属返回，避免两个按钮重叠 */
+body.in-map #globalBack{display:none}
 
 /* ---------- 通用按钮 ---------- */
 .btn{pointer-events:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);
@@ -258,6 +301,16 @@ body.in-map #veil{opacity:.5}
 
 <!-- ===== 生命层 ===== -->
 <canvas id="halo" aria-hidden="true"></canvas>
+<div class="codecrain" aria-hidden="true">
+  <div class="row"><b>--grad-main</b>:linear-gradient(100deg,#a06bff 0%,#d94bd8 48%,#ff3d8b 100%);</div>
+  <div class="row">animation:<b>pageIn</b> .9s cubic-bezier(.16,1,.3,1) both;</div>
+  <div class="row">@keyframes <b>kxDissolve</b>{from{opacity:0}to{opacity:1}}</div>
+  <div class="row">var <i>PATTERN</i>=[1,.62,.9,.7,1.25,.55,.8,1.05,.68,1.35];</div>
+  <div class="row"><i>l60 0 l7 -3 7 1 7 2 5 0</i> l4 3 5 -12 6 -40 5 58 4 -6 6 -3</div>
+  <div class="row">133 份有效回答 · 覆盖 10 个省份 · <b>你只有 4 分钟</b></div>
+  <div class="row">buildShots() → 7 机位自动推拉 / <i>ringMove()</i> 顿挫</div>
+  <div class="row">transform:translate3d(var(--cam-x),0,0) scale(var(--cam-s));</div>
+</div>
 <div id="veil" aria-hidden="true"></div>
 <div class="dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div class="ribbon" aria-hidden="true">
@@ -386,6 +439,8 @@ body.in-map #veil{opacity:.5}
     标记点按真实经纬度自适应定位 · 点击标记查看调研内容</div>
 </div>
 <button class="btn" id="mapReset">拉远 / 返回主界面</button>
+<!-- 统一返回：任何非首页场景都可见，不再依赖页内按钮（页内按钮会随滚动消失） -->
+<button class="btn" id="globalBack" aria-label="返回主界面">← 返回主界面</button>
 
 <!-- 演示 iframe -->
 <iframe class="demo-frame" id="demoFrame" src="about:blank" title="AED 项目完整演示" allowfullscreen></iframe>
@@ -685,13 +740,15 @@ function zoomMap(){
   mapCam.style.setProperty('--zx', zx.toFixed(1)+'px');
   mapCam.style.setProperty('--zy', zy.toFixed(1)+'px');
   mapCam.classList.add('zoomed');
-  document.getElementById('mapHud').classList.add('on');
-  document.getElementById('mapReset').classList.add('on');
+  var hud=document.getElementById('mapHud'), mr=document.getElementById('mapReset');
+  hud.classList.add('on'); hud.style.opacity=''; hud.style.transform='';
+  mr.classList.add('on'); mr.style.opacity=''; mr.style.pointerEvents='';
 }
 function resetMap(){
   mapCam.classList.remove('zoomed');
-  document.getElementById('mapHud').classList.remove('on');
-  document.getElementById('mapReset').classList.remove('on');
+  var hud=document.getElementById('mapHud'), mr=document.getElementById('mapReset');
+  hud.classList.remove('on'); hud.style.opacity='0';
+  mr.classList.remove('on'); mr.style.opacity='0'; mr.style.pointerEvents='none';
 }
 
 /* ==================================================================
@@ -706,22 +763,42 @@ var scenes={
   home: document.getElementById('homeScene'),
   group:document.getElementById('groupScene'),
   aed:  document.getElementById('aedScene'),
-  map:  document.getElementById('mapScene')
+  map:  document.getElementById('mapScene'),
+  demo: null               /* 演示由 iframe 承担，不走 scene 淡入 */
 };
 var demoFrame=document.getElementById('demoFrame');
 var demoExit=document.getElementById('demoExit');
-var current='home', busy=false;
+var current='home', busy=false, suppressHash=false;
 
 function setScene(name){
   if(busy || name===current) return;
   busy=true;
   var from=scenes[current], to=scenes[name];
   /* 退出演示 / 地图 */
-  if(current==='demo'){demoFrame.classList.remove('on');demoExit.classList.remove('on')}
+  if(current==='demo'){
+    demoFrame.classList.remove('on');
+    demoExit.classList.remove('on');
+    demoExit.style.opacity='0'; demoExit.style.pointerEvents='none';
+  }
   if(current==='map'){resetMap()}
   if(from){from.classList.remove('on');from.classList.add('leaving')}
   if(to){to.classList.remove('leaving');to.classList.add('on')}
   current=name;
+
+  /* 内容页态：代码装饰淡出，避免与密集文字打架 */
+  document.body.classList.toggle('in-sheet', name==='group' || name==='aed' || name==='demo');
+
+  /* 统一返回控件：除首页外全部显示；地图用专属按钮（避免重叠） */
+  var gb=document.getElementById('globalBack');
+  if(gb) gb.classList.toggle('on', name!=='home' && name!=='map' && name!=='demo');
+
+  /* URL 与场景同步（可分享、可前进后退） */
+  if(!suppressHash){
+    var target='#'+name;
+    if(location.hash!==target){
+      try{ history.pushState({s:name},'',target); }catch(err){ location.hash=target; }
+    }
+  }
 
   /* 地图：等场景淡入后再推镜，形成"镜头先出现再推进"的电影感 */
   if(name==='map'){
@@ -737,6 +814,7 @@ function setScene(name){
     }
     setTimeout(function(){
       demoFrame.classList.add('on'); demoExit.classList.add('on');
+      demoExit.style.opacity=''; demoExit.style.pointerEvents='';
     },420);
   }
   setTimeout(function(){
@@ -759,6 +837,7 @@ for(var bi=0;bi<document.querySelectorAll('[data-back]').length;bi++){
 }
 demoExit.addEventListener('click',function(){setScene('home')});
 document.getElementById('mapReset').addEventListener('click',function(){setScene('home')});
+document.getElementById('globalBack').addEventListener('click',function(){setScene('home')});
 
 /* 卡片光晕跟随：rAF 合帧 + 缓存矩形（零强制重排） */
 (function(){
@@ -779,7 +858,7 @@ document.getElementById('mapReset').addEventListener('click',function(){setScene
 
 /* 键盘：ESC 返回主界面；1–4 直达四个入口 */
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'){ setScene('home'); return; }
+  if(e.key==='Escape'){ setScene('home'); if(location.hash!=='#home') location.hash='#home'; return; }
   var map={'1':'group','2':'demo','3':'aed','4':'map'};
   if(map[e.key] && current==='home') setScene(map[e.key]);
 });
@@ -808,10 +887,23 @@ document.addEventListener('keydown',function(e){
   el.textContent='ARCHIVE / '+d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0');
 })();
 
-/* 首次进入若带 hash，直接路由 */
+/* 路由：hash 直达 + 反复监听 hashchange + 浏览器前进后退 */
 (function(){
-  var m=/^#(group|demo|aed|map)$/.exec(location.hash||'');
-  if(m) setTimeout(function(){setScene(m[1])},300);
+  function fromHash(){
+    var m=/^#(group|demo|aed|map)$/.exec(location.hash||'');
+    return m?m[1]:'home';
+  }
+  function route(){
+    var t=fromHash();
+    if(t===current) return;
+    suppressHash=true;
+    setScene(t);
+    suppressHash=false;
+  }
+  window.addEventListener('hashchange',route);
+  window.addEventListener('popstate',route);
+  var init=fromHash();
+  if(init!=='home') setTimeout(function(){ suppressHash=true; setScene(init); suppressHash=false; },260);
 })();
 })();
 </script>
