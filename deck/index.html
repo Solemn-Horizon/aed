@@ -1235,9 +1235,9 @@ body::after{
     scale(var(--cam-s,1))
     rotate(var(--cam-r,0deg));
   filter:blur(var(--cam-blur,0px));
-  transition:
-    transform var(--cam-dur,1.15s) cubic-bezier(.76,0,.24,1),
-    filter var(--cam-dur,1.15s) ease;
+  /* 流畅度：去掉 filter 的 transition —— 整页 blur 插值每帧都要重绘
+     整个视口，是翻页卡顿的主要来源。transform 仍平滑过渡。 */
+  transition:transform var(--cam-dur,1.15s) cubic-bezier(.76,0,.24,1);
   /* 不加 !important：后面第 32 段的 .slide.act-* .cam 跨幕大镜头
      要靠更高特异性接管 animation。此前写了 !important，导致四种
      镜头语言全部被吞掉（实测 computed animationName=none）。 */
@@ -1322,8 +1322,7 @@ body::after{
 /* 离场页：镜头交给它们自己的相位变量，不再强行归零
    （原来的 margin-left 归位会让"推过去"的连续性断掉） */
 .slide:not(.active) .cam{
-  transition:transform var(--cam-dur,1.15s) cubic-bezier(.76,0,.24,1),
-             filter var(--cam-dur,1.15s) ease;
+  transition:transform var(--cam-dur,1.15s) cubic-bezier(.76,0,.24,1);
 }
 
 /* 镜头动词的"入场姿态"：参考片里每个镜头起始姿态都不同。
@@ -1687,7 +1686,7 @@ body::after{content:none !important}
 }
 .ecg .pulse.glowp{
   stroke:#a5b4fc;stroke-width:13;
-  filter:blur(9px);
+  filter:blur(5px);
   stroke-dasharray:130 870;
   opacity:0;
 }
@@ -1839,7 +1838,7 @@ body::after{content:none !important}
   transform:translate3d(var(--px,-2.4%),var(--py,0%),0) scale(.965);
 }
 /* rack 的虚焦只作用于非当前页，当前页永远清晰 */
-#stage[data-trans="rack"] .slide:not(.active) .cam{filter:blur(6px)}
+#stage[data-trans="rack"] .slide:not(.active) .cam{filter:blur(3px)}
 /* iris 的圆形显影：clip-path 从中心展开 */
 #stage[data-trans="iris"] .slide.active{
   animation:irisIn .9s cubic-bezier(.22,.61,.36,1) both;
@@ -1906,10 +1905,10 @@ body::after{content:none !important}
 
 /* dive：Z 轴冲击 + 虚焦 */
 #stage[data-trans="dive"] .slide:not(.active):not(.prev) .cam{
-  transform:translate3d(0,0,420px) scale(1.28);filter:blur(9px);
+  transform:translate3d(0,0,420px) scale(1.28);filter:blur(5px);
 }
 #stage[data-trans="dive"] .slide.prev .cam{
-  transform:translate3d(0,0,-520px) scale(.78);filter:blur(7px);
+  transform:translate3d(0,0,-520px) scale(.78);filter:blur(4px);
 }
 /* dive 的对焦只做 filter/opacity，不碰 transform */
 #stage[data-trans="dive"] .slide.active{
@@ -1939,7 +1938,7 @@ body::after{content:none !important}
 #xray{
   position:fixed;inset:0;z-index:20;pointer-events:none;
   opacity:0;transition:opacity .45s ease;
-  background:rgba(4,4,9,.90);backdrop-filter:blur(14px);
+  background:rgba(4,4,9,.90);backdrop-filter:blur(6px);
 }
 #xray.open{opacity:1;pointer-events:auto}
 #xray .panel{
@@ -2082,7 +2081,13 @@ body::after{content:none !important}
 }
 .slide.active .donut{animation:breatheB 9s ease-in-out infinite}
 .slide.active .segbar{animation:breatheC 7s ease-in-out infinite}
-.slide.active .figure img{animation:breatheImg 13s ease-in-out infinite}
+.slide.active .figure img{
+  /* 流畅度：原 breatheImg 用 filter:brightness() 每帧对全尺寸图做滤镜重算，
+     且与 imgPull 的 transform 动画互相覆盖。改为只在 opacity 上做极缓呼吸，
+     合成器友好、不触发重绘。 */
+  animation:figureBreath 13s ease-in-out infinite;
+}
+@keyframes figureBreath{0%,100%{opacity:1}50%{opacity:.94}}
 .slide.active .bignum{animation:breatheNum 8.5s ease-in-out infinite}
 
 @media (prefers-reduced-motion:reduce){
@@ -2603,14 +2608,14 @@ body::after{border-radius:var(--r-xs)}
 }
 @keyframes actWhip{
   0%{transform:translate3d(-52%,0,-160px) scale(1.18) rotateY(14deg);
-     opacity:.10;filter:blur(14px)}
-  35%{opacity:.90;filter:blur(7px)}
+     opacity:.10;filter:blur(6px)}
+  35%{opacity:.90;filter:blur(4px)}
   70%{transform:translate3d(6%,0,0) scale(1.01) rotateY(-2deg);filter:blur(1px)}
   100%{transform:translate3d(0,0,0) scale(1) rotateY(0);opacity:1;filter:blur(0)}
 }
 @keyframes actDollyZoom{
   0%{transform:translate3d(0,0,520px) scale(1.55);
-     opacity:.20;filter:blur(10px)}
+     opacity:.20;filter:blur(5px)}
   45%{opacity:1;filter:blur(3px)}
   100%{transform:translate3d(0,0,0) scale(1);opacity:1;filter:blur(0)}
 }
@@ -3318,8 +3323,7 @@ body[data-slide] .aurora i:nth-child(1){
 
 /* 翻页瞬间给背景一次"同构接力"：光位轻微换向，与内容转场同拍 */
 #world{transition:background 1.7s cubic-bezier(.76,0,.24,1),
-       transform 1.9s cubic-bezier(.76,0,.24,1),
-       filter 1.6s ease-out}
+       transform 1.9s cubic-bezier(.76,0,.24,1)}
 body.kx-bgbeat #world{filter:brightness(1.10)}
 
 /* ---------- D. 减弱动效 / 低端设备：全部退化为静态 ---------- */
@@ -3483,7 +3487,7 @@ html.lite [data-build]{animation:none !important}
     </div>
     <div class="right">
       <figure class="figure">
-        <img src="img/interview-notes.webp" alt="问卷与访谈提纲记录" loading="lazy" data-mv="notes">
+        <img src="img/interview-notes.webp" alt="问卷与访谈提纲记录" data-mv="notes">
         <figcaption>组员手写的访谈提纲与记录</figcaption>
       </figure>
     </div>
@@ -3501,7 +3505,7 @@ html.lite [data-build]{animation:none !important}
 
       <!-- Hero 大格：实拍 AED + 主数字，跨 2×2 -->
       <div class="acard acard-photo span2">
-        <img src="img/aed-cabinet-1.webp" alt="京华城实地拍摄到的 AED 设备" loading="lazy">
+        <img src="img/aed-cabinet-1.webp" alt="京华城实地拍摄到的 AED 设备">
         <div class="photo-scrim"></div>
         <div class="photo-body">
           <div class="k">有效问卷 · 截至 2026.10.04</div>
@@ -3543,7 +3547,7 @@ html.lite [data-build]{animation:none !important}
 
       <!-- 第二排：图卡 + 图标卡 + 数字卡，内容形态各异 -->
       <div class="acard acard-photo acard-small">
-        <img src="img/interview-notes.webp" alt="组员手写的访谈提纲与记录" loading="lazy" data-mv="notes">
+        <img src="img/interview-notes.webp" alt="组员手写的访谈提纲与记录" data-mv="notes">
         <div class="photo-scrim"></div>
         <div class="photo-body">
           <div class="k">一手资料</div>
@@ -3601,7 +3605,7 @@ html.lite [data-build]{animation:none !important}
             <span class="sub" style="margin:0 0 0 16px;display:inline">京华城 · 唯一一台</span></span></div>
       </div>
       <figure class="figure" style="aspect-ratio:4/3">
-        <img src="img/two-recording.webp" alt="访谈现场同学分工记录" loading="lazy">
+        <img src="img/two-recording.webp" alt="访谈现场同学分工记录">
         <figcaption>访谈现场 · 提问与记录分工</figcaption>
       </figure>
     </div>
@@ -3806,7 +3810,7 @@ html.lite [data-build]{animation:none !important}
     </div>
     <div class="right">
       <figure class="figure">
-        <img src="img/interviewee.webp" alt="受访的红十字会培训人员" loading="lazy">
+        <img src="img/interviewee.webp" alt="受访的红十字会培训人员">
         <figcaption>9.26 · 新盛街道办事处 · 受访者</figcaption>
       </figure>
     </div>
@@ -3843,7 +3847,7 @@ html.lite [data-build]{animation:none !important}
           <div class="d">每 50–100 米一名急救员带机巡回</div></div>
       </div>
       <figure class="figure" style="aspect-ratio:4/3">
-        <img src="img/student-writing.webp" alt="同学现场记录" loading="lazy">
+        <img src="img/student-writing.webp" alt="同学现场记录">
         <figcaption>访谈现场 · 边听边记</figcaption>
       </figure>
     </div>
@@ -3959,15 +3963,15 @@ html.lite [data-build]{animation:none !important}
     <h2 class="h2 grad" data-anim="2">一台在扬州，两台在新加坡</h2>
     <div class="gallery" data-anim="4" style="margin-top:3.4vh">
       <figure class="figure">
-        <img src="img/aed-cabinet-3.webp" alt="京华城的AED设备" loading="lazy">
+        <img src="img/aed-cabinet-3.webp" alt="京华城的AED设备">
         <figcaption>扬州 · 京华城 · 我们拍到的唯一一台</figcaption>
       </figure>
       <figure class="figure">
-        <img src="img/aed-cabinet-1.webp" alt="新加坡的AED设备" loading="lazy">
+        <img src="img/aed-cabinet-1.webp" alt="新加坡的AED设备">
         <figcaption>新加坡 · 组员拍摄</figcaption>
       </figure>
       <figure class="figure">
-        <img src="img/aed-cabinet-2.webp" alt="新加坡的AED设备" loading="lazy">
+        <img src="img/aed-cabinet-2.webp" alt="新加坡的AED设备">
         <figcaption>新加坡 · 组员拍摄</figcaption>
       </figure>
     </div>
@@ -4004,7 +4008,7 @@ html.lite [data-build]{animation:none !important}
       <div class="row" data-anim="6"><span class="txt" style="font-size:clamp(15px,1.9vw,32px)">那个医生目前在德国，二月才回来</span></div>
     </div>
     <figure class="figure" data-anim="7" style="margin-top:3vh;aspect-ratio:21/6">
-      <img src="img/group-photo.webp" alt="课题组与受访工作人员合影" loading="lazy">
+      <img src="img/group-photo.webp" alt="课题组与受访工作人员合影">
       <figcaption>课题组成员与受访工作人员</figcaption>
     </figure>
   </section>
@@ -4413,6 +4417,11 @@ html.lite [data-build]{animation:none !important}
     if (!toImg) return;
     var r1 = fromInfo.rect, r2 = toImg.getBoundingClientRect();
     if (r1.width < 2 || r1.height < 2 || r2.width < 2 || r2.height < 2) return;
+    /* 流畅度：目标图若仍是 lazy 未解码，飞行到位那一帧会闪白/卡顿。
+       提前触发 decode()（不阻塞动画，Promise 完成后自然就绪）。 */
+    if (toImg.tagName === 'IMG' && toImg.decode) {
+      try { var pd = toImg.decode(); if (pd && pd.catch) pd.catch(function(){}); } catch (e) {}
+    }
 
     /* 流畅度：必须【先】隐藏源与目标，【再】创建 clone。
        若顺序反过来，会有一帧"源 + 目标 + clone"三者同时可见的闪烁。
@@ -4437,19 +4446,28 @@ html.lite [data-build]{animation:none !important}
       (isImg ? 'object-fit:cover;' : '') +
       'font:inherit;color:' + cs1.color + ';background:' + cs1.backgroundColor + ';' +
       'border-radius:' + (cs1.borderRadius || '0') + ';' +
-      'z-index:9999;pointer-events:none;transition:none;animation:none;' +
-      'transform-origin:left top;will-change:transform;';
+      'z-index:9999;pointer-events:none;' +
+      /* 流畅度关键：clone 会继承 .figure img 的 imgPull 16s / breatheImg 13s
+         等常驻动画，与飞行的 WAAPI transform/filter 抢同一属性 → 抖动卡顿。
+         这里全部清零，并显式重置 filter/animation/transition。 */
+      'transition:none !important;animation:none !important;' +
+      'filter:none !important;will-change:transform,opacity;' +
+      'transform:translate3d(0,0,0);transform-origin:left top;' +
+      'backface-visibility:hidden;contain:layout paint;';
     document.body.appendChild(clone);
 
     var dx = r2.left - r1.left;
     var dy = r2.top - r1.top;
-    var sx = r2.width / r1.width;
-    var sy = r2.height / r1.height;
-    var dur = 860;
+    /* 非等比 scale(sx,sy) 会让 1400px 源图每帧在 GPU 上重采样，是主要卡顿源。
+       改为「整块等比缩放 + 尺寸用 width/height 过渡」不可行（width 会重排），
+       因此取平均比例做等比 scale，再配合 object-fit:cover 让构图自然裁切 ——
+       视觉上是同一张图滑过去，但每帧只做一次均匀缩放。 */
+    var s = Math.sqrt((r2.width / r1.width) * (r2.height / r1.height));
+    var dur = 820;
 
     var anim = clone.animate([
-      { transform: 'translate3d(0,0,0) scale(1,1)' },
-      { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + sx + ',' + sy + ')' }
+      { transform: 'translate3d(0,0,0) scale(1)' },
+      { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s.toFixed(4) + ')' }
     ], { duration: dur, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both' });
 
     var done = false;
@@ -4534,7 +4552,7 @@ html.lite [data-build]{animation:none !important}
   /* 一镜到底：转场可被随时打断（所有动画是 transition / WAAPI，
      基准态即终态，连按不会错位）。旧版 600ms 长锁会吞掉快速翻页，
      让镜头"停一下再走" —— 那正是切页感来源，故缩短到 200ms。 */
-  var LOCK_MS = 200;
+  var LOCK_MS = 320;
   var booted = false;       // 首次进入不做交接（直接跳页时不该从封面飞过来）
   var lastChapter = null;   // 上一页的章节标签，值没变就不重放动画
   var lastSpeaker = null;   // 上一页的讲者，同上
@@ -4839,6 +4857,7 @@ html.lite [data-build]{animation:none !important}
   /* 网页原生导航状态（见 show() 内的 URL 同步）。
      pushState 让浏览器前进/后退能翻页，这是 PPT 做不到的"网页感"。 */
   var suppressHistory = false, firstHistory = true;
+  var lastShownSlide = null;   /* 上一次 show() 的页，用于连翻时清理残留动画 */
 
   function show(n, dir) {
     n = Math.max(0, Math.min(slides.length - 1, n));
@@ -4921,6 +4940,23 @@ html.lite [data-build]{animation:none !important}
     startDrift(n);           // 持续运镜：停留期间镜头仍沿轨道漂移
     auroraParallax();        // 极光与相机共用进度，活在"同一个空间"
 
+    /* 流畅度：快速连翻时，取消上一页仍在跑的转场/入场动画，
+       避免多条 WAAPI/CSS 动画叠在同一元素上互相抢属性（卡顿主因之一）。
+       只取消"入场类"动画，不动常驻的无限循环（丝带/极光/心跳）。 */
+    if (booted && !reduce && lastShownSlide) {
+      try {
+        var stale = lastShownSlide.getAnimations ? lastShownSlide.getAnimations({subtree:true}) : [];
+        for (var si = 0; si < stale.length; si++) {
+          var a = stale[si];
+          var nm = (a.animationName || '');
+          if (nm && !/ribbon|dust|ecgBeat|ecgGlow|ecgScan|ecgHeart|drift|breathe|pulse|blink|cue|dotBreath|heroBeat|kbBreath|figureBreath/.test(nm)) {
+            a.cancel();
+          }
+        }
+      } catch (err) {}
+    }
+    lastShownSlide = slides[n];
+
     var fromSlide = slides[idx];
     var toSlide = slides[n];
     var fromC = carrierOf(fromSlide);
@@ -4984,10 +5020,16 @@ html.lite [data-build]{animation:none !important}
 
     var ecgEl = slides[n].querySelector('.ecg');
     if (ecgEl) {
+      /* 流畅度：旧实现用 `style.animation='none'` + `getBoundingClientRect()`
+         强制重排来重置动画 —— 这是每页固定的同步 layout 成本。
+         改用 WAAPI getAnimations().cancel()，纯合成器操作，零强制重排。 */
       Array.prototype.forEach.call(ecgEl.querySelectorAll('path:not(.pulse)'), function (p) {
-        p.style.animation = 'none';
-        void p.getBoundingClientRect();   // 强制重排，重置动画时间轴
-        p.style.animation = '';           // 交还给 CSS 规则重新触发
+        if (p.getAnimations) {
+          try { p.getAnimations().forEach(function (a) { a.cancel(); }); } catch (e) {}
+        } else {
+          p.style.animation = 'none';
+          p.style.animation = '';
+        }
       });
       // 3.4s 时曲线画完（0.35s 延迟 + 2.9s），接上持续跳动
       setTimeout(function () { ecgEl.classList.add('live'); }, 3400);
