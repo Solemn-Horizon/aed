@@ -3329,7 +3329,7 @@ body[data-slide="26"] .ecg-ribbon{
     </div>
     <div class="right">
       <figure class="figure">
-        <img src="img/interview-notes.webp" alt="问卷与访谈提纲记录" loading="lazy">
+        <img src="img/interview-notes.webp" alt="问卷与访谈提纲记录" loading="lazy" data-mv="notes">
         <figcaption>组员手写的访谈提纲与记录</figcaption>
       </figure>
     </div>
@@ -3389,7 +3389,7 @@ body[data-slide="26"] .ecg-ribbon{
 
       <!-- 第二排：图卡 + 图标卡 + 数字卡，内容形态各异 -->
       <div class="acard acard-photo acard-small">
-        <img src="img/interview-notes.webp" alt="组员手写的访谈提纲与记录" loading="lazy">
+        <img src="img/interview-notes.webp" alt="组员手写的访谈提纲与记录" loading="lazy" data-mv="notes">
         <div class="photo-scrim"></div>
         <div class="photo-body">
           <div class="k">一手资料</div>
@@ -4196,6 +4196,68 @@ body[data-slide="26"] .ecg-ribbon{
   // 用 Web Animations API 而不是内联 transition：
   // 基准态直接设为「最终位置」，动画只负责插值 ——
   // 即使动画因为任何原因没跑，元素也已经在对的位置，不会卡住。
+  /* ============================================================
+     同元素 Magic Move（真正的跨页位移）
+     ------------------------------------------------------------
+     handoff   = 新主角"借用"上一页主角的矩形起飞（元素本身是新的）
+     本函数    = 同一张图在新旧页各一份，用 fixed clone 在两份之间飞行，
+                 旧图与新图全程隐藏 —— 观众看到的就是"这张图从上一页
+                 的位置平滑滑到了本页的位置"。
+     典型用例：P4 章节页右侧大图 -> P5 Bento 卡片里的同一张图。
+     clone 用 fixed 定位，不受 .cam/.drift 的 transform 影响，
+     坐标直接取 getBoundingClientRect 的屏幕值，天然对齐。
+     ============================================================ */
+  function runImageMagicMove(fromInfo, toSlide) {
+    var toImg = null;
+    var imgs = toSlide.querySelectorAll('img[data-mv]');
+    for (var i = 0; i < imgs.length; i++) {
+      if (imgs[i].getAttribute('data-mv') === fromInfo.key) { toImg = imgs[i]; break; }
+    }
+    if (!toImg) return;
+    var r1 = fromInfo.rect, r2 = toImg.getBoundingClientRect();
+    if (r1.width < 2 || r1.height < 2 || r2.width < 2 || r2.height < 2) return;
+
+    var radius = getComputedStyle(fromInfo.el).borderRadius || '0';
+    var clone = fromInfo.el.cloneNode(true);
+    clone.removeAttribute('data-mv');
+    clone.removeAttribute('loading');
+    clone.style.cssText =
+      'position:fixed;left:' + r1.left + 'px;top:' + r1.top + 'px;' +
+      'width:' + r1.width + 'px;height:' + r1.height + 'px;' +
+      'max-width:none;max-height:none;margin:0;padding:0;object-fit:cover;' +
+      'border-radius:' + radius + ';z-index:9999;pointer-events:none;' +
+      'transform-origin:left top;will-change:transform;';
+    document.body.appendChild(clone);
+
+    /* 旧图与新图在飞行期间都隐藏，画面里只剩 clone —— 真的是同一张图在动 */
+    fromInfo.el.style.opacity = '0';
+    var prevOp = toImg.style.opacity;
+    toImg.style.opacity = '0';
+
+    var dx = r2.left - r1.left;
+    var dy = r2.top - r1.top;
+    var sx = r2.width / r1.width;
+    var sy = r2.height / r1.height;
+    var dur = 860;
+
+    var anim = clone.animate([
+      { transform: 'translate3d(0,0,0) scale(1,1)' },
+      { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + sx + ',' + sy + ')' }
+    ], { duration: dur, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both' });
+
+    var done = false;
+    function settle() {
+      if (done) return;
+      done = true;
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
+      fromInfo.el.style.opacity = '';
+      toImg.style.opacity = prevOp || '';
+    }
+    if (anim && anim.finished) anim.finished.then(settle).catch(settle);
+    else if (anim) anim.onfinish = settle;
+    setTimeout(settle, dur + 120);   // 兜底：动画被节流也要收尾，避免图永久隐形
+  }
+
   function handoff(fromRect, to) {
     resetCarrier(to);
     void to.offsetWidth;                 // 清掉历史内联样式后重新量一次
@@ -4205,7 +4267,9 @@ body[data-slide="26"] .ecg-ribbon{
     var dx = fromRect.left - r2.left;
     var dy = fromRect.top - r2.top;
     // 等比缩放并限制幅度，避免小字被放大到失真
-    var s = Math.max(.5, Math.min(1.75, fromRect.width / r2.width));
+    /* 缩放比 = 旧页主角宽 / 本页主角宽。限制区间放宽到 .45–2.1：
+       过窄（旧 .5–1.75）会把大幅度的交接压缩成"几乎没动"，观感呆板。 */
+    var s = Math.max(.45, Math.min(2.1, fromRect.width / r2.width));
 
     // 基准态 = 自己的最终位置（关键：动画失效也不会错位）
     to.style.transformOrigin = 'left top';
@@ -4219,13 +4283,16 @@ body[data-slide="26"] .ecg-ribbon{
       to.getAnimations().forEach(function (a) { a.cancel(); });
     }
 
+    /* Magic Move 的要点：元素是"清晰地移动"，不是"虚幻地浮现"。
+       旧值 opacity .35 + blur 6px 会让主角一路半透明发虚，看起来像淡入而非位移；
+       这里压到 .82 + blur 2px —— 只在起手瞬间略柔，全程保持实体感。 */
     to.animate([
       { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')',
-        opacity: 0.35, filter: 'blur(6px)' },
+        opacity: 0.82, filter: 'blur(2px)' },
       { transform: 'translate3d(0,0,0) scale(1)', opacity: 1, filter: 'blur(0px)' }
     ], {
-      duration: 1000,
-      easing: 'cubic-bezier(.76,0,.24,1)',   /* 与整页推镜同一条缓动 = 同一镜头 */
+      duration: 920,
+      easing: 'cubic-bezier(.22,.61,.36,1)',   /* 柔和的减速收尾，比 .76,0,.24,1 更像"滑到位" */
       fill: 'none'
     });
     return true;
@@ -4639,6 +4706,18 @@ body[data-slide="26"] .ecg-ribbon{
       fromRect = fromC.getBoundingClientRect();
     }
 
+    /* 同元素 Magic Move：切换前记录旧页 [data-mv] 图片的位置与标识。
+       与 carrier 不同 —— carrier 是"新元素借用旧元素的位置"，
+       这里是"同一张图"本身在两页之间飞，最接近 Keynote 的 Magic Move。 */
+    var mvFrom = null;
+    if (booted && !reduce && fromSlide !== toSlide) {
+      var mvEl = fromSlide.querySelector('img[data-mv]');
+      if (mvEl) {
+        mvFrom = { el: mvEl, key: mvEl.getAttribute('data-mv'),
+                   rect: mvEl.getBoundingClientRect() };
+      }
+    }
+
     // 2) 切换页面状态
     slides.forEach(function (s, i) {
       s.classList.toggle('active', i === n);
@@ -4702,6 +4781,9 @@ body[data-slide="26"] .ecg-ribbon{
     // 4) 先跑数字滚动/打字，再量尺寸 —— 否则空的 h2 量不到宽度
     runCounters(slides[n]);
     runType(slides[n]);
+
+    // 4.5) 同元素图片飞行（真正的跨页位移，先于文字交接）
+    if (mvFrom) runImageMagicMove(mvFrom, slides[n]);
 
     // 5) 元素交接（Magic Move）
     if (toC) {
