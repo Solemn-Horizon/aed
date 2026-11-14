@@ -3198,6 +3198,143 @@ html.lite #bar::after{box-shadow:none}
   #scene{transform:none}
 }
 
+
+
+/* ==================================================================
+   33. Keynote 经典手法库（2026-11-14）
+   ------------------------------------------------------------------
+   苹果的演示语言不是"10 种花哨翻页"，而是 4 类手法的组合：
+     转场  Dissolve / Push / Wipe / None / Match Cut / Magic Move
+     构件  Build In / Build Out / Build Action（出现·强调·退场）
+     背景  Dynamic Background（Ken Burns 缓慢推拉 + 呼吸）
+     其他  Animated GIF 式循环、表格逐个浮现、图表生长
+   本节把这些做成 CSS 类，由 show() 按页语义分配。
+   所有动画以 opacity/transform/clip-path 为限（合成器友好），
+   不用全屏 filter:blur，保证负载可控。
+   ================================================================== */
+
+/* ---------- A. 转场族 ---------- */
+
+/* A1 Dissolve 交叉溶解：两页同时半透明，最经典的"软切换"。
+   旧页淡出、新页淡入，没有位置变化 —— 适合同类内容换一组数据。 */
+#stage[data-trans="dissolve"] .slide.active{
+  animation:kxDissolve .95s cubic-bezier(.4,0,.2,1) both;
+}
+@keyframes kxDissolve{from{opacity:0}to{opacity:1}}
+#stage[data-trans="dissolve"] .slide.prev{
+  transition:opacity .95s cubic-bezier(.4,0,.2,1) !important;
+  opacity:0;transform:none !important;
+}
+#stage[data-trans="dissolve"] .slide:not(.active):not(.prev){
+  --sx:0%;--sy:0%;
+}
+
+/* A2 Push 推入：新页从右把旧页"推"出画面（经典 Push）。
+   比现有 pan 更明确：两页同速反向，像一整块板被顶走。 */
+#stage[data-trans="push"] .slide.active{
+  animation:kxPushIn .85s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes kxPushIn{from{transform:translate3d(100%,0,0)}to{transform:translate3d(0,0,0)}}
+#stage[data-trans="push"] .slide.prev{
+  transform:translate3d(-100%,0,0) !important;
+  transition:transform .85s cubic-bezier(.22,.61,.36,1),opacity .85s !important;
+}
+#stage[data-trans="push"] .slide:not(.active):not(.prev){
+  --sx:100%;--sy:0%;
+}
+
+/* A3 Wipe 擦除：新页以竖直擦除线从右向左显影（Keynote Wipe）。
+   clip-path 是合成器属性，比 background-position 便宜。 */
+#stage[data-trans="wipe"] .slide.active{
+  animation:kxWipe .9s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes kxWipe{
+  from{clip-path:inset(0 0 0 100%)}
+  to{clip-path:inset(0 0 0 0)}
+}
+#stage[data-trans="wipe"] .slide.prev{opacity:0;transform:none !important;
+  transition:opacity .9s ease-out !important;}
+
+/* A4 None 无转场：干净利落，让内容本身说话。
+   苹果在"连续同一主题的短促排比"里常用，避免视觉疲劳。 */
+#stage[data-trans="none"] .slide.active{animation:none}
+#stage[data-trans="none"] .slide.prev{
+  transition:opacity .22s linear !important;opacity:0;transform:none !important;
+}
+#stage[data-trans="none"] .slide:not(.active):not(.prev){--sx:0%;--sy:0%}
+
+/* A5 Match Cut 匹配剪辑：两页共享同一构图（大数字/大标题），
+   靠"位置不变、只有内容溶解"制造连续性 —— 电影里的匹配剪辑。
+   视觉上是 dissolve 的极短版 + 主角不移动。 */
+#stage[data-trans="match"] .slide.active{
+  animation:kxMatch .55s ease-out both;
+}
+@keyframes kxMatch{from{opacity:0;transform:scale(1.012)}to{opacity:1;transform:scale(1)}}
+#stage[data-trans="match"] .slide.prev{
+  transition:opacity .55s ease-out !important;opacity:0;transform:none !important;
+}
+#stage[data-trans="match"] .slide:not(.active):not(.prev){--sx:0%;--sy:0%}
+
+/* ---------- B. 构件族（Build In / Out / Action）---------- */
+/* 构件是"页内元素的动作"，与整页转场正交。
+   [data-build] 由 JS 在 show() 时挂到当前页元素上，逐字错峰。 */
+
+/* B1 Build In —— 出现 */
+[data-build="in-fade"]{animation:kxInFade .7s var(--ease) both}
+@keyframes kxInFade{from{opacity:0}to{opacity:1}}
+[data-build="in-rise"]{animation:kxInRise .75s var(--ease) both}
+@keyframes kxInRise{from{opacity:0;transform:translate3d(0,26px,0)}to{opacity:1;transform:none}}
+[data-build="in-scale"]{animation:kxInScale .8s var(--ease) both}
+@keyframes kxInScale{from{opacity:0;transform:scale(.82)}65%{transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
+[data-build="in-wipe"]{animation:kxInWipe .8s var(--ease) both}
+@keyframes kxInWipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 -10% 0 -10%)}}
+[data-build="in-blur"]{animation:kxInBlur .85s var(--ease) both}
+@keyframes kxInBlur{from{opacity:0;filter:blur(8px);transform:scale(1.03)}to{opacity:1;filter:blur(0);transform:scale(1)}}
+
+/* B2 Build Out —— 退场（离场页上的构件，先撤再切） */
+[data-build="out-fade"]{animation:kxOutFade .45s ease-in both}
+@keyframes kxOutFade{from{opacity:1}to{opacity:0}}
+[data-build="out-drop"]{animation:kxOutDrop .5s ease-in both}
+@keyframes kxOutDrop{from{opacity:1;transform:none}to{opacity:0;transform:translate3d(0,24px,0) scale(.97)}}
+
+/* B3 Build Action —— 强调（原地动作，不进出） */
+[data-build="action-pop"]{animation:kxActionPop .9s var(--ease) both}
+@keyframes kxActionPop{0%{transform:scale(1)}40%{transform:scale(1.06)}100%{transform:scale(1)}}
+[data-build="action-glow"]{animation:kxActionGlow 1.2s var(--ease) both}
+@keyframes kxActionGlow{0%{filter:brightness(1)}45%{filter:brightness(1.5) drop-shadow(0 0 14px rgba(255,110,180,.55))}100%{filter:brightness(1)}}
+[data-build="action-pulse"]{animation:kxActionPulse 1.1s ease-in-out both}
+@keyframes kxActionPulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ---------- C. 动态背景（Dynamic Background / Ken Burns）---------- */
+/* 极光三片在翻页时做一次极缓的"推拉 + 呼吸"，不是静止贴纸。
+   幅度小（3–5%），用 transform，不碰 layout。 */
+#stage[data-bg="kenburns"] ~ .aurora i:nth-child(1),
+body[data-slide] .aurora i:nth-child(1){
+  animation:drift1 12s ease-in-out infinite alternate,
+            kbBreath 18s ease-in-out 2s infinite;
+}
+@keyframes kbBreath{0%,100%{opacity:.42}50%{opacity:.30}}
+@keyframes kbZoom{0%{transform:scale(1)}50%{transform:scale(1.045)}100%{transform:scale(1)}}
+
+/* 翻页瞬间给背景一次"同构接力"：光位轻微换向，与内容转场同拍 */
+#world{transition:background 1.7s cubic-bezier(.76,0,.24,1),
+       transform 1.9s cubic-bezier(.76,0,.24,1),
+       filter 1.6s ease-out}
+body.kx-bgbeat #world{filter:brightness(1.10)}
+
+/* ---------- D. 减弱动效 / 低端设备：全部退化为静态 ---------- */
+@media (prefers-reduced-motion:reduce){
+  #stage[data-trans="dissolve"] .slide.active,
+  #stage[data-trans="push"] .slide.active,
+  #stage[data-trans="wipe"] .slide.active,
+  #stage[data-trans="match"] .slide.active{animation:none !important}
+  #stage[data-trans="wipe"] .slide.active{clip-path:none !important}
+  [data-build]{animation:none !important;opacity:1 !important;transform:none !important;
+               clip-path:none !important;filter:none !important}
+  body.kx-bgbeat #world{filter:none}
+}
+html.lite [data-build]{animation:none !important}
+
 </style>
 </head>
 <body>
@@ -3973,6 +4110,49 @@ html.lite #bar::after{box-shadow:none}
   /* ---------- 数字滚动 ---------- */
   /* 用 easeOutExpo 的连续函数，并在整数变化时才写 DOM，
      避免每帧都改 textContent 引起的无谓样式重算 */
+  /* ============================================================
+     applyBuilds：Keynote 构件（Build In / Build Action）
+     ------------------------------------------------------------
+     按元素重要度分配动作，delay 错峰 90ms：
+       主标题      -> in-rise（从下浮起）
+       大数字/统计 -> in-scale（弹入）
+       列表/卡片   -> in-wipe（擦除显影）
+       图片        -> in-blur（虚到实）
+       其余文本    -> in-fade（柔和淡入）
+     构件与整页转场正交：dissolve 时也能有元素逐个浮现。
+     ============================================================ */
+  var BUILD_DELAY_STEP = 0.09;
+  function applyBuilds(sl, transName) {
+    var old = document.querySelectorAll('[data-build]');
+    for (var oi = 0; oi < old.length; oi++) {
+      old[oi].removeAttribute('data-build');
+      old[oi].style.animationDelay = '';
+    }
+    var nodes = sl.querySelectorAll(
+      '.h2, .hero, .bignum, .stat .v, .row, .acard, .figure img, .p, .sub, .kicker, .capsule, .item');
+    var limit = Math.min(nodes.length, 9);
+    for (var i = 0; i < limit; i++) {
+      var e = nodes[i];
+      var cls = e.className || '';
+      var kind = 'in-fade';
+      /* 用 className 的空格切分做词匹配，不用 \b —— 写文件时 \b 会被
+         Python 解释成退格符，导致所有判断失效（实测全落到 in-fade）。 */
+      var words = (' ' + cls + ' ').split(/\s+/);
+      function has(w) { return words.indexOf(w) >= 0; }
+      if (has('h2') || has('hero')) kind = 'in-rise';
+      else if (has('bignum') || has('stat') || has('val')) kind = 'in-scale';
+      else if (has('row') || has('acard') || has('item')) kind = 'in-wipe';
+      else if (e.tagName === 'IMG' || has('figure')) kind = 'in-blur';
+      else if (has('kicker')) kind = 'in-rise';
+      /* 匹配剪辑 / 无转场页：构件收敛，别和内容抢 */
+      if (transName === 'match' || transName === 'none') {
+        if (kind === 'in-wipe' || kind === 'in-blur') kind = 'in-fade';
+      }
+      e.setAttribute('data-build', kind);
+      e.style.animationDelay = (0.10 + i * BUILD_DELAY_STEP).toFixed(2) + 's';
+    }
+  }
+
   function runCounters(slide) {
     var nodes = slide.querySelectorAll('[data-count]');
     Array.prototype.forEach.call(nodes, function (el) {
@@ -4698,22 +4878,41 @@ html.lite #bar::after{box-shadow:none}
     var trans;
     /* 六种转场按页索引轮换（确定性，但相邻几乎不重复）。
        语义优先，其余用序列打散，避免"连续五页都是 dolly"。 */
-    var CYCLE = ['orbit', 'dolly', 'flip', 'slide', 'tilt3d', 'rack',
-                 'dive', 'pan', 'zoom', 'iris'];
+    /* 转场池：既有 10 种运镜 + Keynote 经典 5 种（dissolve/push/wipe/none/match）。
+       按页语义优先、其余轮换，保证相邻两页手法不同、又不至于处处花哨。 */
+    var CYCLE = ['dissolve', 'dolly', 'push', 'wipe', 'flip', 'rack',
+                 'match', 'pan', 'zoom', 'none', 'orbit', 'tilt3d', 'dive', 'iris'];
     var seq = CYCLE[n % CYCLE.length];
-    if (dir === 'prev') trans = 'orbit';
+    if (dir === 'prev') trans = 'dissolve';                  /* 回头看：软溶解，不耍镜头 */
     else if (toShot === 'burst') trans = 'dive';
-    else if (toShot === 'hold') trans = 'iris';
+    else if (toShot === 'hold') trans = 'dissolve';          /* 收尾：安静地溶解 */
     else if (toShot === 'tilt') trans = 'tilt3d';
     else if (toShot === 'pan') trans = 'orbit';
     else trans = seq;
+
+    /* 语义覆盖：章节页用 Push 推开新章；连续问卷数据页用 Dissolve / Match / None
+       交替（同类数据换一组时软切，避免每页甩镜头）；Magic Move 配对页用 Match
+       让元素飞行成为主角；结尾用 None 干净收束。 */
+    var SEMANTIC = {
+      4:'push', 14:'push', 19:'push',
+      8:'dissolve', 9:'match', 10:'dissolve', 11:'match',
+      12:'none', 13:'dissolve',
+      21:'match', 7:'match',
+      26:'none', 27:'none'
+    };
+    /* 语义映射优先于 shot 分支：章节页虽是 data-shot="burst"，
+       但苹果的语言是"推开新的一章"（Push），不是每章都做 dive 爆发。
+       所以 SEMANTIC 必须放在 shot 分支之后、applyAct 之前，且不排除 burst。 */
+    if (dir !== 'prev' && SEMANTIC[n+1]) trans = SEMANTIC[n+1];
 
     /* 跨幕 = 大转折：三者同步发生
        相机 -> applyAct 返回的一种【大镜头语言】（升降/甩镜/变焦/环绕）
        背景 -> applyAct 换肤；内容 -> data-form 切换。
        data-trans 也跟着换成对应的大转场形态，让"镜头种类"表里一致。 */
     var actInfo = applyAct(n, dir);
-    if (actInfo.changed && actInfo.trans) trans = actInfo.trans;
+    /* 跨幕时保留大镜头语言，但若该页已有明确语义转场（Push/Match/None），
+       不覆盖 —— 语义比"每跨幕都甩一次"更重要。 */
+    if (actInfo.changed && actInfo.trans && !SEMANTIC[n+1]) trans = actInfo.trans;
 
     /* 相机累计步数：只增不减，供相位计算与极光共用 */
     if (booted) camProgress += 1;
@@ -4760,7 +4959,20 @@ html.lite #bar::after{box-shadow:none}
     /* 关键顺序：必须先切完 .active/.prev，再设置 data-trans。
        否则新转场规则会在"类还没切换"的那一帧命中当前页，
        把它 rotateY(-42deg) 转走（实测 flip 转场复现过）。 */
-    if (stageEl) stageEl.setAttribute('data-trans', trans);
+    if (stageEl) {
+      stageEl.setAttribute('data-trans', trans);
+      stageEl.setAttribute('data-bg', 'kenburns');
+    }
+    /* 背景节拍：翻页瞬间给底图一次极轻的亮度呼吸，与内容转场同拍。
+       用 class + 短定时器，不新增常驻 rAF。 */
+    document.body.classList.add('kx-bgbeat');
+    setTimeout(function () { document.body.classList.remove('kx-bgbeat'); }, 1500);
+
+    /* 构件（Build In / Action）：给当前页元素挂 build 类型并逐项错峰。
+       reduced-motion / lite 跳过。 */
+    if (!reduce && !document.documentElement.classList.contains('lite')) {
+      applyBuilds(slides[n], trans);
+    }
     if (window.markXrayPage) window.markXrayPage(n);   // 面板若开着，同步高亮
     /* 心电图：
        1) 先清掉上一次的"持续跳动"，避免多页同时有光在跑；
