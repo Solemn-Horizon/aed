@@ -53,7 +53,9 @@ body{
 .aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 .aurora i{
   position:absolute;display:block;border-radius:50%;
-  filter:blur(clamp(46px,8.5vmax,118px));
+  /* 性能：radial-gradient 边缘本身就是柔和的，再叠一层 46–118px 的
+     全屏 filter:blur 是重复且最贵的 GPU 操作（三片常驻同时跑）。
+     去掉后视觉几乎不变，但每帧省掉三次大半径模糊采样。 */
   opacity:.42;
   /* 光晕是长驻动画，提前提升图层并提示合成器，避免每帧重绘 */
   will-change:transform;
@@ -3068,14 +3070,15 @@ body[data-form="form-card"] #scene::after{opacity:.22}
 }
 .ecg-ribbon svg{
   position:absolute;left:0;bottom:0;width:200%;height:100%;
-  animation:ribbonScroll 30s linear infinite;
+  animation:ribbonScroll 48s linear infinite;
   will-change:transform;
 }
 @keyframes ribbonScroll{to{transform:translate3d(-50%,0,0)}}
 .ecg-ribbon path{
   fill:none;stroke:var(--ribbon-ink);stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;
-  filter:drop-shadow(0 0 6px var(--ribbon-glow));
+  /* 长路径的 drop-shadow 会让合成器每帧重算整条 2400 宽曲线；
+     发光感改由第二层半透明描边承担（见下方 .ecg-glow），零滤镜开销。 */
 }
 /* 亮幕换墨：白底上青色几乎不可见，改用低饱和暗紫 */
 body[data-form="form-card"] .ecg-ribbon{
@@ -3171,8 +3174,22 @@ body[data-slide="26"] .ecg-ribbon{
 }
 @keyframes dotBreath{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
 
+/* ---- H2. 低端设备：停掉常驻循环，把 GPU 让给翻页动画 ---- */
+html.lite .aurora i,
+html.lite .dust i,
+html.lite .ecg-ribbon svg,
+html.lite .ecg-pulse,
+html.lite #chapter .sw::before{animation:none !important}
+html.lite .dust{display:none}
+html.lite #bar::after{box-shadow:none}
+
 /* ---- H. 减弱动效：环境层静止或隐藏 ---- */
+/* 低刷新率 / 省电场景：停掉所有常驻循环层，只保留内容。
+   这是"负载"的兜底 —— 用户设备吃力时，页面自动变轻。 */
 @media (prefers-reduced-motion:reduce){
+  .aurora i,.dust i,.ecg-ribbon svg,#bar::after,
+  #chapter .sw::before{animation:none !important}
+  .dust{display:none}
   .ecg-ribbon svg{animation:none}
   .ecg-ribbon{--ribbon-ink:rgba(95,224,210,.14);--ribbon-glow:transparent}
   .dust{display:none}
@@ -3231,7 +3248,7 @@ body[data-slide="26"] .ecg-ribbon{
     <path d="M0 80 H50 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 H1200 M1200 80 H1250 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 l60 0 l7 -3 7 1 7 2 5 0 l4 3 5 -12 6 -40 5 58 4 -6 6 -3 l10 -2 12 -6 12 -5 11 2 10 5 9 4 7 2 l33 0 H2400"/>
   </svg>
 </div>
-<div class="dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div id="bar"></div>
 <div id="ticks" aria-hidden="true"><i style="left:11.1%"></i><i style="left:48.1%"></i><i style="left:92.6%"></i></div>
 <div id="chapter"><span class="sw">01 / 问题的起点</span></div>
@@ -3351,7 +3368,7 @@ body[data-slide="26"] .ecg-ribbon{
         <div class="photo-scrim"></div>
         <div class="photo-body">
           <div class="k">有效问卷 · 截至 2026.10.04</div>
-          <div class="v">133</div>
+          <div class="v" data-mv="mv-133">133</div>
           <div class="d">覆盖 10 个省份 · 10 道核心题目<br>图为京华城实地拍摄到的 AED</div>
         </div>
         <!-- ④ 数据量化：卡内一条微型分布条 -->
@@ -3462,7 +3479,7 @@ body[data-slide="26"] .ecg-ribbon{
     <p class="kicker" data-anim="1">有效问卷 · 截至 2026.10.04</p>
     <h2 class="h2 grad" data-anim="2">133 份回答，覆盖 10 个省份</h2>
     <div class="stats" data-anim="3" style="margin-top:3vh">
-      <div class="stat"><div class="v">133</div><div class="k">份有效问卷</div></div>
+      <div class="stat"><div class="v" data-mv="mv-133">133</div><div class="k">份有效问卷</div></div>
       <div class="stat"><div class="v">10</div><div class="k">个省份参与</div></div>
       <div class="stat"><div class="v">10</div><div class="k">道核心题目</div></div>
     </div>
@@ -3749,13 +3766,13 @@ body[data-slide="26"] .ecg-ribbon{
            data-notes="三条结论，每一条都有一个具体数字支撑。&#10;找不到 —— 27.82% 的人知道有 AED 但不知道在哪。&#10;不敢用 —— 74.43% 担心担责。&#10;不会用 —— 只有 19.55% 敢说自己能独立操作。&#10;所以不是设备不够，是这三处都断着。">
     <h2 class="h2 grad" data-anim="1">不是设备不够，是三处断开</h2>
     <div class="rows">
-      <div class="row" data-anim="3"><span class="idx">01</span>
+      <div class="row" data-anim="3" data-mv="mv-r-1"><span class="idx">01</span>
         <span class="txt">找不到
           <span class="sub" style="margin:0 0 0 20px;display:inline">27.82% 知道有，不知道在哪</span></span></div>
-      <div class="row" data-anim="4"><span class="idx">02</span>
+      <div class="row" data-anim="4" data-mv="mv-r-2"><span class="idx">02</span>
         <span class="txt">不敢用
           <span class="sub" style="margin:0 0 0 20px;display:inline">74.43% 担心承担责任</span></span></div>
-      <div class="row" data-anim="5"><span class="idx">03</span>
+      <div class="row" data-anim="5" data-mv="mv-r-3"><span class="idx">03</span>
         <span class="txt">不会用
           <span class="sub" style="margin:0 0 0 20px;display:inline">仅 19.55% 敢独立操作</span></span></div>
     </div>
@@ -3766,11 +3783,11 @@ body[data-slide="26"] .ecg-ribbon{
            data-notes="三条建议，一一对应刚才三个断点。&#10;找不到 → 把位置公开到小程序和地图。&#10;不敢用 → 把好人法写进每一次培训。&#10;不会用 → 培训下沉到社区和小区，提高密度。">
     <h2 class="h2 grad" data-anim="1">三条建议，对应三处断开</h2>
     <div class="rows">
-      <div class="row" data-anim="3"><span class="idx">01</span>
+      <div class="row" data-anim="3" data-mv="mv-r-1"><span class="idx">01</span>
         <span class="txt grad">把 AED 位置公开到小程序与地图</span></div>
-      <div class="row" data-anim="4"><span class="idx">02</span>
+      <div class="row" data-anim="4" data-mv="mv-r-2"><span class="idx">02</span>
         <span class="txt grad">把「好人法」写进每一次培训</span></div>
-      <div class="row" data-anim="5"><span class="idx">03</span>
+      <div class="row" data-anim="5" data-mv="mv-r-3"><span class="idx">03</span>
         <span class="txt grad">培训下沉社区，提高布点密度</span></div>
     </div>
   </section>
@@ -4209,7 +4226,7 @@ body[data-slide="26"] .ecg-ribbon{
      ============================================================ */
   function runImageMagicMove(fromInfo, toSlide) {
     var toImg = null;
-    var imgs = toSlide.querySelectorAll('img[data-mv]');
+    var imgs = toSlide.querySelectorAll('[data-mv]');
     for (var i = 0; i < imgs.length; i++) {
       if (imgs[i].getAttribute('data-mv') === fromInfo.key) { toImg = imgs[i]; break; }
     }
@@ -4217,22 +4234,32 @@ body[data-slide="26"] .ecg-ribbon{
     var r1 = fromInfo.rect, r2 = toImg.getBoundingClientRect();
     if (r1.width < 2 || r1.height < 2 || r2.width < 2 || r2.height < 2) return;
 
-    var radius = getComputedStyle(fromInfo.el).borderRadius || '0';
+    /* 流畅度：必须【先】隐藏源与目标，【再】创建 clone。
+       若顺序反过来，会有一帧"源 + 目标 + clone"三者同时可见的闪烁。
+       隐藏用内联 opacity，不触发动画，也不影响最终恢复。 */
+    var prevOp = toImg.style.opacity;
+    fromInfo.el.style.opacity = '0';
+    toImg.style.opacity = '0';
+
+    var cs1 = getComputedStyle(fromInfo.el);
     var clone = fromInfo.el.cloneNode(true);
     clone.removeAttribute('data-mv');
+    clone.removeAttribute('data-anim');
     clone.removeAttribute('loading');
+    var isImg = fromInfo.el.tagName === 'IMG';
+    /* 文字/数字元素要保留内边距与字体，否则 clone 里的字会贴边；
+       图片则铺满（object-fit:cover）。两者都清掉可能继承的过渡与入场动画。 */
     clone.style.cssText =
       'position:fixed;left:' + r1.left + 'px;top:' + r1.top + 'px;' +
       'width:' + r1.width + 'px;height:' + r1.height + 'px;' +
-      'max-width:none;max-height:none;margin:0;padding:0;object-fit:cover;' +
-      'border-radius:' + radius + ';z-index:9999;pointer-events:none;' +
+      'max-width:none;max-height:none;box-sizing:border-box;' +
+      'margin:0;padding:' + (isImg ? '0' : 'inherit') + ';' +
+      (isImg ? 'object-fit:cover;' : '') +
+      'font:inherit;color:' + cs1.color + ';background:' + cs1.backgroundColor + ';' +
+      'border-radius:' + (cs1.borderRadius || '0') + ';' +
+      'z-index:9999;pointer-events:none;transition:none;animation:none;' +
       'transform-origin:left top;will-change:transform;';
     document.body.appendChild(clone);
-
-    /* 旧图与新图在飞行期间都隐藏，画面里只剩 clone —— 真的是同一张图在动 */
-    fromInfo.el.style.opacity = '0';
-    var prevOp = toImg.style.opacity;
-    toImg.style.opacity = '0';
 
     var dx = r2.left - r1.left;
     var dy = r2.top - r1.top;
@@ -4711,10 +4738,16 @@ body[data-slide="26"] .ecg-ribbon{
        这里是"同一张图"本身在两页之间飞，最接近 Keynote 的 Magic Move。 */
     var mvFrom = null;
     if (booted && !reduce && fromSlide !== toSlide) {
-      var mvEl = fromSlide.querySelector('img[data-mv]');
-      if (mvEl) {
-        mvFrom = { el: mvEl, key: mvEl.getAttribute('data-mv'),
-                   rect: mvEl.getBoundingClientRect() };
+      var mvEls = fromSlide.querySelectorAll('[data-mv]');
+      if (mvEls.length) {
+        mvFrom = [];
+        for (var mi = 0; mi < mvEls.length; mi++) {
+          var e = mvEls[mi];
+          var r = e.getBoundingClientRect();
+          if (r.width > 2 && r.height > 2) {
+            mvFrom.push({ el: e, key: e.getAttribute('data-mv'), rect: r });
+          }
+        }
       }
     }
 
@@ -4782,8 +4815,10 @@ body[data-slide="26"] .ecg-ribbon{
     runCounters(slides[n]);
     runType(slides[n]);
 
-    // 4.5) 同元素图片飞行（真正的跨页位移，先于文字交接）
-    if (mvFrom) runImageMagicMove(mvFrom, slides[n]);
+    // 4.5) 同元素飞行（真正的跨页位移，先于文字交接）
+    if (mvFrom) {
+      for (var fi = 0; fi < mvFrom.length; fi++) runImageMagicMove(mvFrom[fi], slides[n]);
+    }
 
     // 5) 元素交接（Magic Move）
     if (toC) {
@@ -5002,6 +5037,24 @@ body[data-slide="26"] .ecg-ribbon{
   }
 
   /* ============================================================
+     性能自适应：低负载设备自动降级
+     ------------------------------------------------------------
+     依据 CPU 核心数 / 内存 / 省电模式判定。命中时给 <html> 加 .lite，
+     由 CSS 停掉极光漂移、微尘、丝带滚动等最贵的常驻层。
+     目的：翻页动画（真正重要的丝滑）拿到全部 GPU 预算。
+     ============================================================ */
+  (function initLiteMode() {
+    var lite = false;
+    try {
+      var cores = navigator.hardwareConcurrency || 8;
+      var mem = navigator.deviceMemory || 8;
+      var save = navigator.connection && navigator.connection.saveData;
+      lite = cores <= 2 || mem <= 2 || save;
+    } catch (err) { /* 特性不支持就按高性能处理 */ }
+    if (lite) document.documentElement.classList.add('lite');
+  })();
+
+  /* ============================================================
      生命力：指针视差 + 落定回弹
      ------------------------------------------------------------
      自查发现的缺口：整个演示对"鼠标在哪"毫无反应，观众不会觉得它活着。
@@ -5054,14 +5107,28 @@ body[data-slide="26"] .ecg-ribbon{
      ============================================================ */
   (function initCardGlow() {
     if (reduce) return;
+    /* 性能：pointermove 在高刷鼠标上每秒可触发 100+ 次。
+       原实现每次都调 getBoundingClientRect()（强制同步重排），是典型的
+       layout thrashing。改为：只在"进入新卡片"时量一次矩形并缓存；
+       指针坐标只存起来，样式写入统一由 rAF 合帧，一帧最多一次、零次强制重排。 */
+    var card = null, rect = null, mx = 0, my = 0, pending = false;
+    function flush() {
+      pending = false;
+      if (!card || !rect || !rect.width || !rect.height) return;
+      card.style.setProperty('--mx', mx.toFixed(1) + '%');
+      card.style.setProperty('--my', my.toFixed(1) + '%');
+    }
     document.addEventListener('pointermove', function (e) {
       var t = e.target;
-      var card = t && t.closest ? t.closest('.acard') : null;
-      if (!card) return;
-      var r = card.getBoundingClientRect();
-      if (!r.width || !r.height) return;
-      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+      var c = t && t.closest ? t.closest('.acard') : null;
+      if (c !== card) {                  // 换卡片才重新量一次
+        card = c;
+        rect = c ? c.getBoundingClientRect() : null;
+      }
+      if (!card || !rect) return;
+      mx = (e.clientX - rect.left) / rect.width * 100;
+      my = (e.clientY - rect.top) / rect.height * 100;
+      if (!pending) { pending = true; requestAnimationFrame(flush); }
     }, { passive: true });
   })();
 
