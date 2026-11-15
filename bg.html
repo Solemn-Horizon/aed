@@ -145,6 +145,14 @@ html,body{overflow:hidden !important;background:#05060b !important}
 #stage{position:absolute !important;inset:0 !important;
   width:100% !important;height:100% !important;display:block !important}
 .stage .ov{display:none !important}
+
+/* ---- AED 主题叠加层（画在引擎之上）----
+     引擎本身是"科研数据"气质，这里补三样最能让观众一眼认出 AED 的东西：
+       ① 心电波形扫描线（青色 = 生命体征）
+       ② 巨大 "04:00" 水印（黄金四分钟）
+       ③ 极淡的医疗十字 + AED 设备轮廓（主题锚点）
+     全部低透明度，只做"氛围与主题"，不与标题/卡片抢注意力。 */
+#aedfx{position:fixed;inset:0;z-index:5;pointer-events:none;display:block}
 </style>
 </head>
 <body><script>
@@ -900,12 +908,20 @@ function buildCards() {
   }
   Object.assign(rot, { from: 0, to: 0, t: 1, dur: 1, hold: 0 });
 }
-const TINTS = [[232, 234, 240], [232, 234, 240], [232, 234, 240], [232, 234, 240], [232, 234, 240], [232, 234, 240], [196, 184, 246], [196, 184, 246], [168, 222, 214], [206, 212, 150]];
-const HEAD = ['SOLVER/02', 'EXTRACT', 'REF.SCENE 07', 'METHOD M04', 'CHECK', 'RESIDUAL', 'PAPER 37', 'AGENT 09', 'BUFFER A',
-  'DIFF FIELD', 'STEP 1284', 'MESH 64x64', 'PROJECT', 'ADVECT', 'BC / WALL', 'LBM D2Q9', 'QUEUE', 'TRACE', 'EQ.(4)', 'FIG.3', 'VALIDATE', 'SCENE 12'];
-const KEYS = ['dt', 'CFL', 'nu', 'Re', 'tol', 'iter', 'L2', 'mass', 'div', 'u_max', 'rho', 'err', 'grid', 'seed'];
-const CODE_T = ['load()', 'step(u)', 'proj(p)', 'bc.apply', 'solve()', 'grad p', 'div u', 'assert', 'f_eq', 'stream', 'collide', 'ok', 'PASS',
-  'ref#12', 'diff', 'L2<tol', 'u*', '->', '==', 'dt/2', 'emit', 'push', 'read', 'fig3', 'eq4'];
+const TINTS = [[232, 234, 240], [232, 234, 240], [232, 234, 240],
+  [232, 234, 240], [232, 234, 240], [232, 234, 240],
+  [255, 61, 139], [255, 61, 139], [95, 224, 210], [160, 107, 255]];;
+const HEAD = [
+  'AED / 01', '除颤记录', 'PAD CHECK', 'VF / VT', 'GOLDEN 4:00', 'DEVICE 12',
+  'BPM 72', 'CPR 100', 'SHOCK 150J', 'LOCATE', 'RESPONSE', 'SCAN GEO',
+  'MAP / 10', '133 份', 'BATTERY', 'CHEST', 'PULSE', 'ANALYZE',
+  'CHARGE', 'CLEAR!', 'DELIVER', 'REVIEW'];;
+const KEYS = ['BPM', 'SpO2', 'J', 'pad', 'shock', 'CPR', 'scan', 'ETA',
+  'dist', 'prog', 'rate', 'volt', 'ohm', 'ms'];;
+const CODE_T = ['AED.on()', 'analyze()', 'shock(150J)', 'pad.apply', 'cpr.start()',
+  'scan(geo)', 'locate()', 'ok', 'PASS', '133 份', '10 省', '27.82%',
+  '74.43%', '19.55%', '<4:00', 'VF', 'VT', 'charge', 'clear!', 'deliver',
+  'ROS', 'map.push', 'trained', 'press'];;
 const rgba = (t, a) => `rgba(${t[0]},${t[1]},${t[2]},${a})`;
 const fmtNum = () => { const k = rnd(); return k < 0.3 ? rr(0, 1).toFixed(3) : k < 0.55 ? (rr(1, 9).toFixed(1) + 'e-' + (2 + (rnd() * 5 | 0))) : k < 0.8 ? String((rnd() * 9999) | 0) : rr(0, 100).toFixed(1); };
 function glyphStrips(x, x1, y0, y1, pitch, opt, ctx) {
@@ -1247,8 +1263,11 @@ function drawStage(dt) {
 }
 
 /* ---------- callout box with leader line (follows the camera) ---------- */
-const CHECKS = [['STABILITY CHECK', 'CFL = |u| Δt / Δx'], ['MASS CONSERVATION', 'Σ ρ dV = const'], ['RESIDUAL NORM', 'r = ‖b − A·u‖₂'],
-  ['BOUNDARY', 'u · n = 0  on ∂Ω'], ['PROJECTION', '∇²p = ∇ · u* / Δt']];
+const CHECKS = [['DEVICE READY', 'PADS · BATTERY · VOICE'],
+  ['PAD CONTACT', 'impedance < 100 Ω'],
+  ['RHYTHM', 'VF / VT analysis'],
+  ['RESPONSE', 'call 120 first'],
+  ['LOCATE', 'map pin < 4 min']];;
 let chkI = 0;
 const chkEl = document.getElementById('chk');
 function drawCallout() {
@@ -1286,11 +1305,10 @@ kpiTick(); setInterval(kpiTick, 2600);
    PANELS
    ========================================================= */
 // --- investigation feed ---
-const ACTS = ['extract governing equation', 'prepare clean checkout', 'load shared reference scene', 'implement independent method',
-  'review numerical stability', 'check mass conservation', 'record boundary conditions', 'attach source page links',
-  'compare reference outputs', 'retain missing details', 'package clean checkout', 'validate sample buffer',
-  'diff against reference scene', 'resolve ambiguous notation', 'reproduce figure 3', 'sweep timestep sensitivity'];
-const VERBS = ['build', 'check', 'read', 'qa', 'build', 'check'];
+const ACTS = ['电极片贴合检查', '分析心律', '充电至 150J', '提示旁人离开',
+  '建议电击', '继续胸外按压', '记录一次实地走访', '补录问卷样本',
+  '联系红十字会', '标注设备位置', '复核地图坐标', '复核培训人次'];;
+const VERBS = ['布点', '复核', '走访', '培训'];;
 const feed = document.getElementById('feed');
 let feedN = 37;
 function feedPush() {
@@ -1303,10 +1321,9 @@ for (let i = 0; i < 12; i++) feedPush();
 setInterval(feedPush, 650);
 
 // --- method workspace (typing) ---
-const CODE = [['papers', 'load_collection', '()'], ['eqs', 'extract_equations', '(papers)'], ['inputs', 'shared_scene', '()'],
-  ['state', 'method.step', '(inputs)'], ['', 'check_mass', '(state, reference)'], ['', 'check_stability', '(state)'],
-  ['', 'compare_reference', '(state)'], ['', 'attach_page_refs', '(eqs)'], ['', 'retain_missing_details', '()'],
-  ['', 'package_clean_checkout', '()']];
+const CODE = [['aed', 'device.ready', '()'], ['pads', 'attach', '(chest)'],
+  ['rhythm', 'analyze', '()'], ['energy', 'charge', '(150J)'],
+  ['shock', 'deliver', '()'], ['cpr', 'start', '(100/min)']];;
 const codeEl = document.getElementById('code');
 let cLine = 0, cChar = 0, cNum = 7, typed = [];
 const codeStr = l => (l[0] ? l[0] + ' = ' : '') + l[1] + l[2];
@@ -1331,8 +1348,8 @@ function codeTick() {
 setInterval(codeTick, 70);
 
 // --- routes ---
-const ROUTES = ['navier-st', 'settings', 'lbm-d2q9', 'stam-fluid', 'page refs', 'missing'];
-const COLSR = ['extract', 'attach', 'inspect'];
+const ROUTES = ['AED 布点', '培训', '小程序', '地图', '问卷', '访谈'];;
+const COLSR = ['locate', 'analyze', 'shock'];;
 const routesEl = document.getElementById('routes');
 const rState = ROUTES.map(() => (rnd() * 4) | 0);
 function renderRoutes() {
@@ -1351,7 +1368,7 @@ setInterval(() => { const i = (rnd() * ROUTES.length) | 0; rState[i] = (rState[i
 renderRoutes();
 
 // --- agents ---
-const ROLES = ['read', 'build', 'review', 'qa'];
+const ROLES = ['急救员', '志愿者', '讲师', '调研'];;
 const AG = Array.from({ length: 12 }, (_, i) => ({ id: String(i + 1).padStart(2, '0'), role: ROLES[i % 4], p: rnd() * 8, sp: rr(0.6, 2), st: 'working' }));
 const agEl = document.getElementById('agents');
 const ROLE_COL = { read: '#5fe0d2', build: '#ff3d8b', review: '#e2d6f5', qa: '#ff3d8b' };
@@ -1760,6 +1777,240 @@ document.addEventListener('keydown', e => {
 
   ui();
   if (st.on) play();
+})();
+</script>
+
+<canvas id="aedfx" aria-hidden="true"></canvas>
+<script>
+/* ==================================================================
+   AED 主题叠加层
+   ------------------------------------------------------------------
+   设计取舍：引擎已经非常密，这一层必须"轻"——
+   只用心电（最强的 AED 符号）、04:00（黄金四分钟）、十字与设备轮廓（主题锚）。
+   全部走单色低透明度，避免和引擎的多色微数据块打架。
+   ================================================================== */
+(function(){
+  var cv = document.getElementById('aedfx');
+  if(!cv) return;
+  var c = cv.getContext('2d');
+  var W = 0, H = 0, DPR = 1;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* 一次心跳的波形（归一化 x∈[0,1]，y 为相对基线的偏移）：
+     P 波 → Q 下探 → R 尖峰 → S 回探 → T 波 */
+  var BEAT = [
+    [0.00, 0], [0.08, 0], [0.12, 0.10], [0.16, 0.12], [0.20, 0.02], [0.24, 0],
+    [0.27, -0.08], [0.30, 1.00], [0.33, -0.30], [0.36, -0.05], [0.40, 0],
+    [0.52, 0.02], [0.58, 0.20], [0.64, 0.22], [0.70, 0.08], [0.76, 0], [1.00, 0]
+  ];
+  function ecg(t){
+    for(var i=1;i<BEAT.length;i++){
+      if(t <= BEAT[i][0]){
+        var a = BEAT[i-1], b = BEAT[i];
+        var k = (t - a[0]) / Math.max(1e-6, b[0] - a[0]);
+        k = k * k * (3 - 2 * k);          /* smoothstep：比线性更像真实波形 */
+        return a[1] + (b[1] - a[1]) * k;
+      }
+    }
+    return 0;
+  }
+
+  var crosses = [], glyphs = [];
+  function build(){
+    crosses = [];
+    var step = Math.max(150, Math.min(W, H) * 0.19);
+    for(var x = step * 0.6; x < W; x += step){
+      for(var y = step * 0.55; y < H; y += step){
+        if(Math.random() < 0.62){
+          crosses.push({ x: x + (Math.random()-0.5)*step*0.5,
+                         y: y + (Math.random()-0.5)*step*0.5,
+                         s: 3 + Math.random()*4,
+                         ph: Math.random()*6.283,
+                         sp: 0.25 + Math.random()*0.5 });
+        }
+      }
+    }
+    /* 一个"主角"AED 设备轮廓 + 三个陪衬：
+       主角放在右侧空白带（避免被数据环和卡片盖住），
+       这是整页最直接的"这是一台除颤器"的视觉锚点。 */
+    /* 一排 AED 设备 = "布点图"，放在卡片下方的空带里。
+       这一排是最能表达项目主题的元素（AED 在城市的分布密度）。 */
+    glyphs = [];
+    var n = 7;
+    for(var i=0;i<n;i++){
+      glyphs.push({
+        x: (0.115 + i * (0.75 / (n - 1))) * W,
+        y: H * 0.862,
+        s: 30,
+        ph: i * 0.7,
+        sp: 0.10,
+        row: i
+      });
+    }
+  }
+
+  function fit(){
+    DPR = Math.min(1.6, window.devicePixelRatio || 1);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    build();
+  }
+  fit();
+  var rt = null;
+  window.addEventListener('resize', function(){
+    clearTimeout(rt); rt = setTimeout(fit, 180);
+  }, { passive:true });
+
+  /* 十字：医疗标识的极简形式 */
+  function drawCross(x, y, s, al){
+    c.strokeStyle = 'rgba(255,61,139,' + al.toFixed(3) + ')';
+    c.lineWidth = 1.1;
+    c.beginPath();
+    c.moveTo(x - s, y); c.lineTo(x + s, y);
+    c.moveTo(x, y - s); c.lineTo(x, y + s);
+    c.stroke();
+  }
+
+  /* AED 设备轮廓：圆角方盒 + 心形闪电（除颤器的经典视觉） */
+  function drawAed(x, y, s, al){
+    var w = s, hh = s * 0.78;
+    c.strokeStyle = 'rgba(160,107,255,' + al.toFixed(3) + ')';
+    c.lineWidth = 1.2;
+    c.beginPath();
+    if(c.roundRect) c.roundRect(x - w/2, y - hh/2, w, hh, s * 0.14);
+    else c.rect(x - w/2, y - hh/2, w, hh);
+    c.stroke();
+    /* 屏幕 */
+    c.strokeStyle = 'rgba(95,224,210,' + (al * 0.9).toFixed(3) + ')';
+    c.beginPath();
+    c.rect(x - w*0.30, y - hh*0.24, w*0.60, hh*0.30);
+    c.stroke();
+    /* 闪电 */
+    var bx = x, by = y + hh*0.22, u = s * 0.10;
+    c.strokeStyle = 'rgba(255,61,139,' + (al * 1.25).toFixed(3) + ')';
+    c.lineWidth = 1.4;
+    c.beginPath();
+    c.moveTo(bx + u*0.5, by - u*1.6);
+    c.lineTo(bx - u*0.9, by + u*0.2);
+    c.lineTo(bx + u*0.1, by + u*0.2);
+    c.lineTo(bx - u*0.5, by + u*1.8);
+    c.stroke();
+  }
+
+  var T = 0;
+  function draw(dt){
+    T += dt;
+    c.clearRect(0, 0, W, H);
+
+    /* ---------- ① 巨大 04:00 水印：黄金四分钟 ---------- */
+    c.save();
+    /* 水印用 "AED" 三字母：比 "04:00" 更直白点题，
+       且宽度小、不会被圆环裁掉。 */
+    var fs = Math.round(Math.min(W * 0.20, H * 0.40));
+    c.font = '800 ' + fs + 'px "Helvetica Neue",Arial,sans-serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.letterSpacing = '0.06em';
+    /* 原"AED 幽灵字"已移除：它正好落在标题白色大字背后，
+       被完全遮住等于没画。改用右侧的 AED 设备轮廓承担主题识别。 */
+    c.letterSpacing = 'normal';
+    c.restore();
+
+    /* ---------- ② 心电扫描线 ---------- */
+    var baseY = H * 0.548;                  /* 副标题与卡片之间的空白带 */
+    var amp = Math.min(H * 0.052, 48);
+    var cycles = 4.2;
+    var phase = (T * 0.055) % 1;
+    var lg = c.createLinearGradient(0, 0, W, 0);
+    lg.addColorStop(0.00, 'rgba(95,224,210,0)');
+    lg.addColorStop(0.22, 'rgba(95,224,210,0.50)');
+    lg.addColorStop(0.72, 'rgba(95,224,210,0.78)');
+    lg.addColorStop(1.00, 'rgba(95,224,210,0)');
+    var stepPx = 3;
+    function ecgPath(){
+      c.beginPath();
+      for(var x = 0; x <= W; x += stepPx){
+        var t = ((x / W) * cycles + phase) % 1;
+        var y = baseY - ecg(t) * amp;
+        if(x === 0) c.moveTo(x, y); else c.lineTo(x, y);
+      }
+    }
+    /* 两层描边：外层宽而淡做辉光，内层细而亮做线条 */
+    c.strokeStyle = 'rgba(95,224,210,0.10)';
+    c.lineWidth = 6;
+    ecgPath(); c.stroke();
+    c.strokeStyle = lg;
+    c.lineWidth = 1.7;
+    ecgPath(); c.stroke();
+
+    /* 扫描头：随波形前进的亮点 */
+    var headX = (((T * 0.055) % 1) / cycles) * W;
+    var tHead = ((headX / W) * cycles + phase) % 1;
+    var headY = baseY - ecg(tHead) * amp;
+    c.globalCompositeOperation = 'lighter';
+    var rg = c.createRadialGradient(headX, headY, 0, headX, headY, 26);
+    rg.addColorStop(0, 'rgba(220,255,250,0.55)');
+    rg.addColorStop(0.35, 'rgba(95,224,210,0.28)');
+    rg.addColorStop(1, 'rgba(95,224,210,0)');
+    c.fillStyle = rg;
+    c.beginPath(); c.arc(headX, headY, 26, 0, 6.283); c.fill();
+    c.globalCompositeOperation = 'source-over';
+
+    /* ECG 右侧主题标签：把"黄金四分钟"点出来，小字不抢位 */
+    c.save();
+    c.font = '600 11px "JetBrains Mono",Consolas,monospace';
+    c.textAlign = 'right';
+    c.textBaseline = 'alphabetic';
+    c.letterSpacing = '0.18em';
+    c.fillStyle = 'rgba(95,224,210,0.42)';
+    c.fillText('04:00 · GOLDEN WINDOW', W * 0.975, baseY - amp * 1.15);
+    c.letterSpacing = 'normal';
+    c.restore();
+
+    /* 除颤闪光：当 R 尖峰扫过屏幕时，全屏极短促地亮一下。
+       这是"电击"的视觉语义，比任何图标都更像 AED。 */
+    var tt = ((headX / W) * cycles + phase) % 1;
+    if(tt > 0.28 && tt < 0.345){
+      var k2 = 1 - Math.abs(tt - 0.3125) / 0.033;
+      if(k2 > 0){
+        c.fillStyle = 'rgba(190,255,250,' + (0.055 * k2).toFixed(4) + ')';
+        c.fillRect(0, 0, W, H);
+      }
+    }
+
+    /* ---------- ③ 医疗十字（呼吸微亮） ---------- */
+    for(var i=0;i<crosses.length;i++){
+      var k = crosses[i];
+      var al = 0.075 + 0.06 * (0.5 + 0.5 * Math.sin(T * k.sp + k.ph));
+      drawCross(k.x, k.y, k.s, al);
+    }
+
+    /* ---------- ④ AED 设备轮廓（缓慢漂移） ---------- */
+    for(var j=0;j<glyphs.length;j++){
+      var d = glyphs[j];
+      /* 沿线扫描的高光：一道亮光从左往右依次点亮每台设备 */
+      var scan = (T * 0.16) % 1;
+      var dist = Math.abs((d.x / W) - (0.115 + scan * 0.75));
+      var lit = Math.max(0, 1 - dist * 7);
+      var al = 0.13 + lit * 0.30;
+      drawAed(d.x, d.y + Math.sin(T * d.sp + d.ph) * 2, d.s, al);
+    }
+  }
+
+  if(reduce){
+    /* 减弱动效：只画一帧静态 */
+    fit(); draw(0);
+    return;
+  }
+  var last = performance.now();
+  function frame(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    draw(dt);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
