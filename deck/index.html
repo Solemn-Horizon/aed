@@ -1006,6 +1006,11 @@ body{
   .slide{scrollbar-width:none}
 }
 
+/* 测量专用：临时冻结页内全部动画/过渡，用于取元素的【终态】几何。
+   Magic Move 的终点若按 pageIn 起始帧测量，会差 3.5% 缩放，
+   飞行结束时图片"跳"一下 —— 这是 P4→P5 衔接不稳的根因。 */
+.mv-measure,.mv-measure *{animation:none !important;transition:none !important}
+
 /* ---------- 可访问性：尊重系统的「减弱动态效果」 ---------- */
 @media (prefers-reduced-motion:reduce){
   .aurora i{animation:none}
@@ -4415,7 +4420,13 @@ html.lite [data-build]{animation:none !important}
       if (imgs[i].getAttribute('data-mv') === fromInfo.key) { toImg = imgs[i]; break; }
     }
     if (!toImg) return;
-    var r1 = fromInfo.rect, r2 = toImg.getBoundingClientRect();
+    var r1 = fromInfo.rect;
+    /* 关键：先把新页临时冻结在【终态】（animation:none 会让它回到基态
+       transform:none），再量目标矩形。否则量到的是 pageIn 的起始帧
+       （scale 1.035），clone 会飞到一个"差 3.5%"的位置，结束时图片跳一下。 */
+    toSlide.classList.add('mv-measure');
+    var r2 = toImg.getBoundingClientRect();
+    toSlide.classList.remove('mv-measure');
     if (r1.width < 2 || r1.height < 2 || r2.width < 2 || r2.height < 2) return;
     /* 流畅度：目标图若仍是 lazy 未解码，飞行到位那一帧会闪白/卡顿。
        提前触发 decode()（不阻塞动画，Promise 完成后自然就绪）。 */
@@ -4463,12 +4474,14 @@ html.lite [data-build]{animation:none !important}
        因此取平均比例做等比 scale，再配合 object-fit:cover 让构图自然裁切 ——
        视觉上是同一张图滑过去，但每帧只做一次均匀缩放。 */
     var s = Math.sqrt((r2.width / r1.width) * (r2.height / r1.height));
-    var dur = 820;
+    /* 时长与缓动必须与页面的 pageIn(.9s, cubic-bezier(.16,1,.3,1)) 完全一致，
+       否则 clone 先停、页面还在动，两者错帧 → 到位瞬间看起来"顿一下"。 */
+    var dur = 900;
 
     var anim = clone.animate([
       { transform: 'translate3d(0,0,0) scale(1)' },
       { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s.toFixed(4) + ')' }
-    ], { duration: dur, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both' });
+    ], { duration: dur, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' });
 
     var done = false;
     function settle() {
