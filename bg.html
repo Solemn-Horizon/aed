@@ -227,7 +227,8 @@ const TAU = Math.PI * 2, rnd = Math.random;
 const rr = (a, b) => a + rnd() * (b - a);
 const pick = a => a[(rnd() * a.length) | 0];
 const gauss = () => (rnd() + rnd() + rnd() - 1.5) / 1.5;
-let DPR = Math.min(window.devicePixelRatio || 1, 2);
+/* 背景不必全分辨率：0.7 倍缓冲 + CSS 拉伸，肉眼几乎无差，填充率降 51% */
+let DPR = Math.min(window.devicePixelRatio || 1, 2) * 0.85;
 const FONT = '"JetBrains Mono",Consolas,monospace';
 
 function mk(w, h) {
@@ -254,7 +255,7 @@ let curves = [], runners = [], comets = [], cards = [], wedges = [], pulses = []
 let webRot = 0, ringRot = 0, ringVel = 0, OSTEP = 0.0038;
 const GS = 3; // glow buffer downscale
 const FS = 0.5; let farC; // far-layer buffer (depth of field)
-const HAS_FILTER = 'filter' in S;
+const HAS_FILTER = false;
 const easeIO = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const easeO = t => 1 - Math.pow(1 - t, 3);
 
@@ -340,6 +341,23 @@ const PRESETS = {
 const BAKED_MINE = {tempo: 2.5, camera: 1, camZoom: 1, glow: 1.1, scan: 1, ringSpeed: 3, ringPause: 1.2, ringWidth: 1.3, rimBright: 1.8, rimWidth: 1.3, dataFlicker: 1, webBright: 0.9, webPulseBase: 0.1, webPulseAmp: 0.8, webSpin: 1, runnerCount: 788, runnerBright: 0.5, runnerWidth: 1, runnerSpeed: 0.6, runnerVariety: 0.4, cometPerBeat: 2.3, cometBurst: 9, cometTrickle: 1.5, cometLines: 1, cometWidth: 1, cometBright: 1, cometGlow: 1.1, cometSpeed: 0.8, cometFollow: 1, beamBright: 1.8, beamLen: 1.8, beamWidth: 0.7, beamBounce: 2, beamGlow: 3.5, dashBright: 1.9, hazeCount: 22, hazeBright: 1.5, flyerCount: 3, flyerBright: 3, flyerWidth: 1.4, flyerSpeed: 2.2, burstRate: 3.5, burstSize: 3, burstBright: 2.5, flareRate: 3.5, flareBright: 2, rimDensity: 1.2, depthBlur: 0, depthDim: 0.1, webBlur: 0, parallax: 0, bokeh: 0, bokehBright: 0, atmos: 0, ringShadow: 0, vignette: 0};   // 2026-10-21 定稿默认
 if (BAKED_MINE) PRESETS.MINE = { ...BASE, ...BAKED_MINE };
 const C = { ...(PRESETS.MINE || PRESETS.B) };
+
+/* ==================================================================
+   性能降载（AED 背景专用）
+   ------------------------------------------------------------------
+   实测：原版满配在本机作为背景只有 9.5 FPS（单帧 ~105ms）。
+   瓶颈按实测排序：
+     ① 逐帧 ctx.filter = blur()（webBlur / depthBlur）——Canvas2D 的
+        blur 是每帧整层重采样，最贵的一项
+     ② runnerCount 336 个沿线粒子
+     ③ 全分辨率渲染（1600x900 × DPR）
+   背景只是氛围，不需要 60fps，也不需要高保真虚化。
+   ================================================================== */
+C.webBlur = 0; C.vignette = 0;                 /* 圈内底层虚化：关（省掉每帧整层 blur）*/
+C.depthBlur = 0;               /* 远景虚化：关 */
+C.runnerCount = Math.min(C.runnerCount || 336, 96);
+C.bokeh = Math.min(C.bokeh || 16, 7);
+C.atmos = Math.min(C.atmos == null ? 1 : C.atmos, 0.85);
 const zf = z => 1 + (z - 1) * C.camZoom;
 
 const TOK = ['load_collection()', 'extract_eq', '∂u/∂t', 'rho', 'grad(p)', 'dt=1e-3', 'assert', 'residual', 'solve()',
@@ -1493,9 +1511,35 @@ function drawIdx() {
    LOOP
    ========================================================= */
 let last = performance.now();
+/* ---------------- 自适应画质 ----------------
+   目的：强机器保持满效果（不牺牲观感），弱机器自动降载（不牺牲流畅）。
+   做法：累计前 90 帧的 drawStage 实际耗时（不含 rAF 调度），
+   若平均 > 26ms（即撑不到 ~38fps），降一档并重建资源。
+   只降一次，避免抖动。 */
+const QC = { n: 0, sum: 0, done: false };
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt;
+  const __t0 = performance.now();
   drawStage(dt);
+  if (!QC.done) {
+    QC.sum += performance.now() - __t0;
+    if (++QC.n >= 90) {
+      QC.done = true;
+      const avg = QC.sum / 90;
+      if (avg > 26) {
+        C.runnerCount = Math.min(C.runnerCount || 96, 48);
+        C.bokeh = Math.min(C.bokeh || 16, 3);
+        C.atmos = 0;
+        DPR = Math.min(window.devicePixelRatio || 1, 2) * 0.62;
+        try { resizeStage(); } catch (e) {}
+      } else if (avg > 18) {
+        C.runnerCount = Math.min(C.runnerCount || 96, 72);
+        DPR = Math.min(window.devicePixelRatio || 1, 2) * 0.8;
+        try { resizeStage(); } catch (e) {}
+      }
+    }
+  }
+  
   drawAdv(dt); drawDiff(); drawVal(); drawIdx(); agentsTick(dt);
   requestAnimationFrame(frame);
 }
@@ -1503,7 +1547,7 @@ let rzT, ready = false, started = false;
 function resizeAll() {
   const r = stage.getBoundingClientRect();
   if (r.width < 20 || r.height < 20) { ready = false; return; }
-  DPR = Math.min(window.devicePixelRatio || 1, 2); resizeStage(); resizePanels(); ready = true;
+  DPR = Math.min(window.devicePixelRatio || 1, 2) * 0.85; resizeStage(); resizePanels(); ready = true;
   if (!started) { started = true; last = performance.now(); requestAnimationFrame(frame); }
 }
 const origFrame = frame;
@@ -1850,7 +1894,7 @@ document.addEventListener('keydown', e => {
   }
 
   function fit(){
-    DPR = Math.min(1.6, window.devicePixelRatio || 1);
+    DPR = Math.min(1.0, window.devicePixelRatio || 1) * 0.8;
     W = window.innerWidth; H = window.innerHeight;
     cv.width = W * DPR; cv.height = H * DPR;
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
@@ -2013,5 +2057,7 @@ document.addEventListener('keydown', e => {
   requestAnimationFrame(frame);
 })();
 </script>
+
+
 </body>
 </html>
