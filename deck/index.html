@@ -1239,9 +1239,12 @@ body::after{
     translate3d(var(--cam-x,0px),var(--cam-y,0px),0)
     scale(var(--cam-s,1))
     rotate(var(--cam-r,0deg));
-  filter:blur(var(--cam-blur,0px));
-  /* 流畅度：去掉 filter 的 transition —— 整页 blur 插值每帧都要重绘
-     整个视口，是翻页卡顿的主要来源。transform 仍平滑过渡。 */
+  /* 流畅度（关键）：filter 只在真正需要虚焦时才挂上。
+     原来无条件写 filter:blur(0px) —— 即使 0 值也会把整页提升为
+     独立滤镜层，而 .drift 每帧改 transform，导致整个视口每帧重渲染，
+     实测 P5 掉帧 90%、P2/P12 掉帧 26%。
+     改成 var(--cam-filter) 后，多数页面是 none，直接走合成器快路径。 */
+  filter:var(--cam-filter,none);
   transition:transform var(--cam-dur,1.15s) cubic-bezier(.76,0,.24,1);
   /* 不加 !important：后面第 32 段的 .slide.act-* .cam 跨幕大镜头
      要靠更高特异性接管 animation。此前写了 !important，导致四种
@@ -4089,6 +4092,18 @@ html.lite [data-build]{animation:none !important}
 </aside>
 
 <script>
+  /* 全局：只在值真正变化时写 CSS 自定义属性。
+     根元素上的自定义属性每写一次就会让整个文档重算样式，
+     而运镜/视差/亮度这类值很多帧是同一个数（或差异不可见）。 */
+  window.setVarQ = (function(){
+    var last = Object.create(null);
+    return function(el, name, val){
+      var k = name;
+      if (last[k] === val) return;
+      last[k] = val;
+      el.style.setProperty(name, val);
+    };
+  })();
 /* ============================================================
    网页演示引擎（纯原生 JS，无任何外部依赖）
    - 左右方向键 / 空格 / 点击 / 滚轮 翻页
@@ -4764,13 +4779,13 @@ html.lite [data-build]{animation:none !important}
     st.setProperty('--cam-x', X.toFixed(2) + '%');
     st.setProperty('--cam-y', Y.toFixed(2) + '%');
     st.setProperty('--cam-r', R.toFixed(3) + 'deg');
-    st.setProperty('--cam-blur', BLUR.toFixed(2) + 'px');
+    st.setProperty('--cam-filter', BLUR > 0.01 ? 'blur(' + BLUR.toFixed(2) + 'px)' : 'none');
     st.setProperty('--cam-dur', DUR);
     /* 幕的亮度基线压过镜头动词：跨幕时整片明暗换挡，
        幕内则保留每页的细微起伏。这是"背景大变化"的第三层。 */
     var actLit = ACTS[actOf(n)].lit;
     LIT = LIT * 0.35 + actLit * 0.65;
-    document.documentElement.style.setProperty('--lit', LIT.toFixed(3));
+    setVarQ(document.documentElement, '--lit', LIT.toFixed(3));
     if (stageEl) stageEl.setAttribute('data-shot', shot);
   }
 
@@ -4810,10 +4825,7 @@ html.lite [data-build]{animation:none !important}
     var shot = driftEl.getAttribute('data-shot') || 'push';
     var trk = TRACKS[shot];
     if (!trk) {
-      driftEl.style.setProperty('--dx', '0px');
-      driftEl.style.setProperty('--dy', '0px');
-      driftEl.style.setProperty('--dz', '1');
-      driftEl.style.setProperty('--dr', '0deg');
+      driftEl.style.transform = '';
       return;                                  // 定格页：写了终值就不再请求帧
     }
     var t = (ts - driftT0) / 1000;
@@ -4837,11 +4849,12 @@ html.lite [data-build]{animation:none !important}
     sm.dz += (dz - sm.dz) * k;
     sm.dr += (dr - sm.dr) * k;
     sm.lit += (breathe - sm.lit) * k;
-    driftEl.style.setProperty('--dx', sm.dx.toFixed(2) + 'px');
-    driftEl.style.setProperty('--dy', sm.dy.toFixed(2) + 'px');
-    driftEl.style.setProperty('--dz', sm.dz.toFixed(5));
-    driftEl.style.setProperty('--dr', sm.dr.toFixed(3) + 'deg');
-    document.documentElement.style.setProperty('--lit-breathe', sm.lit.toFixed(4));
+    /* 性能：直接写 transform —— 只走合成器，不触发 var() 样式重算。
+       原来每帧写 4 个自定义属性，会让整个 .drift 子树重算样式。 */
+    driftEl.style.transform =
+      'translate3d(' + sm.dx.toFixed(2) + 'px,' + sm.dy.toFixed(2) + 'px,0) ' +
+      'scale(' + sm.dz.toFixed(5) + ') rotate(' + sm.dr.toFixed(3) + 'deg)';
+    setVarQ(document.documentElement, '--lit-breathe', sm.lit.toFixed(4));
     driftRaf = requestAnimationFrame(driftTick);
   }
 
@@ -5339,10 +5352,11 @@ html.lite [data-build]{animation:none !important}
     function loop() {
       cx += (tx - cx) * 0.075;              // 低通：镜头"缓追"指针，不是硬跟
       cy += (ty - cy) * 0.075;
-      root.setProperty('--px', cx.toFixed(4));
-      root.setProperty('--py', cy.toFixed(4));
-      root.setProperty('--lx', (cx * 9).toFixed(2) + '%');
-      root.setProperty('--ly', (cy * 6).toFixed(2) + '%');
+      /* 性能：视差变量值变化很慢，去重后每帧写盘次数大幅下降 */
+      setVarQ(document.documentElement, '--px', cx.toFixed(3));
+      setVarQ(document.documentElement, '--py', cy.toFixed(3));
+      setVarQ(document.documentElement, '--lx', (cx * 9).toFixed(2) + '%');
+      setVarQ(document.documentElement, '--ly', (cy * 6).toFixed(2) + '%');
       if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) {
         raf = requestAnimationFrame(loop);
       } else {
