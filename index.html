@@ -85,10 +85,14 @@ html.lite .codecrain{display:none}
   /* 原版引擎信息密度很高（环带微数据 + 线网 + 光束），
      作为背景必须压低到"氛围"级别，否则压过标题与卡片。
      opacity 控制整体强度，mask 让底部卡片区完全干净。 */
-  opacity:.52;
-  /* 只保留右上区域：左侧标题与底部卡片落在纯色底上，保证可读 */
-  mask-image:radial-gradient(ellipse 68% 82% at 76% 28%,#000 0%,#000 48%,transparent 80%);
-  -webkit-mask-image:radial-gradient(ellipse 68% 82% at 76% 28%,#000 0%,#000 48%,transparent 80%)}
+  opacity:.52}
+/* 背景遮罩改用兄弟层叠一层渐变 ——
+   mask 加在"逐帧更新的 iframe"上会让浏览器每帧重做一次全屏蒙版合成，
+   换成普通半透明渐变层，观感一致但便宜得多。 */
+#bgMask{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 74% 88% at 76% 28%,
+      rgba(5,6,11,0) 0%, rgba(5,6,11,0) 44%, rgba(5,6,11,.92) 78%, #05060b 100%)}
 /* 幕光 / 暗角：给 Canvas 上一层"空气" */
 #veil{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse 78% 72% at 50% 46%,transparent 30%,rgba(0,0,0,.55) 100%)}
@@ -361,7 +365,7 @@ body.in-demo #bg,
 body.in-demo #veil{opacity:0 !important;pointer-events:none}
 /* 演示态直接卸载背景 iframe（display:none）：双 iframe 同时跑引擎会抢帧，
    演示是主角，背景此时无意义。 */
-body.in-demo #bg{display:none !important}
+body.in-demo #bg,body.in-demo #bgMask{display:none !important}
 body.in-demo #demoFrame{z-index:8}
 body.in-demo #demoExit{z-index:10;right:clamp(18px,2.6vw,40px);
   top:clamp(18px,2.6vh,34px)}
@@ -376,6 +380,7 @@ body.in-map #veil{opacity:.5}
 <!-- ===== 生命层 ===== -->
 <!-- 背景：HALOFLUX 原版引擎（bg.html，由 lab.html 派生；配色/数据词已 AED 化） -->
 <iframe id="bg" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
+<div id="bgMask" aria-hidden="true"></div>
 <!-- 刻度环已移除：神经网络本身承担右半屏的视觉重量，
        一个完美圆形会与有机网络结构冲突（2026-11-15） -->
 <div class="codecrain" aria-hidden="true">
