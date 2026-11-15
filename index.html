@@ -715,6 +715,11 @@ document.getElementById('mapReset').addEventListener('click',function(){setScene
   if(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches){
     bg.setAttribute('src','bg.html?still=1');
   }
+  /* 加载兜底：8s 内没有 load 事件就移除 iframe，退回 CSS 冷调渐变。
+     宁可背景简单，也不能让用户看到一块黑或一块空白。 */
+  var ok=false;
+  bg.addEventListener('load', function(){ ok=true; });
+  setTimeout(function(){ if(!ok && bg.parentNode) bg.remove(); }, 8000);
 })();
 (function(){
   var bg=document.getElementById('bg');
