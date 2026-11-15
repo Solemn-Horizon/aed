@@ -121,6 +121,20 @@ html.lite .codecrain{display:none}
    与左侧大标题形成平衡，且不引入新颜色。 */
 /* 刻度环已移除（见 HTML 注释）：神经网络承担右半屏视觉重量 */
 
+/* ---------- 键盘焦点 ----------
+   原来全站 0 条 :focus-visible，键盘用户完全看不到焦点位置。
+   统一用靛蓝（结构色）焦点环，不与品牌暖色抢。 */
+.card:focus-visible,.btn:focus-visible,
+#demoExit:focus-visible,#mapReset:focus-visible,#globalBack:focus-visible,
+.map-marker:focus-visible,a:focus-visible{
+  outline:2px solid rgba(111,124,255,.95);
+  outline-offset:3px;
+  border-radius:inherit;
+}
+/* 鼠标点击不显示焦点环，只有键盘触发才出现 */
+.card:focus:not(:focus-visible),
+.btn:focus:not(:focus-visible){ outline:none }
+
 /* ---------- HUD ---------- */
 .hud{position:fixed;inset:0;z-index:6;pointer-events:none}
 .hud .tl{position:absolute;left:clamp(20px,4vw,64px);top:clamp(18px,4vh,44px)}
@@ -361,7 +375,7 @@ body.in-map #veil{opacity:.5}
 
 <!-- ===== 生命层 ===== -->
 <!-- 背景：HALOFLUX 原版引擎（bg.html，由 lab.html 派生；配色/数据词已 AED 化） -->
-<iframe id="bg" src="bg.html" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
+<iframe id="bg" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
 <!-- 刻度环已移除：神经网络本身承担右半屏的视觉重量，
        一个完美圆形会与有机网络结构冲突（2026-11-15） -->
 <div class="codecrain" aria-hidden="true">
@@ -719,14 +733,25 @@ document.getElementById('mapReset').addEventListener('click',function(){setScene
   var bg=document.getElementById('bg');
   if(!bg) return;
   if(/[?&]nobg=1/.test(location.search)){ bg.remove(); return; }
-  if(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches){
-    bg.setAttribute('src','bg.html?still=1');
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  function start(){
+    /* 加载兜底：9s 内没有 load 事件就移除 iframe，退回 CSS 冷调渐变。
+       宁可背景简单，也不能让用户看到一块黑或空白。 */
+    var ok=false;
+    bg.addEventListener('load', function(){ ok=true; });
+    bg.setAttribute('src', reduce ? 'bg.html?still=1' : 'bg.html');
+    setTimeout(function(){ if(!ok && bg.parentNode) bg.remove(); }, 9000);
   }
-  /* 加载兜底：8s 内没有 load 事件就移除 iframe，退回 CSS 冷调渐变。
-     宁可背景简单，也不能让用户看到一块黑或一块空白。 */
-  var ok=false;
-  bg.addEventListener('load', function(){ ok=true; });
-  setTimeout(function(){ if(!ok && bg.parentNode) bg.remove(); }, 8000);
+
+  /* 延后加载：96KB 引擎 + 持续 rAF，不能和首屏抢带宽与主线程。
+     先让标题/卡片渲染出来，再在浏览器空闲时挂引擎 ——
+     这样即使设备很慢，用户也先看到可用的界面。 */
+  if('requestIdleCallback' in window){
+    requestIdleCallback(start, { timeout: 1500 });
+  } else {
+    setTimeout(start, 700);
+  }
 })();
 (function(){
   var bg=document.getElementById('bg');
