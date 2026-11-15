@@ -14,18 +14,35 @@
    本项目为非商业学生课题演示，遵循其非商业许可并保留署名。
    ================================================================== */
 :root{
+  /* ===== 三层色彩结构 =====
+     实测问题：98% 的彩色像素挤在紫→粉窄色相带，青色仅 1.5%，
+     整页实际是单色系，在纯黑上发闷（全图均亮 11.1）。
+     拆成三层各司其职：
+       ① 品牌暖色（靛蓝→紫→粉） 只做焦点：标题、主 CTA、图标
+       ② 结构冷色（靛蓝 / 青）   做骨架：刻度、读数、序号、边框、hover
+       ③ 中性（深冷黑 + 灰阶）   做底：背景、正文、次要信息
+     暖色因此永远"跳出来"，冷色提供秩序。 */
   --black:#000; --ink:#f5f5f7; --dim:#86868b; --faint:#48484e;
+  --bg-deep:#05060b;
+  --indigo:#6f7cff;
+  --indigo-dim:rgba(111,124,255,.42);
   --pink:#ff3d8b; --purple:#a06bff; --magenta:#d94bd8;
   --teal:#5fe0d2; --teal-dim:rgba(95,224,210,.55);
-  --grad:linear-gradient(100deg,#a06bff 0%,#d94bd8 48%,#ff3d8b 100%);
+  /* 冷端从靛蓝起步：色相跨度 245°→335° */
+  --grad:linear-gradient(100deg,#6f7cff 0%,#a06bff 34%,#d94bd8 66%,#ff3d8b 100%);
   --ease:cubic-bezier(.16,1,.3,1);
   --ease-soft:cubic-bezier(.22,.61,.36,1);
   --font:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",-apple-system,BlinkMacSystemFont,sans-serif;
   --font-num:"Helvetica Neue",Arial,sans-serif;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--black);color:var(--ink);
-  font-family:var(--font);overflow:hidden;-webkit-font-smoothing:antialiased}
+html,body{margin:0;height:100%;color:var(--ink);
+  font-family:var(--font);overflow:hidden;-webkit-font-smoothing:antialiased;
+  /* 不再纯黑：右上冷紫 + 左下极淡青，给光场一个"大气层" */
+  background:
+    radial-gradient(ellipse 92% 72% at 76% 26%,rgba(96,84,226,.115),transparent 64%),
+    radial-gradient(ellipse 66% 58% at 10% 90%,rgba(95,224,210,.055),transparent 68%),
+    var(--bg-deep)}
 body{position:relative}
 
 /* ---------- 代码装饰带：从 AeD 演示里截取的真实片段 ----------
@@ -37,7 +54,7 @@ body{position:relative}
   position:absolute;white-space:nowrap;
   font-family:"JetBrains Mono",Consolas,"SF Mono",monospace;
   font-size:clamp(9px,.85vw,12px);letter-spacing:.06em;
-  color:rgba(190,170,240,.105);
+  color:rgba(150,160,205,.10);   /* 中性冷灰：装饰层不参与暖/冷对抗 */
   animation:codeDrift linear infinite;
   will-change:transform;
 }
@@ -97,19 +114,21 @@ html.lite .codecrain{display:none}
 #dial{position:fixed;z-index:1;pointer-events:none;
   width:min(50vh,430px);height:min(50vh,430px);
   left:68%;top:47%;transform:translate(-50%,-50%);
-  border-radius:50%;opacity:.72;
+  border-radius:50%;opacity:.46;
   animation:dialTurn 90s linear infinite;will-change:transform}
 @keyframes dialTurn{to{transform:translate(-50%,-50%) rotate(360deg)}}
 #dial::before{content:"";position:absolute;inset:0;border-radius:50%;
-  border:1px solid rgba(190,170,240,.16)}
+  border:1px solid rgba(111,124,255,.15)}
 /* 每条刻度以圆心为 transform-origin，旋转到各自角度后自然落在环周。
    top:0 + transform-origin 到圆心 = 标准钟表盘做法。 */
+/* 细刻度=靛蓝（结构），主刻度=青（数据/生命体征）。
+   这样青色不再只是心电丝带的点缀，而是承担"读数"的语义颜色。 */
 #dial i{position:absolute;left:calc(50% - .5px);top:0;width:1px;height:7px;
-  background:rgba(190,170,240,.42);
+  background:rgba(111,124,255,.38);
   transform-origin:50% calc(min(50vh,430px)/2)}
-#dial i.maj{height:13px;background:rgba(255,120,190,.62)}
+#dial i.maj{height:13px;background:rgba(95,224,210,.62)}
 #dial .txt{position:absolute;font-family:"JetBrains Mono",Consolas,monospace;
-  font-size:9px;letter-spacing:.14em;color:rgba(190,170,240,.48);white-space:nowrap}
+  font-size:9px;letter-spacing:.14em;color:rgba(95,224,210,.58);white-space:nowrap}
 #dial .t1{top:-4%;left:50%;transform:translateX(-50%)}
 #dial .t2{bottom:-4%;left:50%;transform:translateX(-50%)}
 #dial .t3{left:-6%;top:50%;transform:translateY(-50%) rotate(-90deg)}
@@ -128,7 +147,8 @@ body.in-sheet #dial,body.in-map #dial{opacity:.12;transition:opacity 1s var(--ea
 .brand small{display:block;font-size:10px;color:var(--dim);letter-spacing:.22em;margin-top:6px;font-weight:500}
 .meta{font-size:11px;color:var(--dim);letter-spacing:.16em;line-height:1.8}
 .meta b{color:var(--ink);font-weight:600}
-.dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--grad);
+.dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--teal);
+  box-shadow:0 0 10px rgba(95,224,210,.7);
   margin-right:9px;vertical-align:1px;animation:dotBreath 2.4s ease-in-out infinite}
 @keyframes dotBreath{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
 
@@ -162,8 +182,13 @@ body.in-sheet #dial,body.in-map #dial{opacity:.12;transition:opacity 1s var(--ea
 /* 四选项：Bento 感、悬停光晕跟随 */
 .menu{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(12px,1.4vw,20px)}
 .card{position:relative;overflow:hidden;border-radius:clamp(16px,1.8vw,26px);
-  border:1px solid rgba(255,255,255,.09);
-  background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
+  /* 卡面：冷调玻璃 + 顶部一道靛蓝高光线（结构层），
+     背景提亮后需要更强的"面"才能浮起来。 */
+  border:1px solid rgba(140,150,255,.13);
+  background:
+    linear-gradient(180deg,rgba(111,124,255,.055) 0%,rgba(111,124,255,0) 42%),
+    linear-gradient(160deg,rgba(255,255,255,.062),rgba(255,255,255,.020));
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 12px 34px rgba(0,0,0,.28);
   padding:clamp(20px,2.4vw,34px);min-height:clamp(190px,26vh,260px);
   display:flex;flex-direction:column;justify-content:space-between;
   cursor:pointer;color:var(--ink);text-align:left;font-family:inherit;
@@ -171,11 +196,14 @@ body.in-sheet #dial,body.in-map #dial{opacity:.12;transition:opacity 1s var(--ea
   transform:translate3d(0,0,0)}
 .card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background:radial-gradient(240px circle at var(--mx,50%) var(--my,40%),
-    rgba(190,170,240,.16),transparent 62%);opacity:0;transition:opacity .5s var(--ease)}
+    rgba(111,124,255,.22),transparent 62%);opacity:0;transition:opacity .5s var(--ease)}
 .card:hover{transform:translate3d(0,-6px,0) scale(1.012);
-  border-color:rgba(190,170,240,.34);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  border-color:rgba(111,124,255,.46);
+  box-shadow:0 24px 60px rgba(0,0,0,.5),inset 0 0 0 1px rgba(111,124,255,.10)}
 .card:hover::after{opacity:1}
-.card .num{font-family:var(--font-num);font-size:11px;letter-spacing:.24em;color:var(--dim)}
+.card .num{font-family:var(--font-num);font-size:11px;letter-spacing:.24em;
+  color:var(--indigo-dim);transition:color .5s var(--ease)}
+.card:hover .num{color:var(--indigo)}
 .card .ico{font-size:clamp(26px,2.6vw,40px);line-height:1;margin:clamp(14px,2vh,24px) 0;
   background:var(--grad);-webkit-background-clip:text;background-clip:text;
   -webkit-text-fill-color:transparent;color:transparent;font-weight:700}
@@ -236,7 +264,7 @@ body.in-sheet #dial,body.in-map #dial{opacity:.12;transition:opacity 1s var(--ea
 /* ---------- 演示：iframe 全屏无缝 ---------- */
 .demo-frame{position:fixed;inset:0;z-index:4;width:100%;height:100%;border:0;
   opacity:0;visibility:hidden;transition:opacity .9s var(--ease),visibility .9s}
-.demo-frame.on{opacity:1 !important;visibility:visible !importanttransition:none !important}
+.demo-frame.on{opacity:1 !important;visibility:visible !important;transition:none !important}
 #demoExit{position:fixed;right:clamp(16px,2.4vw,36px);top:clamp(16px,2.4vh,32px);
   z-index:9;pointer-events:none;opacity:0 !important}
 body #demoExit.on{pointer-events:auto;opacity:1 !important;transition:none !important}
@@ -322,6 +350,21 @@ body.in-map #globalBack{display:none}
 }
 html.lite .dust{display:none}
 html.lite .ribbon svg{animation:none}
+
+/* ---------- 演示态：iframe 独占画面 ----------
+   修复"无法正常演示"：iframe z-index=4，但 HUD(6)/丝带(2)/微尘(2)/刻度(1)
+   会盖在演示上，造成右上角品牌与退出按钮重叠、底部双份心电丝带。
+   进入演示时隐藏 portal 的一切装饰，只留 iframe + 退出按钮。 */
+body.in-demo .hud,
+body.in-demo .ribbon,
+body.in-demo .dust,
+body.in-demo .codecrain,
+body.in-demo #dial,
+body.in-demo #veil{opacity:0 !important;pointer-events:none}
+body.in-demo #demoFrame{z-index:8}
+body.in-demo #demoExit{z-index:10;right:clamp(18px,2.6vw,40px);
+  top:clamp(18px,2.6vh,34px)}
+body.in-demo #globalBack{display:none}
 /* 地图场景：光环退为背景，把注意力让给地理信息 */
 body.in-map #halo{opacity:.22;transition:opacity 1.2s var(--ease)}
 body.in-map #veil{opacity:.5}
@@ -480,7 +523,7 @@ body.in-map #veil{opacity:.5}
 
 <!-- 演示 iframe -->
 <iframe class="demo-frame" id="demoFrame" src="about:blank" title="AED 项目完整演示" allowfullscreen></iframe>
-<button class="btn" id="demoExit">← 退出演示</button>
+<button class="btn" id="demoExit">← 退出演示 / 返回主界面</button>
 
 <script>
 /* ==================================================================
@@ -834,8 +877,9 @@ function setScene(name){
   if(to){to.classList.remove('leaving');to.classList.add('on')}
   current=name;
 
-  /* 内容页态：代码装饰淡出，避免与密集文字打架 */
+  /* 内容页态：代码装饰淡出；演示态：隐藏全部 portal 装饰层 */
   document.body.classList.toggle('in-sheet', name==='group' || name==='aed' || name==='demo');
+  document.body.classList.toggle('in-demo', name==='demo');
 
   /* 统一返回控件：除首页外全部显示；地图用专属按钮（避免重叠） */
   var gb=document.getElementById('globalBack');
