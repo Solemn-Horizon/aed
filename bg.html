@@ -128,15 +128,15 @@ header{display:grid;grid-template-columns:minmax(240px,1.7fr) repeat(5,minmax(0,
 /* ==================================================================
    AED 背景模式（由原版 lab.html 派生，原 JS 未改动）
    ------------------------------------------------------------------
-   只保留 #stage 舞台：这里承载 HALOFLUX 的全部视觉内核
-   （不均匀节拍 / 环带顿挫 / 5 层光束 / 7 机位自动相机 / 环形数据块）。
-   header、七个数据面板、CONSOLE、BGM、状态浮层用 CSS 隐藏，
-   但 DOM 必须保留 —— 脚本会写入这些节点，删掉会抛错中断。
+   ⚠ 关键：header / panels 必须用 visibility:hidden —— 不能用 display:none。
+   display:none 会改变舞台尺寸，导致 buildCards() 的
+   `while (a < TAU - 0.03)` 不收敛，主线程卡死（页面打不开、背景空白）。
+   visibility:hidden 保留全部布局几何，引擎按原尺寸正常跑。
+   舞台本身用 position:fixed 铺满视口，浮层（CONSOLE/BGM/状态）可安全 display:none。
    ================================================================== */
 html,body{overflow:hidden !important;background:#05060b !important}
-.app{display:block !important;height:100vh !important;grid-template-rows:none !important}
 .app > header,
-.app > .panels{display:none !important}
+.app > .panels{visibility:hidden !important}
 .stage{
   position:fixed !important;inset:0 !important;
   width:100vw !important;height:100vh !important;
@@ -149,9 +149,8 @@ html,body{overflow:hidden !important;background:#05060b !important}
 </head>
 <body><script>
 /* 静态模式（正式特性）：
-   ?still=1 或 系统「减弱动态效果」时，只推进有限帧后停止调度。
-   用途：① 无障碍 / 低性能设备  ② 自动化截图（本引擎持续 rAF，
-   无头与部分截图工具会因"永不结算"而挂起）。 */
+   ?still=1 或系统「减弱动态效果」时，跑够一定帧后把画布定格成静态图。
+   用途：无障碍 / 低性能设备 / 省电。 */
 (function(){
   var still = /[?&]still=1/.test(location.search) ||
               (window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches);
@@ -162,14 +161,6 @@ html,body{overflow:hidden !important;background:#05060b !important}
     if(n++ > FRAMES) return 0;
     return raf(cb);
   };
-  var si = window.setInterval.bind(window), k = 0;
-  window.setInterval = function(fn, ms){
-    if(k++ > 4) return 0;
-    return si(fn, ms);
-  };
-  /* 跑够一定时间后把画布定格成一张静态图并替换 body：
-     ① 低性能设备/省电场景真正停下来  ② 自动化截图能结算（本引擎持续 rAF，
-     直接截会因"永不结算"挂起） */
   setTimeout(function(){
     try{
       var st = document.getElementById('stage');
@@ -343,15 +334,10 @@ if (BAKED_MINE) PRESETS.MINE = { ...BASE, ...BAKED_MINE };
 const C = { ...(PRESETS.MINE || PRESETS.B) };
 const zf = z => 1 + (z - 1) * C.camZoom;
 
-const TOK = [
-  'AED', 'BPM 72', 'VF/VT', '除颤', '电极片', '语音提示', '分析心律', '建议电击',
-  'CPR 100/min', '4:00', '黄金四分钟', '133 份', '10 省', '27.82%', '74.43%',
-  '19.55%', '36.84%', '15.04%', '54.89%', '好人法', '培训', '布点', '密度',
-  '小程序', '地图', '位置公开', '邗江', '扬州', '京华城', '红会', '基层',
-  '社区', '校园', '培训基地', '急救包', '响应时间', '第一目击者',
-  'LEAD II', '25mm/s', 'AED MAP', '找得到', '敢去用', '会操作', '扫码定位',
-  '箱体', '标识', '巡检', '演练', 'device#01', 'ok', 'PASS', 'check'
-];
+const TOK = ['load_collection()', 'extract_eq', '∂u/∂t', 'rho', 'grad(p)', 'dt=1e-3', 'assert', 'residual', 'solve()',
+  'mesh', 'bc.apply', 'flux', 'CFL', '0.0041', 'ok', 'PASS', 'ref#12', 'scene_07', 'u_star', 'div(u)', 'proj', 'advect',
+  'step++', 'tol', '1.2e-6', 'kernel', 'paper[37]', 'eq.(4)', 'fig.3', 'table2', 'nu=0.01', 'v_x', 'omega', 'bounce',
+  'f_eq', 'stream', 'collide', 'Re=100', 'check', '>>>', 'match', 'diff', 'L2', 'grid64', 'cfg', 'seed=7'];
 
 /* ---------- rhythm: an uneven beat clock drives everything ---------- */
 const PATTERN = [0.5, 0.25, 0.25, 0.5, 0.5, 0.75, 0.25, 0.25, 0.25, 1.0];
@@ -1667,6 +1653,9 @@ document.addEventListener('keydown', e => {
   const vol = document.getElementById('bgmVol');
   const val = document.getElementById('bgmVal');
   const emb = document.getElementById('bgmData');
+  /* <audio> 已移除（空 src 会让文档永远 loading）。这里守卫一下，
+     否则后续 au.dataset 会抛错，中断整个脚本。 */
+  if (!au) return;
   const TOUCH = matchMedia('(pointer: coarse)').matches;
   if (emb && emb.textContent.trim()) {
     try {
