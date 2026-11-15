@@ -80,10 +80,11 @@ body.in-sheet .codecrain,body.in-map .codecrain{opacity:.25;transition:opacity 1
 html.lite .codecrain{display:none}
 
 /* ---------- 生命层：HALOFLUX 光场 Canvas ---------- */
-#halo{position:fixed;inset:0;z-index:0;pointer-events:none;display:block;
-  /* 底部 55%→78% 渐隐：卡片区让位给文字，网络不穿透卡片影响可读性 */
-  mask-image:linear-gradient(to bottom,#000 0%,#000 55%,transparent 78%);
-  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,transparent 78%)}
+#bg{position:fixed;inset:0;z-index:0;pointer-events:none;border:0;
+  width:100%;height:100%;background:transparent;
+  /* 底部渐隐：卡片区让位给文字（原版引擎自带暗角，这里只补底部） */
+  mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 82%);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 82%)}
 /* 幕光 / 暗角：给 Canvas 上一层"空气" */
 #veil{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse 78% 72% at 50% 46%,transparent 30%,rgba(0,0,0,.55) 100%)}
@@ -338,6 +339,7 @@ body.in-demo .hud,
 body.in-demo .ribbon,
 body.in-demo .dust,
 body.in-demo .codecrain,
+body.in-demo #bg,
 body.in-demo #veil{opacity:0 !important;pointer-events:none}
 body.in-demo #demoFrame{z-index:8}
 body.in-demo #demoExit{z-index:10;right:clamp(18px,2.6vw,40px);
@@ -351,7 +353,8 @@ body.in-map #veil{opacity:.5}
 <body>
 
 <!-- ===== 生命层 ===== -->
-<canvas id="halo" aria-hidden="true"></canvas>
+<!-- 背景：HALOFLUX 原版引擎（bg.html，由 lab.html 派生；配色/数据词已 AED 化） -->
+<iframe id="bg" src="bg.html" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
 <!-- 刻度环已移除：神经网络本身承担右半屏的视觉重量，
        一个完美圆形会与有机网络结构冲突（2026-11-15） -->
 <div class="codecrain" aria-hidden="true">
@@ -525,227 +528,8 @@ document.getElementById('ribbonPath').setAttribute('d', RIBBON);
    配色换成 AeD 的紫→粉 + 青色心电；去掉原作的 BGM / 控制台 / 数据面板。
    全部用 Canvas 一次绘制，无 DOM 动画、无全屏 filter。
    ================================================================== */
-(function initNeural(){
-  var cv=document.getElementById('halo'), cx=cv.getContext('2d');
-  if(!cv||!cx) return;
-  var W=0,H=0,DPR=1;
-
-  /* ---------- 三层配色（与主界面令牌同源） ----------
-     骨架 = 靛蓝（节点 / 突触），数据 = 青（脉冲），激发 = 粉（低频）。
-     这样"网络"是冷的、克制的，"信号"是活的、有色的。 */
-  var COLD='111,124,255', TEAL='95,224,210', WARM='255,61,139';
-
-  var nodes=[], edges=[], pulses=[];
-
-  /* 不均匀节拍（沿用 HALOFLUX 的内核：信号不是均匀滴答，而是一阵一阵） */
-  var PATTERN=[1,.62,.9,.7,1.25,.55,.8,1.05,.68,1.35];
-  var beatI=0, beatT=.5, env=0, sinceBeat=0, beatN=0;
-  function rr(a,b){ return a+Math.random()*(b-a); }
-
-  /* ---------- 预渲染光晕精灵 ----------
-     每帧 createRadialGradient 是主要开销（几十个/帧）。
-     改成两张 64px 精灵 + 'lighter' 叠加，零渐变对象分配。 */
-  function sprite(rgb){
-    var s=document.createElement('canvas'); s.width=s.height=64;
-    var g=s.getContext('2d');
-    var rg=g.createRadialGradient(32,32,0,32,32,32);
-    rg.addColorStop(0,'rgba(255,255,255,1)');
-    rg.addColorStop(.28,'rgba('+rgb+',.85)');
-    rg.addColorStop(.62,'rgba('+rgb+',.22)');
-    rg.addColorStop(1,'rgba('+rgb+',0)');
-    g.fillStyle=rg; g.fillRect(0,0,64,64);
-    return s;
-  }
-  var SPR_T=sprite(TEAL), SPR_W=sprite(WARM), SPR_C=sprite(COLD);
-
-  /* ---------- 建网 ----------
-     6 个簇 + 簇内最近邻连接 + 少量跨簇长程连接。
-     "簇状密集 + 长程稀疏"是真实神经网络的结构特征，
-     也是它看起来不像光环/不像粒子特效的原因。 */
-  function build(){
-    nodes.length=0; edges.length=0; pulses.length=0;
-    var nClusters = lite?4:7;
-    var perCluster = lite?10:17;
-    for(var c=0;c<nClusters;c++){
-      /* 簇心偏右：左侧留给主标题，形成呼吸空间 */
-      /* 簇心限制在 .08–.66 高度：下方是卡片区，网络不侵占 */
-      var ccx = rr(.32,.94)*W, ccy = rr(.08,.66)*H;
-      var spread = Math.min(W,H)*rr(.09,.19);
-      for(var k=0;k<perCluster;k++){
-        var a=Math.random()*6.283, r=Math.pow(Math.random(),.62)*spread;
-        nodes.push({
-          x:ccx+Math.cos(a)*r, y:ccy+Math.sin(a)*r,
-          z:.55+Math.random()*.75,   /* 深度：影响半径与亮度（近大远小） */
-          fire:0, cl:c
-        });
-      }
-    }
-    /* 每个节点连最近的 2 个同簇邻居 + 12% 概率一条跨簇长程 */
-    for(var i2=0;i2<nodes.length;i2++){
-      var A=nodes[i2], cand=[];
-      for(var j2=0;j2<nodes.length;j2++){
-        if(i2===j2) continue;
-        var B=nodes[j2];
-        cand.push({ j:j2, d:Math.hypot(A.x-B.x,A.y-B.y), same:(A.cl===B.cl) });
-      }
-      cand.sort(function(p,q){ return p.d-q.d; });
-      var links=0;
-      for(var m=0;m<cand.length && links<2;m++){
-        if(cand[m].same){ edges.push({a:i2,b:cand[m].j,hot:0}); links++; }
-      }
-      if(Math.random()<.12){
-        for(var m2=0;m2<cand.length;m2++){
-          if(!cand[m2].same && cand[m2].d < Math.min(W,H)*.62){
-            edges.push({a:i2,b:cand[m2].j,hot:0}); break;
-          }
-        }
-      }
-    }
-  }
-
-  function spark(warm){
-    if(!edges.length) return;
-    var e=edges[(Math.random()*edges.length)|0];
-    pulses.push({ e:e, t:0, sp:rr(.55,1.35),
-                  warm: warm===true || Math.random()<.14,
-                  dir: Math.random()<.5?1:-1 });
-    if(pulses.length>96) pulses.shift();
-  }
-
-  /* 节点放电；有概率沿相邻突触级联 —— 这一条是"神经感"的核心，
-     没有级联就只是装饰性粒子流。 */
-  function fire(idx, warm){
-    if(idx<0||idx>=nodes.length) return;
-    nodes[idx].fire=1;
-    if(Math.random()<.42){
-      var outs=[];
-      for(var i=0;i<edges.length;i++){
-        if(edges[i].a===idx||edges[i].b===idx) outs.push(edges[i]);
-      }
-      if(outs.length){
-        var e=outs[(Math.random()*outs.length)|0];
-        pulses.push({ e:e, t:0, sp:rr(.7,1.5), warm:!!warm,
-                      dir: e.a===idx?1:-1 });
-      }
-    }
-  }
-
-  function fit(){
-    DPR=Math.min(2,window.devicePixelRatio||1);
-    W=window.innerWidth; H=window.innerHeight;
-    cv.width=W*DPR; cv.height=H*DPR;
-    cv.style.width=W+'px'; cv.style.height=H+'px';
-    cx.setTransform(DPR,0,0,DPR,0,0);
-    build();
-  }
-  fit();
-  var rt=null;
-  window.addEventListener('resize',function(){
-    clearTimeout(rt); rt=setTimeout(fit,180);
-  },{passive:true});
-
-  function drawStatic(){
-    /* 非动画环境的兜底：画一张静态网络图，保证不是黑屏 */
-    for(var i=0;i<edges.length;i++){
-      var e=edges[i], A=nodes[e.a], B=nodes[e.b];
-      cx.strokeStyle='rgba('+COLD+',.055)'; cx.lineWidth=.8;
-      cx.beginPath(); cx.moveTo(A.x,A.y); cx.lineTo(B.x,B.y); cx.stroke();
-    }
-    for(var k=0;k<nodes.length;k++){
-      var n=nodes[k];
-      cx.fillStyle='rgba('+COLD+','+(.16+.16*n.z).toFixed(3)+')';
-      cx.beginPath(); cx.arc(n.x,n.y,1+1.1*n.z,0,6.283); cx.fill();
-    }
-  }
-
-  if(reduce||lite){ drawStatic(); return; }
-
-  var last=performance.now();
-  function frame(now){
-    var dt=Math.min(.05,(now-last)/1000); last=now;
-
-    beatT-=dt; sinceBeat+=dt;
-    if(beatT<=0){
-      beatT+=PATTERN[beatI++%PATTERN.length]*.92;
-      sinceBeat=0; beatN++;
-      var n=(beatN%4===0)?((rr(5,9))|0):((rr(2,4))|0);
-      for(var s=0;s<n;s++) spark(beatN%8===0 && s===0);
-    }
-    env=Math.exp(-sinceBeat*4.2);
-
-    cx.clearRect(0,0,W,H);
-
-    /* ---------- 突触：极淡骨架 ---------- */
-    cx.lineCap='round';
-    for(var i=0;i<edges.length;i++){
-      var e=edges[i], A=nodes[e.a], B=nodes[e.b];
-      var z=(A.z+B.z)*.5;
-      e.hot=Math.max(0,e.hot-dt*2.2);
-      cx.strokeStyle='rgba('+COLD+','+(.085+.075*z+e.hot*.30).toFixed(3)+')';
-      cx.lineWidth=(.55+.6*z)+e.hot*1.0;
-      cx.beginPath(); cx.moveTo(A.x,A.y); cx.lineTo(B.x,B.y); cx.stroke();
-    }
-
-    /* ---------- 脉冲：沿突触行进的信号 ---------- */
-    cx.globalCompositeOperation='lighter';
-    for(var p2=pulses.length-1;p2>=0;p2--){
-      var p=pulses[p2];
-      p.t += dt*p.sp;
-      if(p.t>=1){
-        fire(p.dir>0?p.e.b:p.e.a, p.warm);
-        p.e.hot=1;
-        pulses.splice(p2,1);
-        continue;
-      }
-      var n1=p.dir>0?nodes[p.e.a]:nodes[p.e.b];
-      var n2=p.dir>0?nodes[p.e.b]:nodes[p.e.a];
-      var px=n1.x+(n2.x-n1.x)*p.t, py=n1.y+(n2.y-n1.y)*p.t;
-      var tz=(n1.z+n2.z)*.5;
-      /* 尾迹用两段折线（无渐变对象，省开销） */
-      var tp=Math.max(0,p.t-.18);
-      cx.strokeStyle='rgba('+(p.warm?WARM:TEAL)+',.48)';
-      cx.lineWidth=1.7;
-      cx.beginPath();
-      cx.moveTo(n1.x+(n2.x-n1.x)*tp, n1.y+(n2.y-n1.y)*tp);
-      cx.lineTo(px,py); cx.stroke();
-      /* 头部光点 */
-      var pr=(3.2+2.0*tz);
-      cx.globalAlpha=1;
-      cx.drawImage(p.warm?SPR_W:SPR_T, px-pr, py-pr, pr*2, pr*2);
-    }
-    cx.globalCompositeOperation='source-over';
-
-    /* ---------- 节点：靛蓝小点，放电时亮起 ---------- */
-    for(var k2=0;k2<nodes.length;k2++){
-      var nd=nodes[k2];
-      nd.fire=Math.max(0,nd.fire-dt*1.7);
-      var nr=(1.3+1.55*nd.z);
-      cx.fillStyle='rgba('+COLD+','+(.30+.28*nd.z).toFixed(3)+')';
-      cx.beginPath(); cx.arc(nd.x,nd.y,nr,0,6.283); cx.fill();
-
-      if(nd.fire>.02){
-        var fc=(k2%7===0)?WARM:TEAL;
-        var gr=nr*(3.0+nd.fire*4.2);
-        cx.globalCompositeOperation='lighter';
-        cx.globalAlpha=.55*nd.fire;
-        cx.drawImage((k2%7===0)?SPR_W:SPR_T, nd.x-gr, nd.y-gr, gr*2, gr*2);
-        cx.globalAlpha=1;
-        cx.globalCompositeOperation='source-over';
-        cx.fillStyle='rgba(255,255,255,'+(.62*nd.fire).toFixed(3)+')';
-        cx.beginPath(); cx.arc(nd.x,nd.y,nr*.85,0,6.283); cx.fill();
-      }
-    }
-
-    /* 节拍整体微光：极淡的一层，让静止时也有"活着"的呼吸 */
-    if(env>.02){
-      cx.fillStyle='rgba('+COLD+','+(env*.014).toFixed(4)+')';
-      cx.fillRect(0,0,W,H);
-    }
-
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
-})();
+/* 背景改由 bg.html（HALFLUX 原版引擎）以 iframe 承载。
+   手写神经网络已移除 —— 原版引擎的环带/光束/自动相机/环形数据块更成熟。 */
 
 /* ==================================================================
    2. 中国地图：省界 + 自适应标记 + 电影运镜放大
@@ -920,6 +704,25 @@ for(var bi=0;bi<document.querySelectorAll('[data-back]').length;bi++){
 }
 demoExit.addEventListener('click',function(){setScene('home')});
 document.getElementById('mapReset').addEventListener('click',function(){setScene('home')});
+
+/* 背景引擎开关：
+   · ?nobg=1  —— 关闭背景引擎（仅保留 CSS 冷调渐变），用于排查
+   · 减弱动效 —— 切静态模式 */
+(function(){
+  var bg=document.getElementById('bg');
+  if(!bg) return;
+  if(/[?&]nobg=1/.test(location.search)){ bg.remove(); return; }
+  if(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches){
+    bg.setAttribute('src','bg.html?still=1');
+  }
+})();
+(function(){
+  var bg=document.getElementById('bg');
+  if(!bg) return;
+  if(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches){
+    bg.setAttribute('src','bg.html?still=1');
+  }
+})();
 document.getElementById('globalBack').addEventListener('click',function(){setScene('home')});
 
 /* 卡片光晕跟随：rAF 合帧 + 缓存矩形（零强制重排） */
