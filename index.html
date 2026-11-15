@@ -80,7 +80,10 @@ body.in-sheet .codecrain,body.in-map .codecrain{opacity:.25;transition:opacity 1
 html.lite .codecrain{display:none}
 
 /* ---------- 生命层：HALOFLUX 光场 Canvas ---------- */
-#halo{position:fixed;inset:0;z-index:0;pointer-events:none;display:block}
+#halo{position:fixed;inset:0;z-index:0;pointer-events:none;display:block;
+  /* 底部 55%→78% 渐隐：卡片区让位给文字，网络不穿透卡片影响可读性 */
+  mask-image:linear-gradient(to bottom,#000 0%,#000 55%,transparent 78%);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 55%,transparent 78%)}
 /* 幕光 / 暗角：给 Canvas 上一层"空气" */
 #veil{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse 78% 72% at 50% 46%,transparent 30%,rgba(0,0,0,.55) 100%)}
@@ -111,31 +114,7 @@ html.lite .codecrain{display:none}
    HALOFLUX 原作有"旋转的微数据面板环"，这里简化成 60 条刻度 +
    4 个极淡读数。作用是把右侧从"空黑"变成"有信息密度"，
    与左侧大标题形成平衡，且不引入新颜色。 */
-#dial{position:fixed;z-index:1;pointer-events:none;
-  width:min(50vh,430px);height:min(50vh,430px);
-  left:68%;top:47%;transform:translate(-50%,-50%);
-  border-radius:50%;opacity:.46;
-  animation:dialTurn 90s linear infinite;will-change:transform}
-@keyframes dialTurn{to{transform:translate(-50%,-50%) rotate(360deg)}}
-#dial::before{content:"";position:absolute;inset:0;border-radius:50%;
-  border:1px solid rgba(111,124,255,.15)}
-/* 每条刻度以圆心为 transform-origin，旋转到各自角度后自然落在环周。
-   top:0 + transform-origin 到圆心 = 标准钟表盘做法。 */
-/* 细刻度=靛蓝（结构），主刻度=青（数据/生命体征）。
-   这样青色不再只是心电丝带的点缀，而是承担"读数"的语义颜色。 */
-#dial i{position:absolute;left:calc(50% - .5px);top:0;width:1px;height:7px;
-  background:rgba(111,124,255,.38);
-  transform-origin:50% calc(min(50vh,430px)/2)}
-#dial i.maj{height:13px;background:rgba(95,224,210,.62)}
-#dial .txt{position:absolute;font-family:"JetBrains Mono",Consolas,monospace;
-  font-size:9px;letter-spacing:.14em;color:rgba(95,224,210,.58);white-space:nowrap}
-#dial .t1{top:-4%;left:50%;transform:translateX(-50%)}
-#dial .t2{bottom:-4%;left:50%;transform:translateX(-50%)}
-#dial .t3{left:-6%;top:50%;transform:translateY(-50%) rotate(-90deg)}
-#dial .t4{right:-6%;top:50%;transform:translateY(-50%) rotate(90deg)}
-@media (prefers-reduced-motion:reduce){#dial{animation:none}}
-html.lite #dial{display:none}
-body.in-sheet #dial,body.in-map #dial{opacity:.12;transition:opacity 1s var(--ease)}
+/* 刻度环已移除（见 HTML 注释）：神经网络承担右半屏视觉重量 */
 
 /* ---------- HUD ---------- */
 .hud{position:fixed;inset:0;z-index:6;pointer-events:none}
@@ -359,7 +338,6 @@ body.in-demo .hud,
 body.in-demo .ribbon,
 body.in-demo .dust,
 body.in-demo .codecrain,
-body.in-demo #dial,
 body.in-demo #veil{opacity:0 !important;pointer-events:none}
 body.in-demo #demoFrame{z-index:8}
 body.in-demo #demoExit{z-index:10;right:clamp(18px,2.6vw,40px);
@@ -374,12 +352,8 @@ body.in-map #veil{opacity:.5}
 
 <!-- ===== 生命层 ===== -->
 <canvas id="halo" aria-hidden="true"></canvas>
-<div id="dial" aria-hidden="true">
-  <span class="txt t1">133 / RESPONSES</span>
-  <span class="txt t2">10 / PROVINCES</span>
-  <span class="txt t3">04:00 / WINDOW</span>
-  <span class="txt t4">AED / FIELDWORK</span>
-</div>
+<!-- 刻度环已移除：神经网络本身承担右半屏的视觉重量，
+       一个完美圆形会与有机网络结构冲突（2026-11-15） -->
 <div class="codecrain" aria-hidden="true">
   <div class="row"><b>--grad-main</b>:linear-gradient(100deg,#a06bff 0%,#d94bd8 48%,#ff3d8b 100%);</div>
   <div class="row">animation:<b>pageIn</b> .9s cubic-bezier(.16,1,.3,1) both;</div>
@@ -551,197 +525,226 @@ document.getElementById('ribbonPath').setAttribute('d', RIBBON);
    配色换成 AeD 的紫→粉 + 青色心电；去掉原作的 BGM / 控制台 / 数据面板。
    全部用 Canvas 一次绘制，无 DOM 动画、无全屏 filter。
    ================================================================== */
-(function initHalo(){
+(function initNeural(){
   var cv=document.getElementById('halo'), cx=cv.getContext('2d');
-  var W=0,H=0,DPR=1, cx0=0, cy0=0;
+  if(!cv||!cx) return;
+  var W=0,H=0,DPR=1;
+
+  /* ---------- 三层配色（与主界面令牌同源） ----------
+     骨架 = 靛蓝（节点 / 突触），数据 = 青（脉冲），激发 = 粉（低频）。
+     这样"网络"是冷的、克制的，"信号"是活的、有色的。 */
+  var COLD='111,124,255', TEAL='95,224,210', WARM='255,61,139';
+
+  var nodes=[], edges=[], pulses=[];
+
+  /* 不均匀节拍（沿用 HALOFLUX 的内核：信号不是均匀滴答，而是一阵一阵） */
+  var PATTERN=[1,.62,.9,.7,1.25,.55,.8,1.05,.68,1.35];
+  var beatI=0, beatT=.5, env=0, sinceBeat=0, beatN=0;
+  function rr(a,b){ return a+Math.random()*(b-a); }
+
+  /* ---------- 预渲染光晕精灵 ----------
+     每帧 createRadialGradient 是主要开销（几十个/帧）。
+     改成两张 64px 精灵 + 'lighter' 叠加，零渐变对象分配。 */
+  function sprite(rgb){
+    var s=document.createElement('canvas'); s.width=s.height=64;
+    var g=s.getContext('2d');
+    var rg=g.createRadialGradient(32,32,0,32,32,32);
+    rg.addColorStop(0,'rgba(255,255,255,1)');
+    rg.addColorStop(.28,'rgba('+rgb+',.85)');
+    rg.addColorStop(.62,'rgba('+rgb+',.22)');
+    rg.addColorStop(1,'rgba('+rgb+',0)');
+    g.fillStyle=rg; g.fillRect(0,0,64,64);
+    return s;
+  }
+  var SPR_T=sprite(TEAL), SPR_W=sprite(WARM), SPR_C=sprite(COLD);
+
+  /* ---------- 建网 ----------
+     6 个簇 + 簇内最近邻连接 + 少量跨簇长程连接。
+     "簇状密集 + 长程稀疏"是真实神经网络的结构特征，
+     也是它看起来不像光环/不像粒子特效的原因。 */
+  function build(){
+    nodes.length=0; edges.length=0; pulses.length=0;
+    var nClusters = lite?4:7;
+    var perCluster = lite?10:17;
+    for(var c=0;c<nClusters;c++){
+      /* 簇心偏右：左侧留给主标题，形成呼吸空间 */
+      /* 簇心限制在 .08–.66 高度：下方是卡片区，网络不侵占 */
+      var ccx = rr(.32,.94)*W, ccy = rr(.08,.66)*H;
+      var spread = Math.min(W,H)*rr(.09,.19);
+      for(var k=0;k<perCluster;k++){
+        var a=Math.random()*6.283, r=Math.pow(Math.random(),.62)*spread;
+        nodes.push({
+          x:ccx+Math.cos(a)*r, y:ccy+Math.sin(a)*r,
+          z:.55+Math.random()*.75,   /* 深度：影响半径与亮度（近大远小） */
+          fire:0, cl:c
+        });
+      }
+    }
+    /* 每个节点连最近的 2 个同簇邻居 + 12% 概率一条跨簇长程 */
+    for(var i2=0;i2<nodes.length;i2++){
+      var A=nodes[i2], cand=[];
+      for(var j2=0;j2<nodes.length;j2++){
+        if(i2===j2) continue;
+        var B=nodes[j2];
+        cand.push({ j:j2, d:Math.hypot(A.x-B.x,A.y-B.y), same:(A.cl===B.cl) });
+      }
+      cand.sort(function(p,q){ return p.d-q.d; });
+      var links=0;
+      for(var m=0;m<cand.length && links<2;m++){
+        if(cand[m].same){ edges.push({a:i2,b:cand[m].j,hot:0}); links++; }
+      }
+      if(Math.random()<.12){
+        for(var m2=0;m2<cand.length;m2++){
+          if(!cand[m2].same && cand[m2].d < Math.min(W,H)*.62){
+            edges.push({a:i2,b:cand[m2].j,hot:0}); break;
+          }
+        }
+      }
+    }
+  }
+
+  function spark(warm){
+    if(!edges.length) return;
+    var e=edges[(Math.random()*edges.length)|0];
+    pulses.push({ e:e, t:0, sp:rr(.55,1.35),
+                  warm: warm===true || Math.random()<.14,
+                  dir: Math.random()<.5?1:-1 });
+    if(pulses.length>96) pulses.shift();
+  }
+
+  /* 节点放电；有概率沿相邻突触级联 —— 这一条是"神经感"的核心，
+     没有级联就只是装饰性粒子流。 */
+  function fire(idx, warm){
+    if(idx<0||idx>=nodes.length) return;
+    nodes[idx].fire=1;
+    if(Math.random()<.42){
+      var outs=[];
+      for(var i=0;i<edges.length;i++){
+        if(edges[i].a===idx||edges[i].b===idx) outs.push(edges[i]);
+      }
+      if(outs.length){
+        var e=outs[(Math.random()*outs.length)|0];
+        pulses.push({ e:e, t:0, sp:rr(.7,1.5), warm:!!warm,
+                      dir: e.a===idx?1:-1 });
+      }
+    }
+  }
+
   function fit(){
-    DPR=Math.min(2, window.devicePixelRatio||1);
+    DPR=Math.min(2,window.devicePixelRatio||1);
     W=window.innerWidth; H=window.innerHeight;
     cv.width=W*DPR; cv.height=H*DPR;
     cv.style.width=W+'px'; cv.style.height=H+'px';
     cx.setTransform(DPR,0,0,DPR,0,0);
-    /* 构图：光环作为"背景主体"偏右，左侧留出主标题的呼吸空间（AeD 极简留白） */
-    cx0=W*0.68; cy0=H*0.47;
+    build();
   }
-  fit(); window.addEventListener('resize',fit,{passive:true});
+  fit();
+  var rt=null;
+  window.addEventListener('resize',function(){
+    clearTimeout(rt); rt=setTimeout(fit,180);
+  },{passive:true});
 
-  /* 不均匀节拍：这是"活着"的关键 —— 所有脉冲都不等间隔 */
-  var PATTERN=[1,.62,.9,.7,1.25,.55,.8,1.05,.68,1.35];
-  var beatI=0, beatT=.4, env=0, sinceBeat=0, beatN=0;
-  function easeIO(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2}
-  function rr(a,b){return a+Math.random()*(b-a)}
+  function drawStatic(){
+    /* 非动画环境的兜底：画一张静态网络图，保证不是黑屏 */
+    for(var i=0;i<edges.length;i++){
+      var e=edges[i], A=nodes[e.a], B=nodes[e.b];
+      cx.strokeStyle='rgba('+COLD+',.055)'; cx.lineWidth=.8;
+      cx.beginPath(); cx.moveTo(A.x,A.y); cx.lineTo(B.x,B.y); cx.stroke();
+    }
+    for(var k=0;k<nodes.length;k++){
+      var n=nodes[k];
+      cx.fillStyle='rgba('+COLD+','+(.16+.16*n.z).toFixed(3)+')';
+      cx.beginPath(); cx.arc(n.x,n.y,1+1.1*n.z,0,6.283); cx.fill();
+    }
+  }
 
-  /* 光环：顿挫式旋转 */
-  var ringRot=0, rot={from:0,to:0,t:0,dur:1,ease:easeIO,hold:0};
-  function ringMove(){
-    var r=Math.random(), d,dur,ez;
-    if(r<.22){d=rr(.9,1.8);dur=rr(.7,1.05);ez=easeIO}
-    else if(r<.64){d=rr(.12,.4);dur=rr(.18,.38);ez=easeIO}
-    else{d=rr(.04,.15);dur=rr(.3,.6);ez=easeIO}
-    if(Math.random()<.08) d=-d*.5;
-    rot={from:ringRot,to:ringRot+d,t:0,dur:dur,ease:ez,hold:rr(.04,.4)};
-  }
-  ringMove();
-
-  /* 自动相机：7 机位，停留缓慢 creep */
-  var shots=[], shotI=0, shotT=0, phase='hold', camFrom=null;
-  var cam={x:0,y:0,z:1};
-  function buildShots(){
-    var R=Math.min(W,H)*0.225;
-    shots=[
-      {x:cx0,y:cy0,z:1,hold:5.0},
-      {x:cx0-R*.35,y:cy0-R*.18,z:1.45,hold:3.6},
-      {x:cx0+R*.30,y:cy0+R*.10,z:1.22,hold:3.4},
-      {x:cx0,y:cy0,z:1,hold:3.2},
-      {x:cx0-R*.18,y:cy0+R*.22,z:1.6,hold:3.8},
-      {x:cx0+R*.12,y:cy0-R*.28,z:1.9,hold:3.2},
-      {x:cx0,y:cy0,z:1.08,hold:3.6}
-    ];
-    shotI=0; shotT=0; phase='hold';
-    cam.x=shots[0].x; cam.y=shots[0].y; cam.z=shots[0].z;
-  }
-  buildShots(); window.addEventListener('resize',buildShots,{passive:true});
-
-  /* 光丝网：三层不同相位的细弧线，随节拍呼吸 */
-  var WEB_N = lite?26:44;
-  var webs=[];
-  for(var i=0;i<WEB_N;i++){
-    webs.push({a:Math.random()*Math.PI*2, r0:.30+Math.random()*.55,
-      sp:(Math.random()-.5)*.16, w:.6+Math.random()*1.4, ph:Math.random()*6.283,
-      layer:(Math.random()*3)|0});
-  }
-  var layerEnv=[0,0,0];
-  /* 光束：5 层，根始终附着光环 */
-  var BEAM_N = lite?18:34;
-  var beams=[];
-  for(var j=0;j<BEAM_N;j++){
-    beams.push({a:Math.random()*Math.PI*2, len:.18+Math.random()*.5,
-      w:.5+Math.random()*1.6, layer:(Math.random()*5)|0, ph:Math.random()*6.283});
-  }
-  /* 光点 runners：沿环缓慢流动 */
-  var RUN_N = lite?60:130;
-  var runs=[];
-  for(var k=0;k<RUN_N;k++){
-    runs.push({a:Math.random()*6.283, r:.86+Math.random()*.2,
-      sp:.08+Math.random()*.22, sz:.6+Math.random()*1.6});
-  }
+  if(reduce||lite){ drawStatic(); return; }
 
   var last=performance.now();
   function frame(now){
     var dt=Math.min(.05,(now-last)/1000); last=now;
-    /* 节拍 */
+
     beatT-=dt; sinceBeat+=dt;
     if(beatT<=0){
-      beatT += PATTERN[beatI++ % PATTERN.length] * .92;
+      beatT+=PATTERN[beatI++%PATTERN.length]*.92;
       sinceBeat=0; beatN++;
-      if(rot.t>=rot.dur && rot.hold<=0) ringMove();
-      layerEnv[(Math.random()*3)|0]=1;
-      if(beatN%4===0) layerEnv[(Math.random()*3)|0]=1;
+      var n=(beatN%4===0)?((rr(5,9))|0):((rr(2,4))|0);
+      for(var s=0;s<n;s++) spark(beatN%8===0 && s===0);
     }
     env=Math.exp(-sinceBeat*4.2);
-    for(var q=0;q<3;q++) layerEnv[q]=Math.max(0,layerEnv[q]-dt*1.7);
-    /* 光环旋转 */
-    if(rot.hold>0) rot.hold-=dt;
-    else {rot.t+=dt; var k2=Math.min(1,rot.t/rot.dur);
-      ringRot=rot.from+(rot.to-rot.from)*rot.ease(k2);}
-    /* 相机 */
-    var cur=shots[shotI], nxt=shots[(shotI+1)%shots.length];
-    shotT+=dt;
-    if(phase==='hold'){
-      var kh=shotT/cur.hold;
-      cam.x=cur.x; cam.y=cur.y+(cur.z>1?Math.sin(kh*Math.PI)*4:0);
-      cam.z=cur.z*(1+.04*kh);
-      if(shotT>=cur.hold){phase='move';shotT=0;camFrom={x:cam.x,y:cam.y,z:cam.z}}
-    }else{
-      var e=easeIO(Math.min(1,shotT/2.2));
-      cam.x=camFrom.x+(nxt.x-camFrom.x)*e;
-      cam.y=camFrom.y+(nxt.y-camFrom.y)*e;
-      cam.z=Math.exp(Math.log(camFrom.z)+(Math.log(nxt.z)-Math.log(camFrom.z))*e);
-      if(shotT>=2.2){phase='hold';shotT=0;shotI=(shotI+1)%shots.length}
-    }
 
-    /* ---- 绘制 ---- */
     cx.clearRect(0,0,W,H);
-    var R=Math.min(W,H)*0.225;
-    var cz=cam.z, ox=(cx0-cam.x), oy=(cy0-cam.y);
-    cx.save();
-    cx.translate(cx0+ox*0.12, cy0+oy*0.12);
-    cx.scale(cz,cz);
-    cx.translate(-cx0,-cy0);
-    var CX=cx0, CY=cy0;
 
-    /* 中心柔光（radial-gradient 本身柔和，不用 filter:blur） */
-    var g=cx.createRadialGradient(CX,CY,0,CX,CY,R*1.9);
-    g.addColorStop(0,'rgba(180,110,230,'+(0.055+env*0.05).toFixed(3)+')');
-    g.addColorStop(.45,'rgba(217,75,216,'+(0.028+env*0.03).toFixed(3)+')');
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    cx.fillStyle=g; cx.beginPath(); cx.arc(CX,CY,R*1.9,0,6.283); cx.fill();
-
-    /* 光丝网 */
+    /* ---------- 突触：极淡骨架 ---------- */
     cx.lineCap='round';
-    for(var w=0;w<webs.length;w++){
-      var o=webs[w], a=o.a+ringRot*(.3+o.layer*.25)+Math.sin(now*.0002+o.ph)*.04;
-      var rad=R*(o.r0+.02*Math.sin(now*.0004+o.ph));
-      var al=(.055+layerEnv[o.layer]*.14+env*.05)*(.5+o.w*.3);
-      cx.strokeStyle='rgba('+(o.layer===0?'160,107,255':o.layer===1?'217,75,216':'255,61,139')+','+al.toFixed(3)+')';
-      cx.lineWidth=o.w;
+    for(var i=0;i<edges.length;i++){
+      var e=edges[i], A=nodes[e.a], B=nodes[e.b];
+      var z=(A.z+B.z)*.5;
+      e.hot=Math.max(0,e.hot-dt*2.2);
+      cx.strokeStyle='rgba('+COLD+','+(.085+.075*z+e.hot*.30).toFixed(3)+')';
+      cx.lineWidth=(.55+.6*z)+e.hot*1.0;
+      cx.beginPath(); cx.moveTo(A.x,A.y); cx.lineTo(B.x,B.y); cx.stroke();
+    }
+
+    /* ---------- 脉冲：沿突触行进的信号 ---------- */
+    cx.globalCompositeOperation='lighter';
+    for(var p2=pulses.length-1;p2>=0;p2--){
+      var p=pulses[p2];
+      p.t += dt*p.sp;
+      if(p.t>=1){
+        fire(p.dir>0?p.e.b:p.e.a, p.warm);
+        p.e.hot=1;
+        pulses.splice(p2,1);
+        continue;
+      }
+      var n1=p.dir>0?nodes[p.e.a]:nodes[p.e.b];
+      var n2=p.dir>0?nodes[p.e.b]:nodes[p.e.a];
+      var px=n1.x+(n2.x-n1.x)*p.t, py=n1.y+(n2.y-n1.y)*p.t;
+      var tz=(n1.z+n2.z)*.5;
+      /* 尾迹用两段折线（无渐变对象，省开销） */
+      var tp=Math.max(0,p.t-.18);
+      cx.strokeStyle='rgba('+(p.warm?WARM:TEAL)+',.48)';
+      cx.lineWidth=1.7;
       cx.beginPath();
-      cx.arc(CX,CY,rad,a,a+.5+o.layer*.22);
-      cx.stroke();
+      cx.moveTo(n1.x+(n2.x-n1.x)*tp, n1.y+(n2.y-n1.y)*tp);
+      cx.lineTo(px,py); cx.stroke();
+      /* 头部光点 */
+      var pr=(3.2+2.0*tz);
+      cx.globalAlpha=1;
+      cx.drawImage(p.warm?SPR_W:SPR_T, px-pr, py-pr, pr*2, pr*2);
+    }
+    cx.globalCompositeOperation='source-over';
+
+    /* ---------- 节点：靛蓝小点，放电时亮起 ---------- */
+    for(var k2=0;k2<nodes.length;k2++){
+      var nd=nodes[k2];
+      nd.fire=Math.max(0,nd.fire-dt*1.7);
+      var nr=(1.3+1.55*nd.z);
+      cx.fillStyle='rgba('+COLD+','+(.30+.28*nd.z).toFixed(3)+')';
+      cx.beginPath(); cx.arc(nd.x,nd.y,nr,0,6.283); cx.fill();
+
+      if(nd.fire>.02){
+        var fc=(k2%7===0)?WARM:TEAL;
+        var gr=nr*(3.0+nd.fire*4.2);
+        cx.globalCompositeOperation='lighter';
+        cx.globalAlpha=.55*nd.fire;
+        cx.drawImage((k2%7===0)?SPR_W:SPR_T, nd.x-gr, nd.y-gr, gr*2, gr*2);
+        cx.globalAlpha=1;
+        cx.globalCompositeOperation='source-over';
+        cx.fillStyle='rgba(255,255,255,'+(.62*nd.fire).toFixed(3)+')';
+        cx.beginPath(); cx.arc(nd.x,nd.y,nr*.85,0,6.283); cx.fill();
+      }
     }
 
-    /* 5 层光束 */
-    for(var b=0;b<beams.length;b++){
-      var B=beams[b], a2=B.a+ringRot*1.0;
-      var L=R*B.len*(1+env*.35);
-      var r1=R*.92, r2=r1+L;
-      var al2=(.05+env*.16+B.layer*.012);
-      var col=B.layer<2?'160,107,255':B.layer<4?'217,75,216':'255,61,139';
-      cx.strokeStyle='rgba('+col+','+al2.toFixed(3)+')';
-      cx.lineWidth=B.w*(1+env*.5);
-      cx.beginPath();
-      cx.moveTo(CX+Math.cos(a2)*r1, CY+Math.sin(a2)*r1);
-      cx.lineTo(CX+Math.cos(a2)*r2, CY+Math.sin(a2)*r2);
-      cx.stroke();
+    /* 节拍整体微光：极淡的一层，让静止时也有"活着"的呼吸 */
+    if(env>.02){
+      cx.fillStyle='rgba('+COLD+','+(env*.014).toFixed(4)+')';
+      cx.fillRect(0,0,W,H);
     }
 
-    /* 主光环：双弧 + 顿挫 */
-    var ringAl=.30+env*.22;
-    cx.strokeStyle='rgba(230,200,255,'+ringAl.toFixed(3)+')';
-    cx.lineWidth=1.6+env*1.2;
-    cx.beginPath(); cx.arc(CX,CY,R*.92,ringRot,ringRot+Math.PI*1.36); cx.stroke();
-    cx.strokeStyle='rgba(255,120,190,'+(ringAl*.7).toFixed(3)+')';
-    cx.lineWidth=1;
-    cx.beginPath(); cx.arc(CX,CY,R*.92,ringRot+Math.PI*1.5,ringRot+Math.PI*1.92); cx.stroke();
-    /* 内环：青色心电呼应 */
-    cx.strokeStyle='rgba(95,224,210,'+(.16+env*.12).toFixed(3)+')';
-    cx.lineWidth=1;
-    cx.beginPath(); cx.arc(CX,CY,R*.78,-ringRot*.6,-ringRot*.6+Math.PI*.9); cx.stroke();
-
-    /* 流动光点 */
-    for(var u=0;u<runs.length;u++){
-      var R2=runs[u]; var a3=R2.a+ringRot*.8+now*.0001*R2.sp*60;
-      var rr2=R*R2.r;
-      var x2=CX+Math.cos(a3)*rr2, y2=CY+Math.sin(a3)*rr2;
-      cx.fillStyle='rgba(255,255,255,'+(.12+env*.2).toFixed(3)+')';
-      cx.beginPath(); cx.arc(x2,y2,R2.sz,0,6.283); cx.fill();
-    }
-
-    /* 节拍闪核：中心一个随心跳缩放的亮点 */
-    var beatScale=1+env*.5;
-    var gg=cx.createRadialGradient(CX,CY,0,CX,CY,26*beatScale);
-    gg.addColorStop(0,'rgba(255,255,255,'+(.16+env*.5).toFixed(3)+')');
-    gg.addColorStop(1,'rgba(255,61,139,0)');
-    cx.fillStyle=gg; cx.beginPath(); cx.arc(CX,CY,26*beatScale,0,6.283); cx.fill();
-
-    cx.restore();
     requestAnimationFrame(frame);
   }
-  if(!reduce && !lite) requestAnimationFrame(frame);
-  else { /* 静态一帧，保证非黑屏 */
-    cx.fillStyle='rgba(160,107,255,.05)';
-    cx.beginPath(); cx.arc(cx0,cy0,Math.min(W,H)*.24,0,6.283); cx.fill();
-  }
+  requestAnimationFrame(frame);
 })();
 
 /* ==================================================================
@@ -762,19 +765,6 @@ var MARKS=[
 ];
 var HI_NAMES=['江苏省'];
 var svg=document.getElementById('mapSvg');
-/* 刻度盘：60 条刻度（每 5 条一主刻度），用 JS 生成保持 HTML 干净 */
-(function(){
-  var dial=document.getElementById('dial');
-  if(!dial) return;
-  var frag=document.createDocumentFragment();
-  for(var i=0;i<60;i++){
-    var t=document.createElement('i');
-    if(i%5===0) t.className='maj';
-    t.style.transform='rotate('+(i*6)+'deg)';
-    frag.appendChild(t);
-  }
-  dial.insertBefore(frag, dial.firstChild);
-})();
 function buildMap(){
   var s='';
   /* 省界 */
@@ -903,7 +893,7 @@ function setScene(name){
   /* 演示：延迟加载 iframe，避免首屏多一个 271KB 文档 */
   if(name==='demo'){
     if(demoFrame.getAttribute('src')==='about:blank'){
-      demoFrame.setAttribute('src','deck/index.html#1');
+      demoFrame.setAttribute('src','deck/index.html');
     }
     setTimeout(function(){
       demoFrame.classList.add('on'); demoExit.classList.add('on');
