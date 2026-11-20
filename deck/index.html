@@ -20,7 +20,7 @@
 
   /* 权威强调色：参考片 C（苹果发布会 Keynote）的紫→粉渐变，
      同时呼应实拍 AED 柜的红色标识。全站只在此定义一次。 */
-  --grad-main:linear-gradient(100deg,#a06bff 0%,#d94bd8 48%,#ff3d8b 100%);
+  --grad-main:linear-gradient(104deg,#ff8fae 0%,#ff5c8a 100%);  /* 收敛为同色系双端点 */
   --grad-soft:linear-gradient(100deg,#7b8095 0%,#ffffff 100%);
 
   /* 缓动：expo-out 为主（起步快、收尾极慢，观感最"丝滑"） */
@@ -1147,8 +1147,8 @@ body::after{
    强调色统一由文件开头的 :root 权威定义（紫→粉，参考片 C 实测）。
    此处不再重复声明 --grad-main，避免三套配色互相覆盖。 */
 :root{
-  --pink:#d94bd8;
-  --purple:#a06bff;
+  --pink:var(--accent);
+  --purple:var(--accent-hover);
 }
 
 /* ---------- 9. 章节字母：镀铬 ----------
@@ -3358,6 +3358,107 @@ body.kx-bgbeat #world{filter:brightness(1.10)}
 }
 html.lite [data-build]{animation:none !important}
 
+
+/* ==================================================================
+   AED Design Tokens · Apple-like Dark Cinema  [UNIFIED v2]
+   ------------------------------------------------------------------
+   单一真源：portal 与 deck 共用同一套令牌语义。
+   设计依据：
+     · 中性色为主、层级靠明度/透明度而非色相
+     · 单一强调色（AED 玫瑰红）+ 一个焦点蓝（仅焦点环）
+     · 动效按语义分工：入场 expo-out / 离场 ease-in / 微交互 standard
+     · 克制：渐变只做材质（金属），不做配色方案
+   本块位于文件末尾，优先级高于前面的历史调色层，
+   原先散落的 :root 定义保留为文档与回退，不必删除。
+   ================================================================== */
+:root{
+  color-scheme:dark;
+
+  /* 背景与表面：三层近黑，不用纯黑做唯一表面 */
+  --bg-base:#050507;        --bg-elevated:#0a0a0c;   --bg-surface:#101014;
+  --surface:rgba(255,255,255,.05);
+  --surface-hover:rgba(255,255,255,.085);
+  --separator:rgba(255,255,255,.10);
+  --border-hairline:rgba(255,255,255,.08);
+
+  /* 文字：中性灰阶梯，全部达 WCAG AA（正文 ≥4.5:1） */
+  --ink:#F5F5F7;            --ink-sub:#A1A1A6;        --ink-dim:#86868B;
+  --text-primary:#F5F5F7;   --text-secondary:#A1A1A6;
+  --text-tertiary:#86868B;  --text-quaternary:#6E6E73;/* 仅 ≥20px 大字 */
+
+  /* 单一强调色：AED 玫瑰红（呼应除颤器红色标识） */
+  --accent:#FF5C8A;         --accent-hover:#FF7AA1;
+  --accent-quiet:rgba(255,92,138,.14);
+  --accent-glow:rgba(255,92,138,.28);
+  --focus:#0A84FF;                       /* Apple 蓝：只做键盘焦点环 */
+  --ecg:#30D0C4;                         /* 心电/生命体征母题，仅此一处 */
+
+  /* 缓动：按语义分工，禁止一曲线通用 */
+  --ease-out:cubic-bezier(.16,1,.3,1);   /* 入场 */
+  --ease-in:cubic-bezier(.7,0,.84,0);    /* 离场 */
+  --ease-standard:cubic-bezier(.25,.1,.25,1); /* 悬停/微交互 */
+  --ease-spring:cubic-bezier(.32,.72,0,1);
+  /* 兼容历史变量名（原代码大量引用 --ease / --ease-soft） */
+  --ease:var(--ease-out);
+  --ease-soft:var(--ease-standard);
+
+  /* 微交互时长：150–300ms */
+  --dur-micro:180ms;  --dur-enter:420ms; --dur-exit:280ms;
+}
+
+/* 键盘焦点：与强调同色系，鼠标点击不显示 */
+:where(button,a,[tabindex]):focus-visible{
+  outline:2px solid var(--focus); outline-offset:3px;
+}
+
+/* ---------- Apple 化修正（deck） ---------- */
+
+/* P0 · H2：移动端全屏 blur 回潮 —— 这是桌面端刚删掉的最贵 GPU 操作，
+   手机端却用 !important 加了回来（原 L1497）。直接覆盖掉。 */
+@media (max-width:760px){
+  .aurora i{filter:none !important}
+}
+
+/* P1 · H4：breatheNum 常驻 drop-shadow 改为纯 opacity 呼吸 */
+@keyframes breatheNum{
+  0%,100%{opacity:.86}
+  50%{opacity:1}
+}
+
+/* P1 · H3：跨幕 big-shot 去掉 filter 关键帧，只留 transform。
+   全屏 blur 每帧重采样是这类大镜头的头号卡顿源。 */
+@keyframes actCrane{0%{opacity:0;transform:translate3d(0,8%,0) scale(1.06)}100%{opacity:1;transform:none}}
+@keyframes actWhip{0%{opacity:0;transform:translate3d(-12%,0,0) rotate(-2deg)}100%{opacity:1;transform:none}}
+@keyframes actDollyZoom{0%{opacity:0;transform:scale(1.18)}100%{opacity:1;transform:none}}
+@keyframes actOrbit{0%{opacity:0;transform:perspective(1400px) rotateY(14deg)}100%{opacity:1;transform:none}}
+
+/* P1 · 统一缓动家族：dissolve 的 Material 曲线 → expo-out */
+#stage[data-trans="dissolve"] .slide.active{transition-timing-function:var(--ease-out) !important}
+
+/* P1 · 结论/收尾页：原来是全片最快的 none .22s linear，
+   与"安静收束"的语义相反。改为慢速溶解。 */
+#stage[data-trans="none"] .slide.active{animation-duration:900ms !important}
+
+/* P2 · 排印：字重降一档（全站 800 → 700/600），字距收窄 */
+.hero,.h2.grad,.bignum,.chapter-slide .initial{font-weight:700 !important}
+.home h1,.home .card h2{font-weight:700 !important}
+
+/* P2 · 正文对比度：#5a5a61 / #6e6e73 不达 AA，提到 #86868b */
+#tools,#speaker,#chapter,.kicker,#pager{color:var(--ink-dim) !important}
+
+/* P3 · 图片：非首屏图延迟解码（属性补在 JS 里，见脚本补丁） */
+
+/* ---------- 按机型的装饰层策略（Adaptive Quality） ---------- */
+html[data-quality="mid"] .dust,
+html[data-quality="mid"] .ribbon{display:none !important}
+html[data-quality="low"] .codecrain,
+html[data-quality="low"] .dust,
+html[data-quality="low"] .ribbon,
+html[data-quality="low"] .aurora i{display:none !important}
+/* 低档：光斑静止，去掉常驻 rAF 的视觉需求 */
+html[data-quality="low"] .aurora i{animation:none !important;opacity:.14 !important}
+/* 中档：极光静止但仍可见（保命的保底渐变仍在） */
+html[data-quality="mid"] .aurora i{animation-duration:30s}
 </style>
 </head>
 <body>
@@ -3506,7 +3607,7 @@ html.lite [data-build]{animation:none !important}
     </div>
     <div class="right">
       <figure class="figure">
-        <img src="img/interview-notes.webp" alt="问卷与访谈提纲记录" data-mv="notes">
+        <img decoding="async" src="img/interview-notes.webp" alt="问卷与访谈提纲记录" data-mv="notes">
         <figcaption>组员手写的访谈提纲与记录</figcaption>
       </figure>
     </div>
@@ -3524,7 +3625,7 @@ html.lite [data-build]{animation:none !important}
 
       <!-- Hero 大格：实拍 AED + 主数字，跨 2×2 -->
       <div class="acard acard-photo span2">
-        <img src="img/aed-cabinet-1.webp" alt="京华城实地拍摄到的 AED 设备">
+        <img loading="lazy" decoding="async" src="img/aed-cabinet-1.webp" alt="京华城实地拍摄到的 AED 设备">
         <div class="photo-scrim"></div>
         <div class="photo-body">
           <div class="k">有效问卷 · 截至 2026.10.04</div>
@@ -3566,7 +3667,7 @@ html.lite [data-build]{animation:none !important}
 
       <!-- 第二排：图卡 + 图标卡 + 数字卡，内容形态各异 -->
       <div class="acard acard-photo acard-small">
-        <img src="img/interview-notes.webp" alt="组员手写的访谈提纲与记录" data-mv="notes">
+        <img decoding="async" src="img/interview-notes.webp" alt="组员手写的访谈提纲与记录" data-mv="notes">
         <div class="photo-scrim"></div>
         <div class="photo-body">
           <div class="k">一手资料</div>
@@ -3624,7 +3725,7 @@ html.lite [data-build]{animation:none !important}
             <span class="sub" style="margin:0 0 0 16px;display:inline">京华城 · 唯一一台</span></span></div>
       </div>
       <figure class="figure" style="aspect-ratio:4/3">
-        <img src="img/two-recording.webp" alt="访谈现场同学分工记录">
+        <img loading="lazy" decoding="async" src="img/two-recording.webp" alt="访谈现场同学分工记录">
         <figcaption>访谈现场 · 提问与记录分工</figcaption>
       </figure>
     </div>
@@ -3829,7 +3930,7 @@ html.lite [data-build]{animation:none !important}
     </div>
     <div class="right">
       <figure class="figure">
-        <img src="img/interviewee.webp" alt="受访的红十字会培训人员">
+        <img loading="lazy" decoding="async" src="img/interviewee.webp" alt="受访的红十字会培训人员">
         <figcaption>9.26 · 新盛街道办事处 · 受访者</figcaption>
       </figure>
     </div>
@@ -3866,7 +3967,7 @@ html.lite [data-build]{animation:none !important}
           <div class="d">每 50–100 米一名急救员带机巡回</div></div>
       </div>
       <figure class="figure" style="aspect-ratio:4/3">
-        <img src="img/student-writing.webp" alt="同学现场记录">
+        <img loading="lazy" decoding="async" src="img/student-writing.webp" alt="同学现场记录">
         <figcaption>访谈现场 · 边听边记</figcaption>
       </figure>
     </div>
@@ -3982,15 +4083,15 @@ html.lite [data-build]{animation:none !important}
     <h2 class="h2 grad" data-anim="2">一台在扬州，两台在新加坡</h2>
     <div class="gallery" data-anim="4" style="margin-top:3.4vh">
       <figure class="figure">
-        <img src="img/aed-cabinet-3.webp" alt="京华城的AED设备">
+        <img loading="lazy" decoding="async" src="img/aed-cabinet-3.webp" alt="京华城的AED设备">
         <figcaption>扬州 · 京华城 · 我们拍到的唯一一台</figcaption>
       </figure>
       <figure class="figure">
-        <img src="img/aed-cabinet-1.webp" alt="新加坡的AED设备">
+        <img loading="lazy" decoding="async" src="img/aed-cabinet-1.webp" alt="新加坡的AED设备">
         <figcaption>新加坡 · 组员拍摄</figcaption>
       </figure>
       <figure class="figure">
-        <img src="img/aed-cabinet-2.webp" alt="新加坡的AED设备">
+        <img loading="lazy" decoding="async" src="img/aed-cabinet-2.webp" alt="新加坡的AED设备">
         <figcaption>新加坡 · 组员拍摄</figcaption>
       </figure>
     </div>
@@ -4027,7 +4128,7 @@ html.lite [data-build]{animation:none !important}
       <div class="row" data-anim="6"><span class="txt" style="font-size:clamp(15px,1.9vw,32px)">那个医生目前在德国，二月才回来</span></div>
     </div>
     <figure class="figure" data-anim="7" style="margin-top:3vh;aspect-ratio:21/6">
-      <img src="img/group-photo.webp" alt="课题组与受访工作人员合影">
+      <img loading="lazy" decoding="async" src="img/group-photo.webp" alt="课题组与受访工作人员合影">
       <figcaption>课题组成员与受访工作人员</figcaption>
     </figure>
   </section>
@@ -4103,6 +4204,67 @@ html.lite [data-build]{animation:none !important}
 </aside>
 
 <script>
+/* ==================================================================
+   AED Adaptive Quality · 按机型自适应性能档位
+   ------------------------------------------------------------------
+   三级：high / mid / low
+   · 静态能力探测（一次性）：cores / deviceMemory / saveData / reduce / dpr
+   · 运行期帧率看门狗：采样真实帧间隔，持续掉帧就降档（带冷却期，防抖动）
+   · CSS 用 html[data-quality] 控制装饰层；JS 用 AEDQ.tier 控制 rAF 频率
+   降到 low 后不再自动回升（保守：宁可稳，不冒进）。
+   ================================================================== */
+window.AEDQ = (function () {
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var cores = navigator.hardwareConcurrency || 4;
+  var mem = navigator.deviceMemory || 4;
+  var save = !!(navigator.connection && navigator.connection.saveData);
+  var dpr = Math.min(window.devicePixelRatio || 1, 3);
+  var touch = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+
+  var tier;
+  if (reduce || cores <= 2 || mem <= 2 || save) tier = 'low';
+  else if (cores <= 4 || mem <= 4 || dpr >= 3 || (touch && cores <= 6)) tier = 'mid';
+  else tier = 'high';
+
+  var root = document.documentElement;
+  function apply(t) {
+    tier = t;
+    root.setAttribute('data-quality', t);
+    /* 兼容既有 .lite 逻辑：low 等价 lite */
+    if (t === 'low') root.classList.add('lite');
+    else root.classList.remove('lite');
+  }
+  apply(tier);
+
+  /* 帧率看门狗：只在前 150 帧采样一次，避免长期占用 */
+  var n = 0, sum = 0, last = 0, cooldown = false;
+  function sample(ts) {
+    if (tier === 'low' || cooldown) return;
+    if (last) {
+      var dt = ts - last;
+      /* 只统计 8–80ms 的帧，忽略切后台/断点造成的大间隔 */
+      if (dt > 8 && dt < 80) { sum += dt; n++; }
+    }
+    last = ts;
+    if (n >= 60) {                       /* 60 帧内就决策，弱机更快降载 */
+      var avg = sum / n;
+      if (avg > 20 && tier === 'high') { apply('mid'); cooldown = true; }
+      else if (avg > 25 && tier === 'mid') { apply('low'); cooldown = true; }
+      /* 采样结束，不再循环 */
+    } else {
+      requestAnimationFrame(sample);
+    }
+  }
+  requestAnimationFrame(sample);
+
+  return {
+    get tier() { return tier; },
+    get isHigh() { return tier === 'high'; },
+    get isLow() { return tier === 'low'; },
+    set: apply
+  };
+})();
+
   /* 全局：只在值真正变化时写 CSS 自定义属性。
      根元素上的自定义属性每写一次就会让整个文档重算样式，
      而运镜/视差/亮度这类值很多帧是同一个数（或差异不可见）。 */
@@ -4638,7 +4800,7 @@ html.lite [data-build]{animation:none !important}
   /* 一镜到底：转场可被随时打断（所有动画是 transition / WAAPI，
      基准态即终态，连按不会错位）。旧版 600ms 长锁会吞掉快速翻页，
      让镜头"停一下再走" —— 那正是切页感来源，故缩短到 200ms。 */
-  var LOCK_MS = 320;
+  var LOCK_MS = 320;   /* 默认值；show() 会按当前转场时长动态覆盖（见下） */
   var booted = false;       // 首次进入不做交接（直接跳页时不该从封面飞过来）
   var lastChapter = null;   // 上一页的章节标签，值没变就不重放动画
   var lastSpeaker = null;   // 上一页的讲者，同上
@@ -4941,6 +5103,7 @@ html.lite [data-build]{animation:none !important}
   /* 网页原生导航状态（见 show() 内的 URL 同步）。
      pushState 让浏览器前进/后退能翻页，这是 PPT 做不到的"网页感"。 */
   var suppressHistory = false, firstHistory = true;
+  var navLockTimer = null;
   var lastShownSlide = null;   /* 上一次 show() 的页，用于连翻时清理残留动画 */
 
   function show(n, dir) {
@@ -4949,7 +5112,8 @@ html.lite [data-build]{animation:none !important}
     if (navLock) return;
 
     navLock = true;
-    setTimeout(function () { navLock = false; }, LOCK_MS);
+    /* 翻页锁在下方 trans 决策完成后按转场时长动态设置 ——
+       固定 320ms 会把 1.7s 的跨幕大镜头砍到 320ms（只看到镜头动一半）。 */
 
     // 前进 / 后退：驱动方向感知的推镜
     if (stageEl) stageEl.setAttribute('data-dir', dir === 'prev' ? 'prev' : 'next');
@@ -5016,6 +5180,22 @@ html.lite [data-build]{animation:none !important}
     /* 跨幕时保留大镜头语言，但若该页已有明确语义转场（Push/Match/None），
        不覆盖 —— 语义比"每跨幕都甩一次"更重要。 */
     if (actInfo.changed && actInfo.trans && !SEMANTIC[n+1]) trans = actInfo.trans;
+
+    /* ============ 分级镜头节奏（Apple 发布会语汇）============
+       不同语义的转场用不同"锁定时长"，让快页真快、大镜头真慢。
+       锁不是为了节流，而是为了不让下一页打断正在播放的镜头。 */
+    var TRANS_LOCK = {
+      none:200, match:300, dissolve:420, push:520, wipe:420,
+      iris:620, dolly:520, zoom:620, flip:520, rack:520,
+      pan:520, orbit:640, tilt3d:560, dive:560
+    };
+    /* 跨幕大镜头至少让它播完 1/3，否则观众只看到半截运镜 */
+    if (actInfo.changed && actInfo.trans) {
+      TRANS_LOCK[actInfo.trans] = Math.max(560, TRANS_LOCK[actInfo.trans] || 500);
+    }
+    var thisLock = TRANS_LOCK[trans] || LOCK_MS;
+    clearTimeout(navLockTimer);
+    navLockTimer = setTimeout(function () { navLock = false; }, thisLock);
 
     /* 相机累计步数：只增不减，供相位计算与极光共用 */
     if (booted) camProgress += 1;
