@@ -92,14 +92,13 @@ html.lite .codecrain{display:none}
    mask 加在"逐帧更新的 iframe"上会让浏览器每帧重做一次全屏蒙版合成，
    换成普通半透明渐变层，观感一致但便宜得多。 */
 #bgMask{position:fixed;inset:0;z-index:1;pointer-events:none;
-  /* 减弱遮罩：原来 78% 处就 .92 黑，把背景吃光了。
-     现在只在最底部收口，让右上光场充分露出。 */
-  background:
-    radial-gradient(ellipse 86% 96% at 72% 30%,
-      rgba(5,6,11,0) 0%, rgba(5,6,11,0) 62%, rgba(5,6,11,.55) 88%, rgba(5,6,11,.85) 100%)}
+  /* 大幅减弱遮罩：用户仍觉得背景太淡，之前 .55 收口还是吃掉了太多。
+     现在几乎全透，只在最底 8% 收口保证卡片区干净。 */
+  background:linear-gradient(to bottom,
+    rgba(5,6,11,0) 0%, rgba(5,6,11,0) 82%, rgba(5,6,11,.42) 94%, rgba(5,6,11,.7) 100%)}
 /* 幕光 / 暗角：给 Canvas 上一层"空气" */
 #veil{position:fixed;inset:0;z-index:1;pointer-events:none;
-  background:radial-gradient(ellipse 78% 72% at 50% 46%,transparent 30%,rgba(0,0,0,.55) 100%)}
+  background:radial-gradient(ellipse 88% 82% at 50% 46%,transparent 42%,rgba(0,0,0,.22) 100%)}
 /* 心电丝带：与 AeD 演示同一个签名母题 */
 .ribbon{position:fixed;left:0;right:0;bottom:0;height:clamp(52px,8vh,80px);
   z-index:2;pointer-events:none;overflow:hidden;--ri:rgba(95,224,210,.22)}
@@ -444,9 +443,11 @@ html.lite .dust{display:none}
 .card:hover{transform:translate3d(0,-4px,0) scale(1.008)}
 
 /* 背景压低：让标题/卡片真正成为主角（HALOFLUX 引擎自己仍满效运转） */
-/* 修正：上一轮 Apple 重构把 .52 压到 .40，叠加 #bgMask + #veil 两层遮罩后
-   背景几乎不可见（用户反馈"背景去哪了"）。恢复到 .68 让光场重新成为氛围主角。 */
-#bg{opacity:.68}
+/* 背景可见性修正：实测 bgBreath 在 .62↔.74 波动，叠加 bgMask + veil 后
+   观感仍太淡（用户反复反馈"背景没有"）。把呼吸基线整体抬高到 .82↔.94，
+   让光场真正成为可见的氛围主角。 */
+#bg{opacity:.88}
+@keyframes bgBreath{0%,100%{opacity:.82}50%    {opacity:.94}}
 
 /* 阴影改亮边：深色背景上 60px 纯黑阴影不可见，只耗 GPU */
 .card:hover{box-shadow:0 1px 0 rgba(255,255,255,.08) inset,
@@ -512,12 +513,10 @@ html.lite .dust{display:none}
 .home h1{animation:vitalFloat 9s ease-in-out infinite !important}
 
 /* ⑥ 背景引擎的"呼吸光"：让光场整体亮度随双节拍微微起伏。
-   用伪元素 + opacity 动画，不动 iframe 本身（避免重合成）。 */
+   用伪元素 + opacity 动画，不动 iframe 本身（避免重合成）。
+   keyframes 已在上方 #bg 附近统一定义（.82↔.94），此处不再重复声明 ——
+   之前两处定义并存，后面的旧值 .62↔.74 覆盖了新值，导致背景仍然偏暗。 */
 #bg{animation:bgBreath 6s ease-in-out infinite}
-@keyframes bgBreath{
-  0%,100%{opacity:.62}
-  50%    {opacity:.74}
-}
 
 /* 无障碍：减弱动效时，生命层全部静止，保持最终可见态 */
 @media (prefers-reduced-motion:reduce){
