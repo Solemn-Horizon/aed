@@ -92,9 +92,11 @@ html.lite .codecrain{display:none}
    mask 加在"逐帧更新的 iframe"上会让浏览器每帧重做一次全屏蒙版合成，
    换成普通半透明渐变层，观感一致但便宜得多。 */
 #bgMask{position:fixed;inset:0;z-index:1;pointer-events:none;
+  /* 减弱遮罩：原来 78% 处就 .92 黑，把背景吃光了。
+     现在只在最底部收口，让右上光场充分露出。 */
   background:
-    radial-gradient(ellipse 74% 88% at 76% 28%,
-      rgba(5,6,11,0) 0%, rgba(5,6,11,0) 44%, rgba(5,6,11,.92) 78%, #05060b 100%)}
+    radial-gradient(ellipse 86% 96% at 72% 30%,
+      rgba(5,6,11,0) 0%, rgba(5,6,11,0) 62%, rgba(5,6,11,.55) 88%, rgba(5,6,11,.85) 100%)}
 /* 幕光 / 暗角：给 Canvas 上一层"空气" */
 #veil{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse 78% 72% at 50% 46%,transparent 30%,rgba(0,0,0,.55) 100%)}
@@ -442,7 +444,9 @@ html.lite .dust{display:none}
 .card:hover{transform:translate3d(0,-4px,0) scale(1.008)}
 
 /* 背景压低：让标题/卡片真正成为主角（HALOFLUX 引擎自己仍满效运转） */
-#bg{opacity:.40}
+/* 修正：上一轮 Apple 重构把 .52 压到 .40，叠加 #bgMask + #veil 两层遮罩后
+   背景几乎不可见（用户反馈"背景去哪了"）。恢复到 .68 让光场重新成为氛围主角。 */
+#bg{opacity:.68}
 
 /* 阴影改亮边：深色背景上 60px 纯黑阴影不可见，只耗 GPU */
 .card:hover{box-shadow:0 1px 0 rgba(255,255,255,.08) inset,
@@ -832,13 +836,8 @@ document.getElementById('mapReset').addEventListener('click',function(){setScene
     setTimeout(start, 700);
   }
 })();
-(function(){
-  var bg=document.getElementById('bg');
-  if(!bg) return;
-  if(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches){
-    bg.setAttribute('src','bg.html?still=1');
-  }
-})();
+/* 已移除重复的 bg 初始化 IIFE：第一个块已处理 reduce/nobg/兜底，
+   第二个会在兜底计时器之外再次设 src，造成 still 模式被误覆盖。 */
 document.getElementById('globalBack').addEventListener('click',function(){setScene('home')});
 
 /* 卡片光晕跟随：rAF 合帧 + 缓存矩形（零强制重排） */
