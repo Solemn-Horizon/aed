@@ -82,8 +82,8 @@ body.in-sheet .codecrain,body.in-map .codecrain{opacity:.25;transition:opacity 1
 html.lite .codecrain{display:none}
 
 /* ---------- 生命层：HALOFLUX 光场 Canvas ---------- */
-#neuro{position:fixed;inset:0;z-index:0;pointer-events:none;
-  width:100%;height:100%;display:block}
+#bg{position:fixed;inset:0;z-index:0;pointer-events:none;border:0;
+  width:100%;height:100%;background:transparent;opacity:.90}
 /* 背景遮罩改用兄弟层叠一层渐变 ——
    mask 加在"逐帧更新的 iframe"上会让浏览器每帧重做一次全屏蒙版合成，
    换成普通半透明渐变层，观感一致但便宜得多。 */
@@ -371,13 +371,13 @@ body.in-demo #bg,
 body.in-demo #veil{opacity:0 !important;pointer-events:none}
 /* 演示态直接卸载背景 iframe（display:none）：双 iframe 同时跑引擎会抢帧，
    演示是主角，背景此时无意义。 */
-body.in-demo #neuro,body.in-demo #bgMask{display:none !important}
+body.in-demo #bg,body.in-demo #bgMask{display:none !important}
 body.in-demo #demoFrame{z-index:8}
 body.in-demo #demoExit{z-index:10;right:clamp(18px,2.6vw,40px);
   top:clamp(18px,2.6vh,34px)}
 body.in-demo #globalBack{display:none}
 /* 地图场景：光环退为背景，把注意力让给地理信息 */
-body.in-map #neuro{opacity:.22;transition:opacity 1.2s var(--ease)}
+body.in-map #bg{opacity:.22;transition:opacity 1.2s var(--ease)}
 body.in-map #veil{opacity:.5}
 
 /* ==================================================================
@@ -531,7 +531,8 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
 <body>
 
 <!-- ===== 生命层：内联神经元背景（零外部依赖，打开即画） ===== -->
-<canvas id="neuro" aria-hidden="true"></canvas>
+<!-- 背景：HALOFLUX 原版引擎（bg.html，由 lab.html 派生；配色/数据词已 AED 化） -->
+<iframe id="bg" src="bg.html" aria-hidden="true" tabindex="-1" scrolling="no"></iframe>
 <div id="bgMask" aria-hidden="true"></div>
 <!-- 刻度环已移除：神经网络本身承担右半屏的视觉重量，
        一个完美圆形会与有机网络结构冲突（2026-11-15） -->
@@ -681,328 +682,8 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
 <button class="btn" id="demoExit">← 退出演示 / 返回主界面</button>
 
 <script>
-/* ==================================================================
-   内联神经元背景引擎 · Neural Field
-   ------------------------------------------------------------------
-   为什么内联：iframe(bg.html) 在真实浏览器上反复出现"看不到"——
-   加载时机 / 生命周期 / reduce 清空 DOM 等不可控因素太多。
-   内联 Canvas 零外部依赖，随主文档同步加载，打开即画，绝对可见。
-
-   视觉：簇状节点 + 突触连线 + 沿连接传播的脉冲 + 级联放电
-   （这才是"神经网络"的形态特征，不是光环/粒子流）。
-   配色：深靛背景 + 紫节点 + 青脉冲（心电青）+ 粉放电（低频）。
-   性能：预渲染光晕精灵、限帧、分档降载、prefers-reduced-motion 静态帧。
-   ================================================================== */
-(function initNeuro(){
-  var cv = document.getElementById('neuro');
-  if (!cv) return;
-  var ctx = cv.getContext('2d');
-  if (!ctx) return;
-
-  var W = 0, H = 0, DPR = 1;
-  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
-  var nodes = [], edges = [], pulses = [];
-  var T = 0, beatT = 0.5, beatI = 0, env = 0, sinceBeat = 9, beatN = 0;
-  var PATTERN = [1, .62, .9, .7, 1.25, .55, .8, 1.05, .68, 1.35];  // 不均匀节拍
-
-  function rr(a, b){ return a + Math.random() * (b - a); }
-
-  // 预渲染光晕精灵（每帧 drawImage，不 new gradient）
-  function sprite(rgb){
-    var s = document.createElement('canvas'); s.width = s.height = 64;
-    var g = s.getContext('2d');
-    var rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    rg.addColorStop(0, 'rgba(255,255,255,1)');
-    rg.addColorStop(.28, 'rgba(' + rgb + ',.85)');
-    rg.addColorStop(.62, 'rgba(' + rgb + ',.22)');
-    rg.addColorStop(1, 'rgba(' + rgb + ',0)');
-    g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
-    return s;
-  }
-  /* 克制的单色调：苹果只用一处强调，其余全是中性。
-     节点=冷白微光，突触=极淡蓝灰，脉冲=单一青色。
-     不再用青/粉/紫三色混战（那正是"花里胡哨"的来源）。 */
-  var SPR_C = sprite('120,210,205');   // 脉冲唯一色：克制的心电青
-  var SPR_V = sprite('150,170,205');   // 节点微光：冷白偏蓝
-
-  function build(){
-    nodes = []; edges = []; pulses = [];
-    /* 极简版：只在【右侧一块区域】放 2 个簇、共约 26 个节点。
-       苹果的背景是"大留白 + 一处焦点"，不是满屏铺网络。
-       簇心集中在右上（x .62-.88, y .22-.52），完全避开标题与卡片。 */
-    var CLUSTERS = [
-      { cx: .70, cy: .34, spread: .13, n: 14 },
-      { cx: .86, cy: .55, spread: .10, n: 11 }
-    ];
-    for (var c = 0; c < CLUSTERS.length; c++) {
-      var C0 = CLUSTERS[c];
-      var ccx = C0.cx * W, ccy = C0.cy * H;
-      var spread = Math.min(W, H) * C0.spread;
-      for (var k = 0; k < C0.n; k++) {
-        var a = Math.random() * 6.283, r = Math.pow(Math.random(), .55) * spread;
-        nodes.push({
-          x: ccx + Math.cos(a) * r, y: ccy + Math.sin(a) * r,
-          z: .6 + Math.random() * .6, cl: c, fire: 0
-        });
-      }
-    }
-    // 每节点只连最近 1 个同簇邻居（更疏、更像"星图"而不是蜘蛛网）
-    for (var i = 0; i < nodes.length; i++) {
-      var A = nodes[i], cand = [];
-      for (var j = 0; j < nodes.length; j++) {
-        if (i === j) continue;
-        var B = nodes[j];
-        cand.push({ j: j, d: Math.hypot(A.x - B.x, A.y - B.y), same: A.cl === B.cl });
-      }
-      cand.sort(function(p, q){ return p.d - q.d; });
-      for (var m = 0; m < cand.length; m++) {
-        if (cand[m].same) { edges.push({ a: i, b: cand[m].j, hot: 0 }); break; }
-      }
-      // 极少的长程连接（8%），保持"网络感"但不杂乱
-      if (Math.random() < .08) {
-        for (var m2 = 0; m2 < cand.length; m2++) {
-          if (!cand[m2].same && cand[m2].d < Math.min(W, H) * .45) {
-            edges.push({ a: i, b: cand[m2].j, hot: 0 }); break;
-          }
-        }
-      }
-    }
-  }
-
-  function fit(){
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    // 降载：高 DPR 屏幕用 1.25 上限，填充率可控
-    if (DPR > 1.25) DPR = 1.25;
-    W = window.innerWidth; H = window.innerHeight;
-    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-    cv.style.width = W + 'px'; cv.style.height = H + 'px';
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    build();
-    if (reduce) draw(0);
-  }
-  fit();
-  var rt = null;
-  window.addEventListener('resize', function(){
-    clearTimeout(rt); rt = setTimeout(fit, 180);
-  }, { passive: true });
-
-  function fire(idx, warm){
-    if (idx < 0 || idx >= nodes.length) return;
-    nodes[idx].fire = 1;
-    // 级联：有概率沿相邻突触再点燃一个脉冲（"神经感"的核心）
-    if (Math.random() < .4) {
-      for (var i = 0; i < edges.length; i++) {
-        var e = edges[i];
-        if (e.a === idx || e.b === idx) {
-          pulses.push({ e: e, t: 0, sp: rr(.7, 1.4), warm: !!warm, dir: e.a === idx ? 1 : -1 });
-          if (pulses.length > 90) pulses.shift();
-          break;
-        }
-      }
-    }
-  }
-
-  /* ==================================================================
-     AED 主题层：让 AED 语义成为网络的一部分，而不是叠第二层装饰
-     ------------------------------------------------------------------
-     ① 心电波形：一条 P-QRS-T 波形横穿右侧簇区，作为"信号通道"——
-        脉冲看起来是在这条生命线上传输，神经与心电融为一体。
-     ② AED 除颤器轮廓：极淡线框（方盒 + 屏幕 + 闪电），藏在簇旁。
-     ③ 医疗十字：2 个极小十字做"定位标记"。
-     全部低透明度，只为点明主题，不与标题/卡片抢注意力。
-     ================================================================== */
-  var ECG = [
-    [0, 0], [.08, 0], [.12, .1], [.16, .12], [.2, .02], [.24, 0],
-    [.27, -.08], [.30, 1.0], [.33, -.3], [.36, -.05], [.40, 0],
-    [.52, .02], [.58, .20], [.64, .22], [.70, .08], [.76, 0], [1, 0]
-  ];
-  function ecgShape(t){
-    for (var i = 1; i < ECG.length; i++) {
-      if (t <= ECG[i][0]) {
-        var a = ECG[i - 1], b = ECG[i];
-        var k = (t - a[0]) / Math.max(1e-6, b[0] - a[0]);
-        k = k * k * (3 - 2 * k);          // smoothstep，比线性更像真实波形
-        return a[1] + (b[1] - a[1]) * k;
-      }
-    }
-    return 0;
-  }
-
-  function drawAedBox(x, y, s, al){
-    var w = s, hh = s * .78;
-    ctx.strokeStyle = 'rgba(160,178,210,' + al.toFixed(3) + ')';
-    ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x - w / 2, y - hh / 2, w, hh, s * .16);
-    else ctx.rect(x - w / 2, y - hh / 2, w, hh);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(120,210,205,' + (al * 1.3).toFixed(3) + ')';
-    ctx.beginPath();
-    ctx.rect(x - w * .28, y - hh * .26, w * .56, hh * .3);
-    ctx.stroke();
-    var bx = x, by = y + hh * .2, u = s * .09;
-    ctx.strokeStyle = 'rgba(255,92,138,' + (al * 1.5).toFixed(3) + ')';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(bx + u * .5, by - u * 1.5);
-    ctx.lineTo(bx - u * .8, by + u * .2);
-    ctx.lineTo(bx + u * .1, by + u * .2);
-    ctx.lineTo(bx - u * .5, by + u * 1.7);
-    ctx.stroke();
-  }
-
-  function drawAedTheme(dt){
-    /* ① 心电波形：横穿右侧簇区，极淡青色，随时间推移 */
-    var y0 = H * .50, x0 = W * .50, x1 = W * .995;
-    var amp = Math.min(H * .042, 40);
-    var cycles = 3.0, phase = (T * .055) % 1;
-    ctx.strokeStyle = 'rgba(120,210,205,.13)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    for (var x = x0; x <= x1; x += 3) {
-      var t = ((x - x0) / (x1 - x0) * cycles + phase) % 1;
-      var y = y0 - ecgShape(t) * amp;
-      if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    /* 波形前方的微亮扫描头：暗示"生命在走" */
-    var hx = x0 + ((phase / cycles) % 1) * (x1 - x0);
-    var ht = ((hx - x0) / (x1 - x0) * cycles + phase) % 1;
-    var hy = y0 - ecgShape(ht) * amp;
-    ctx.globalAlpha = .55;
-    ctx.drawImage(SPR_C, hx - 9, hy - 9, 18, 18);
-    ctx.globalAlpha = 1;
-
-    /* ② AED 除颤器轮廓：2 个，极淡，放在簇附近但不压在卡片上 */
-    drawAedBox(W * .93, H * .20, 64, .075);
-    drawAedBox(W * .615, H * .60, 48, .06);
-
-    /* ③ 医疗十字：极小，做定位标记 */
-    ctx.strokeStyle = 'rgba(255,92,138,.10)';
-    ctx.lineWidth = 1;
-    var crosses = [[.665, .22], [.905, .47], [.78, .68]];
-    for (var c = 0; c < crosses.length; c++) {
-      var cx2 = crosses[c][0] * W, cy2 = crosses[c][1] * H, s2 = 5;
-      ctx.beginPath();
-      ctx.moveTo(cx2 - s2, cy2); ctx.lineTo(cx2 + s2, cy2);
-      ctx.moveTo(cx2, cy2 - s2); ctx.lineTo(cx2, cy2 + s2);
-      ctx.stroke();
-    }
-  }
-
-  function draw(dt){
-    T += dt;
-    beatT -= dt; sinceBeat += dt;
-    if (beatT <= 0) {
-      beatT += PATTERN[beatI++ % PATTERN.length] * .9;
-      sinceBeat = 0; beatN++;
-      var n = (beatN % 4 === 0) ? (rr(3, 6) | 0) : (rr(1, 3) | 0);
-      for (var s = 0; s < n; s++) {
-        var e = edges[(Math.random() * edges.length) | 0];
-        if (e) pulses.push({ e: e, t: 0, sp: rr(.55, 1.35),
-          warm: beatN % 8 === 0 && s === 0, dir: Math.random() < .5 ? 1 : -1 });
-      }
-      if (pulses.length > 90) pulses.splice(0, pulses.length - 90);
-    }
-    env = Math.exp(-sinceBeat * 4.2);
-
-    /* 苹果式中性底：不是紫，而是极深的近黑 + 一处极淡的冷光。
-       紫调正是"配色不像苹果"的主因 —— 苹果深色界面几乎都是中性黑。 */
-    var g = ctx.createRadialGradient(W * .78, H * .36, 0, W * .78, H * .36, Math.max(W, H) * .8);
-    g.addColorStop(0, 'rgba(38,42,54,' + (.34 + env * .05).toFixed(3) + ')');
-    g.addColorStop(.45, 'rgba(24,27,36,.2)');
-    g.addColorStop(1, 'rgba(8,9,13,0)');
-    ctx.fillStyle = '#07080b';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-
-    /* AED 主题层：心电波形 / 除颤器轮廓 / 医疗十字（极淡，垫在网络之下） */
-    drawAedTheme(dt);
-
-    // 突触
-    ctx.lineCap = 'round';
-    for (var i = 0; i < edges.length; i++) {
-      var e = edges[i], A = nodes[e.a], B = nodes[e.b];
-      e.hot = Math.max(0, e.hot - dt * 2.2);
-      var z = (A.z + B.z) * .5;
-      /* 克制的突触：只要隐约可见的连接感，不要"蜘蛛网" */
-      ctx.strokeStyle = 'rgba(140,158,190,' + (.11 + .08 * z + e.hot * .3).toFixed(3) + ')';
-      ctx.lineWidth = (.5 + .45 * z) + e.hot * 0.9;
-      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
-    }
-
-    // 脉冲
-    ctx.globalCompositeOperation = 'lighter';
-    for (var p = pulses.length - 1; p >= 0; p--) {
-      var pu = pulses[p];
-      pu.t += dt * pu.sp;
-      if (pu.t >= 1) {
-        fire(pu.dir > 0 ? pu.e.b : pu.e.a, pu.warm);
-        pu.e.hot = 1; pulses.splice(p, 1); continue;
-      }
-      var n1 = pu.dir > 0 ? nodes[pu.e.a] : nodes[pu.e.b];
-      var n2 = pu.dir > 0 ? nodes[pu.e.b] : nodes[pu.e.a];
-      if (!n1 || !n2) { pulses.splice(p, 1); continue; }
-      var px = n1.x + (n2.x - n1.x) * pu.t, py = n1.y + (n2.y - n1.y) * pu.t;
-      var tp = Math.max(0, pu.t - .18);
-      /* 单色脉冲：不再用粉/青两色区分（那是"花里胡哨"的来源之一）。
-         统一克制的冷青，靠亮度而非色相区分强弱。 */
-      ctx.strokeStyle = 'rgba(120,210,205,.42)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(n1.x + (n2.x - n1.x) * tp, n1.y + (n2.y - n1.y) * tp);
-      ctx.lineTo(px, py); ctx.stroke();
-      var pr = 2.4 + 1.6 * ((n1.z + n2.z) * .5);
-      ctx.drawImage(SPR_C, px - pr, py - pr, pr * 2, pr * 2);
-    }
-
-    // 节点
-    for (var k = 0; k < nodes.length; k++) {
-      var nd = nodes[k];
-      nd.fire = Math.max(0, nd.fire - dt * 1.7);
-      var nr = 1.4 + 1.6 * nd.z;
-      /* 提亮：原 .22+.22z 几乎看不见，提到 .45+.3z，并加一圈柔光让节点"发光" */
-      ctx.fillStyle = 'rgba(175,130,255,' + (.45 + .30 * nd.z).toFixed(3) + ')';
-      ctx.beginPath(); ctx.arc(nd.x, nd.y, nr, 0, 6.283); ctx.fill();
-      /* 常驻微光晕：让每个节点都是一个小光点，而不是死点 */
-      var hg = nr * 2.6;
-      ctx.globalAlpha = .16 + .12 * nd.z;
-      ctx.drawImage(SPR_V, nd.x - hg, nd.y - hg, hg * 2, hg * 2);
-      ctx.globalAlpha = 1;
-      if (nd.fire > .02) {
-        var gr = nr * (3 + nd.fire * 4);
-        ctx.globalAlpha = .6 * nd.fire;
-        ctx.drawImage(SPR_C, nd.x - gr, nd.y - gr, gr * 2, gr * 2);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = 'rgba(255,255,255,' + (.6 * nd.fire).toFixed(3) + ')';
-        ctx.beginPath(); ctx.arc(nd.x, nd.y, nr * .85, 0, 6.283); ctx.fill();
-      }
-    }
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
-  if (reduce) { draw(0); return; }
-
-  // 自适应帧率：强机 60fps，弱机(<45fps)降 30fps
-  var lowTier = false, sampleN = 0, sampleSum = 0, last = performance.now(), lastDraw = 0;
-  function frame(now){
-    var dt = Math.min(.05, (now - last) / 1000); last = now;
-    // 帧率采样（前 90 帧）
-    if (sampleN < 90 && lastDraw) {
-      var fd = now - lastDraw;
-      if (fd > 8 && fd < 80) { sampleSum += fd; sampleN++; }
-      if (sampleN === 90 && sampleSum / 90 > 22) lowTier = true;
-    }
-    var minGap = lowTier ? 1000 / 30 : 0;
-    if (now - lastDraw >= minGap) {
-      draw(dt);
-      lastDraw = now;
-    }
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
-})();
+/* 背景由 bg.html（HALOFLUX 原版引擎，已 AED 化）以 iframe 承载。
+   手写内联神经元已移除 —— 用户选择回到原版可视化方案。 */
 
 /* ==================================================================
    AED PORTAL · 逻辑层
@@ -1206,9 +887,18 @@ for(var bi=0;bi<document.querySelectorAll('[data-back]').length;bi++){
 demoExit.addEventListener('click',function(){setScene('home')});
 document.getElementById('mapReset').addEventListener('click',function(){setScene('home')});
 
-/* 背景改用内联 #neuro 引擎（见 <script>），iframe 加载逻辑已移除。 */
-/* 已移除重复的 bg 初始化 IIFE：第一个块已处理 reduce/nobg/兜底，
-   第二个会在兜底计时器之外再次设 src，造成 still 模式被误覆盖。 */
+/* 背景引擎开关（iframe 版，HTML 里已直接写 src="bg.html"）：
+   · ?nobg=1  —— 关闭背景引擎排查
+   · 减弱动效 —— 切静态模式（只停 rAF，不清空 DOM）
+   注意：绝不做"9 秒没 load 就 remove"的兜底 —— 那会把背景永久删掉，
+   之前正是它导致"背景消失"。 */
+(function(){
+  var bg = document.getElementById('bg');
+  if (!bg) return;
+  if (/[?&]nobg=1/.test(location.search)) { bg.remove(); return; }
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if (reduce) bg.setAttribute('src', 'bg.html?still=1');
+})();
 document.getElementById('globalBack').addEventListener('click',function(){setScene('home')});
 
 /* 卡片光晕跟随：rAF 合帧 + 缓存矩形（零强制重排） */
