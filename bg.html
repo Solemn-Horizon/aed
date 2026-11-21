@@ -346,19 +346,26 @@ const C = { ...(PRESETS.MINE || PRESETS.B) };
    ================================================================== */
 C.webBlur = 0; C.vignette = 0;                 /* 圈内底层虚化：关（省掉每帧整层 blur）*/
 C.depthBlur = 0;               /* 远景虚化：关 */
-C.runnerCount = Math.min(C.runnerCount || 336, 96);
-C.bokeh = Math.min(C.bokeh || 16, 7);
-C.atmos = Math.min(C.atmos == null ? 1 : C.atmos, 0.85);
 
-/* AED 可见性增强：用户反复反馈"背景看不见"。
-   降载把粒子/景深砍得很稀，配上低 webBright 导致画面过空。
-   这里提高"发光类"参数（不增加粒子数量，性能不变），
-   让环带、光束、网线明显可见又不压过标题。 */
-C.webBright = 1.5;             /* 底层网线 0.9 → 1.5 */
-C.runnerBright = 1.2;          /* 亮线 0.5 → 1.2 */
-C.beamBright = Math.max(C.beamBright || 1, 2.2);   /* 放射光束更亮 */
-C.rimBright = Math.max(C.rimBright || 1, 2.0);     /* 环缘更清晰 */
-C.glow = Math.max(C.glow || 1, 1.25);              /* 柔光晕 */
+/* AED 背景密度收敛（用户反馈"全部显示太繁杂"）：
+   原版是 lab 控制台可视化，微数据块 / 粒子 / 光束全开，信息量极高。
+   作为网页背景要"少即是多"——保留环 + 心电 + 少量点的骨架，
+   砍掉高密度的粒子流、飞散物、爆闪和散景。 */
+C.runnerCount = 24;            /* 沿线粒子 788 → 24（繁杂主因） */
+C.bokeh = 0;                   /* 散景光斑：关 */
+C.atmos = 0;                   /* 大气层：关 */
+C.hazeCount = 0;               /* 雾霾粒子：关 */
+C.flyerCount = 0;              /* 飞散物：关 */
+C.burstRate = 0; C.flareRate = 0;  /* 爆闪/耀斑：关 */
+C.cometPerBeat = 0.5; C.cometTrickle = 0;  /* 彗星：大幅减少 */
+C.ringSpeed = Math.min(C.ringSpeed || 3, 1.2);  /* 环转慢一点，减少躁动 */
+
+/* 亮度：从"增强"回落到克制 —— 看得见但不喧宾夺主 */
+C.webBright = 0.7;             /* 底层网线：比原版 0.9 更淡 */
+C.runnerBright = 0.8;
+C.beamBright = 1.2;
+C.rimBright = 1.3;
+C.glow = 1.0;
 const zf = z => 1 + (z - 1) * C.camZoom;
 
 const TOK = ['AED', 'BPM 72', 'VF/VT', '除颤', '电极片', '语音提示', '分析心律', '建议电击',
@@ -490,7 +497,10 @@ function buildWeb() {
   b.fillStyle = g; b.fill();
   all.forEach(c => { c.x.save(); c.x.beginPath(); c.x.arc(0, 0, R, 0, TAU); c.x.clip(); });
   curves = [];
-  const N = Math.min(2600, Math.round(1000 + (W * H) / 800));
+  /* 线网密度大幅收敛：原来最多 2600 条曲线，像一团乱麻，是"繁杂"的主因。
+     作为背景只需要"隐约的神经线网"骨架 —— 砍到约 1/5（240 条）。
+     性能也显著变好（这些是预渲染到离屏 canvas 的）。 */
+  const N = Math.min(360, Math.round(140 + (W * H) / 9000));
   for (let i = 0; i < N; i++) {
     const a1 = rnd() * TAU, a2 = a1 + rr(0.6, Math.PI * 1.4);
     const p0 = { x: Math.cos(a1) * R, y: Math.sin(a1) * R };
@@ -926,9 +936,17 @@ function buildCards() {
   slots = [];
   const band = RO - R, mid = R + band * 0.42;
   let a = 0;
+  /* 密度收敛：原来沿整圈铺满微数据块（约 30-40 个），像仪表盘，很繁杂。
+     现在：① 加大块高与间隙，数量减半；② 只保留右上可见弧段
+     （角度约 -70°~+70°），左侧被标题遮挡的部分不生成。
+     注意 while 循环必须保证 a 递增收敛，否则主线程会卡死。 */
   while (a < TAU - 0.03) {
-    const hpx = rr(16, 62), da = hpx / mid, gap = rr(3, 9) / mid;
-    slots.push({ a: a + da / 2, da, hpx, c: null, flash: 0 });
+    const hpx = rr(26, 54), da = hpx / mid, gap = rr(14, 26) / mid;
+    /* 归一化角度到 [-π, π]，判断是否在右侧可见弧段 */
+    var na = ((a + Math.PI) % TAU + TAU) % TAU - Math.PI;
+    if (Math.abs(na) < Math.PI * 0.42) {
+      slots.push({ a: a + da / 2, da, hpx, c: null, flash: 0 });
+    }
     a += da + gap;
   }
   Object.assign(rot, { from: 0, to: 0, t: 1, dur: 1, hold: 0 });
@@ -1136,7 +1154,8 @@ function drawRing(dt) {
   const RB = rimW();
   // inner + outer rim bands: dense white hairlines that give the edge its thickness
   S.beginPath();
-  tick(0.14 / C.rimDensity * Math.PI / 180, (ca, sa, n) => {
+  /* 刻度步长加大（0.14°→0.34°），减少细密发丝线带来的繁杂感 */
+  tick(0.34 / C.rimDensity * Math.PI / 180, (ca, sa, n) => {
     const m = ((n % 6) + 6) % 6;
     const li = m === 0 ? RB : RB * (0.5 + 0.35 * hash(n));
     const lo = m === 0 ? RB : RB * (0.5 + 0.35 * hash(n + 77));
@@ -1177,11 +1196,14 @@ function drawStage(dt) {
   S.setTransform(DPR, 0, 0, DPR, 0, 0);
   S.globalCompositeOperation = 'source-over'; S.globalAlpha = 1;
   if (!bgGrad || bgGradW !== W || bgGradH !== H) {
-    bgGrad = S.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.92);
-    bgGrad.addColorStop(0,    '#2a1c4a');   // 环心：明显冷紫光
-    bgGrad.addColorStop(0.30, '#1c1638');   // 中段：靛蓝紫
-    bgGrad.addColorStop(0.62, '#11132a');   // 外段：冷蓝
-    bgGrad.addColorStop(1,    '#080a14');   // 边缘：深但非纯黑
+    /* 中性冷灰底（苹果深色界面几乎是中性色，不是紫）：
+       光心在右侧环 (cx≈0.72W)，向左快速衰减到近黑，
+       让左侧标题区保持干净的高对比。 */
+    bgGrad = S.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.78);
+    bgGrad.addColorStop(0,    '#1e222c');   // 环心：中性冷灰微光
+    bgGrad.addColorStop(0.34, '#14171f');   // 中段：深灰蓝
+    bgGrad.addColorStop(0.68, '#0b0d12');   // 外段：近黑
+    bgGrad.addColorStop(1,    '#07080b');   // 边缘：中性深黑
     bgGradW = W; bgGradH = H;
   }
   S.fillStyle = bgGrad; S.fillRect(0, 0, W, H);
@@ -1880,17 +1902,17 @@ document.addEventListener('keydown', e => {
   var crosses = [], glyphs = [];
   function build(){
     crosses = [];
-    var step = Math.max(150, Math.min(W, H) * 0.19);
-    for(var x = step * 0.6; x < W; x += step){
-      for(var y = step * 0.55; y < H; y += step){
-        if(Math.random() < 0.62){
-          crosses.push({ x: x + (Math.random()-0.5)*step*0.5,
-                         y: y + (Math.random()-0.5)*step*0.5,
-                         s: 3 + Math.random()*4,
-                         ph: Math.random()*6.283,
-                         sp: 0.25 + Math.random()*0.5 });
-        }
-      }
+    /* 十字阵列大幅收敛：原来 62% 概率铺满全屏，像满屏星点，很繁杂。
+       现在只在右侧环附近放 3 个，作为"医疗定位"的克制暗示。 */
+    var spots = [[0.72, 0.26], [0.88, 0.46], [0.62, 0.60]];
+    for (var i = 0; i < spots.length; i++) {
+      crosses.push({
+        x: spots[i][0] * W + (Math.random()-0.5) * 24,
+        y: spots[i][1] * H + (Math.random()-0.5) * 24,
+        s: 4 + Math.random() * 2,
+        ph: Math.random() * 6.283,
+        sp: 0.2 + Math.random() * 0.3
+      });
     }
     /* 一个"主角"AED 设备轮廓 + 三个陪衬：
        主角放在右侧空白带（避免被数据环和卡片盖住），
@@ -1898,12 +1920,14 @@ document.addEventListener('keydown', e => {
     /* 一排 AED 设备 = "布点图"，放在卡片下方的空带里。
        这一排是最能表达项目主题的元素（AED 在城市的分布密度）。 */
     glyphs = [];
-    var n = 7;
+    /* 设备排 7 → 3：保留"城市布点"的项目语义，
+       去掉密集重复带来的繁杂感。位置仍在卡片下方空带。 */
+    var n = 3;
     for(var i=0;i<n;i++){
       glyphs.push({
-        x: (0.115 + i * (0.75 / (n - 1))) * W,
+        x: (0.30 + i * (0.40 / (n - 1))) * W,
         y: H * 0.862,
-        s: 30,
+        s: 28,
         ph: i * 0.7,
         sp: 0.10,
         row: i
