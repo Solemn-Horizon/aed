@@ -358,12 +358,23 @@ C.depthBlur = 0;               /* 远景虚化：关 */
 C.runnerCount = Math.min(C.runnerCount || 336, 96);
 C.bokeh = Math.min(C.bokeh || 16, 7);
 C.atmos = Math.min(C.atmos == null ? 1 : C.atmos, 0.85);
+
+/* AED 可见性增强：用户反复反馈"背景看不见"。
+   降载把粒子/景深砍得很稀，配上低 webBright 导致画面过空。
+   这里提高"发光类"参数（不增加粒子数量，性能不变），
+   让环带、光束、网线明显可见又不压过标题。 */
+C.webBright = 1.5;             /* 底层网线 0.9 → 1.5 */
+C.runnerBright = 1.2;          /* 亮线 0.5 → 1.2 */
+C.beamBright = Math.max(C.beamBright || 1, 2.2);   /* 放射光束更亮 */
+C.rimBright = Math.max(C.rimBright || 1, 2.0);     /* 环缘更清晰 */
+C.glow = Math.max(C.glow || 1, 1.25);              /* 柔光晕 */
 const zf = z => 1 + (z - 1) * C.camZoom;
 
-const TOK = ['load_collection()', 'extract_eq', '∂u/∂t', 'rho', 'grad(p)', 'dt=1e-3', 'assert', 'residual', 'solve()',
-  'mesh', 'bc.apply', 'flux', 'CFL', '0.0041', 'ok', 'PASS', 'ref#12', 'scene_07', 'u_star', 'div(u)', 'proj', 'advect',
-  'step++', 'tol', '1.2e-6', 'kernel', 'paper[37]', 'eq.(4)', 'fig.3', 'table2', 'nu=0.01', 'v_x', 'omega', 'bounce',
-  'f_eq', 'stream', 'collide', 'Re=100', 'check', '>>>', 'match', 'diff', 'L2', 'grid64', 'cfg', 'seed=7'];
+const TOK = ['AED', 'BPM 72', 'VF/VT', '除颤', '电极片', '语音提示', '分析心律', '建议电击',
+  'CPR 100', '4:00', '黄金四分钟', '133 份', '10 省', '27.82%', '74.43%',
+  '19.55%', '好人法', '培训', '布点', '小程序', '地图', '位置公开', '邗江', '扬州',
+  '京华城', '红会', '社区', '校园', '急救包', '响应时间', '第一目击者',
+  'LEAD II', '25mm/s', '找得到', '敢去用', '会操作', '扫码定位', '箱体', '标识', '巡检'];
 
 /* ---------- rhythm: an uneven beat clock drives everything ---------- */
 const PATTERN = [0.5, 0.25, 0.25, 0.5, 0.5, 0.75, 0.25, 0.25, 0.25, 1.0];
@@ -453,8 +464,13 @@ function resizeStage() {
   const r = stage.getBoundingClientRect();
   W = r.width; H = r.height;
   stage.width = W * DPR; stage.height = H * DPR;
-  cx = W * 0.07; cy = H * 0.5;
-  R = Math.max(H * 0.78, W * 0.30);
+  /* AED 版：光环中心移到右侧 0.72W。
+     原版 cx=0.07W 让发光环主体落在画布最左，正好被主界面左侧大标题/卡片
+     完全挡住，右侧可见区只剩稀疏线网 —— 用户感知就是"背景没有"。
+     移到右侧后，发光环 + 环形数据块 + 光束出现在标题右边的空白区，
+     成为真正可见的氛围主角。相机/RMAX 都基于 cx，会自动适配。 */
+  cx = W * 0.72; cy = H * 0.5;
+  R = Math.max(H * 0.62, W * 0.24);   /* 略缩小以适配右侧空间 */
   RO = R + Math.max(90, Math.min(240, H * 0.3, W * 0.13)) * C.ringWidth;
   RMAX = Math.hypot(W - cx, H / 2) + 60;
   thV = Math.asin(Math.min(1, (H / 2 + 60) / R));
