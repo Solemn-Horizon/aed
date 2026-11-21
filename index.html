@@ -175,8 +175,15 @@ html.lite .codecrain{display:none}
   margin:0 0 clamp(10px,1.6vh,20px);font-weight:800;color:#fff;
   max-width:min(62vw,760px);
   text-shadow:0 4px 40px rgba(0,0,0,.7)}
-.home h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;
-  -webkit-text-fill-color:transparent;color:transparent}
+.home h1 .g{
+  /* 苹果式标题：银白金属，而不是彩色渐变。
+     彩色渐变偏"时尚/科技发布会"，苹果主标题一直是白/银 ——
+     这是"配色不像苹果"最直观的一处。金属感来自明暗过渡，不是换色相。 */
+  background:linear-gradient(176deg,#ffffff 0%,#eef0f5 38%,#c3cad8 72%,#9aa3b4 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  text-shadow:none;
+  filter:drop-shadow(0 6px 30px rgba(0,0,0,.55))}
 .home .sub{font-size:clamp(13px,1.35vw,19px);color:var(--dim);letter-spacing:.02em;
   line-height:1.7;margin:0 0 clamp(24px,4vh,44px);max-width:min(52vw,620px)}
 
@@ -202,17 +209,18 @@ html.lite .codecrain{display:none}
   border-color:rgba(111,124,255,.46);
   box-shadow:0 24px 60px rgba(0,0,0,.5),inset 0 0 0 1px rgba(111,124,255,.10)}
 .card:hover::after{opacity:1}
-.card .num{font-family:var(--font-num);font-size:11px;letter-spacing:.24em;
-  color:var(--indigo-dim);transition:color .5s var(--ease)}
-.card:hover .num{color:var(--indigo)}
+.card .num{font-family:var(--font-num);font-size:11px;letter-spacing:.12em;
+  color:var(--dim);transition:color .5s var(--ease)}
+.card:hover .num{color:var(--ink)}
 .card .ico{font-size:clamp(26px,2.6vw,40px);line-height:1;margin:clamp(14px,2vh,24px) 0;
-  background:var(--grad);-webkit-background-clip:text;background-clip:text;
-  -webkit-text-fill-color:transparent;color:transparent;font-weight:700}
+  /* 苹果：图标用单一强调色，不用渐变。全页彩色渐变只保留标题一处金属感。 */
+  color:var(--accent);font-weight:600;
+  filter:drop-shadow(0 2px 14px rgba(255,92,138,.28))}
 .card h2{font-size:clamp(17px,1.7vw,26px);margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
 .card p{font-size:clamp(11px,1vw,14px);color:var(--dim);margin:0;line-height:1.6}
 .card .go{margin-top:clamp(14px,2vh,22px);font-size:11px;letter-spacing:.18em;color:var(--dim);
   display:flex;align-items:center;gap:10px}
-.card .go i{display:block;width:22px;height:1px;background:var(--grad);transition:width .5s var(--ease)}
+.card .go i{display:block;width:22px;height:1px;background:var(--accent);transition:width .5s var(--ease)}
 .card:hover .go i{width:40px}
 /* 卡片逐个浮现（Build In） */
 .card{animation:cardIn .8s var(--ease) both}
@@ -243,7 +251,7 @@ html.lite .codecrain{display:none}
 .sheet h2{font-size:clamp(28px,3.6vw,52px);letter-spacing:-.03em;margin:0 0 6px;font-weight:800}
 .sheet .lead{color:var(--dim);font-size:clamp(12px,1.15vw,16px);letter-spacing:.06em;margin:0 0 clamp(26px,4vh,44px)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,2.4vw,36px)}
-.fact{border-left:2px solid var(--grad);padding:2px 0 2px clamp(14px,1.6vw,24px);margin:0 0 clamp(18px,2.6vh,30px)}
+.fact{border-left:2px solid var(--accent);padding:2px 0 2px clamp(14px,1.6vw,24px);margin:0 0 clamp(18px,2.6vh,30px)}
 .fact .k{font-size:11px;letter-spacing:.2em;color:var(--dim);margin-bottom:8px}
 .fact .v{font-size:clamp(17px,1.9vw,28px);font-weight:700;line-height:1.35}
 .fact .d{font-size:clamp(11px,1.05vw,14px);color:var(--dim);line-height:1.7;margin-top:8px}
@@ -252,9 +260,9 @@ html.lite .codecrain{display:none}
   background:linear-gradient(180deg,var(--purple),var(--pink),transparent)}
 .tl-item{position:relative;margin:0 0 clamp(20px,3vh,34px)}
 .tl-item::before{content:"";position:absolute;left:calc(-1 * clamp(18px,2vw,32px) + 1px);
-  top:7px;width:9px;height:9px;border-radius:50%;background:var(--grad);
-  box-shadow:0 0 14px rgba(217,75,216,.6)}
-.tl-item .when{font-family:var(--font-num);font-size:12px;letter-spacing:.14em;color:var(--pink);margin-bottom:6px}
+  top:7px;width:9px;height:9px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 14px rgba(255,92,138,.5)}
+.tl-item .when{font-family:var(--font-num);font-size:12px;letter-spacing:.12em;color:var(--accent);margin-bottom:6px}
 .tl-item .what{font-size:clamp(15px,1.6vw,22px);font-weight:700;margin-bottom:4px}
 .tl-item .desc{font-size:clamp(11px,1.05vw,14px);color:var(--dim);line-height:1.7}
 .photo-row{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,1.2vw,16px);margin-top:clamp(20px,3vh,34px)}
@@ -305,8 +313,7 @@ body #demoExit.on{pointer-events:auto;opacity:1 !important;transition:none !impo
    用 !important 直接落到可见（本项目反复踩到的坑）。 */
 #mapHud.on{opacity:1 !important;transform:none !important;transition:none !important}
 #mapHud .big{font-size:clamp(24px,3.0vw,42px);font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
-#mapHud .big em{font-style:normal;background:var(--grad);-webkit-background-clip:text;
-  background-clip:text;-webkit-text-fill-color:transparent}
+#mapHud .big em{font-style:normal;color:var(--accent)}
 #mapHud .small{font-size:clamp(11px,1.05vw,14px);color:var(--dim);line-height:1.8;letter-spacing:.03em}
 #mapReset{position:fixed;right:clamp(20px,4vw,64px);bottom:clamp(70px,12vh,120px);
   z-index:8;opacity:0 !important;pointer-events:none}
@@ -712,24 +719,34 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
     g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
     return s;
   }
-  var SPR_C = sprite('95,224,210'), SPR_P = sprite('255,61,139'), SPR_V = sprite('160,107,255');
+  /* 克制的单色调：苹果只用一处强调，其余全是中性。
+     节点=冷白微光，突触=极淡蓝灰，脉冲=单一青色。
+     不再用青/粉/紫三色混战（那正是"花里胡哨"的来源）。 */
+  var SPR_C = sprite('120,210,205');   // 脉冲唯一色：克制的心电青
+  var SPR_V = sprite('150,170,205');   // 节点微光：冷白偏蓝
 
   function build(){
     nodes = []; edges = []; pulses = [];
-    // 6 簇，簇心偏右（左侧留给标题），避开底部卡片区
-    for (var c = 0; c < 6; c++) {
-      var cx = rr(.34, .94) * W, cy = rr(.10, .60) * H;
-      var spread = Math.min(W, H) * rr(.10, .20);
-      var n = 12 + (Math.random() * 6 | 0);
-      for (var k = 0; k < n; k++) {
-        var a = Math.random() * 6.283, r = Math.pow(Math.random(), .62) * spread;
+    /* 极简版：只在【右侧一块区域】放 2 个簇、共约 26 个节点。
+       苹果的背景是"大留白 + 一处焦点"，不是满屏铺网络。
+       簇心集中在右上（x .62-.88, y .22-.52），完全避开标题与卡片。 */
+    var CLUSTERS = [
+      { cx: .70, cy: .34, spread: .13, n: 14 },
+      { cx: .86, cy: .55, spread: .10, n: 11 }
+    ];
+    for (var c = 0; c < CLUSTERS.length; c++) {
+      var C0 = CLUSTERS[c];
+      var ccx = C0.cx * W, ccy = C0.cy * H;
+      var spread = Math.min(W, H) * C0.spread;
+      for (var k = 0; k < C0.n; k++) {
+        var a = Math.random() * 6.283, r = Math.pow(Math.random(), .55) * spread;
         nodes.push({
-          x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r,
-          z: .55 + Math.random() * .75, cl: c, fire: 0
+          x: ccx + Math.cos(a) * r, y: ccy + Math.sin(a) * r,
+          z: .6 + Math.random() * .6, cl: c, fire: 0
         });
       }
     }
-    // 每节点连最近 2 个同簇邻居 + 少量跨簇长程
+    // 每节点只连最近 1 个同簇邻居（更疏、更像"星图"而不是蜘蛛网）
     for (var i = 0; i < nodes.length; i++) {
       var A = nodes[i], cand = [];
       for (var j = 0; j < nodes.length; j++) {
@@ -738,13 +755,13 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
         cand.push({ j: j, d: Math.hypot(A.x - B.x, A.y - B.y), same: A.cl === B.cl });
       }
       cand.sort(function(p, q){ return p.d - q.d; });
-      var link = 0;
-      for (var m = 0; m < cand.length && link < 2; m++) {
-        if (cand[m].same) { edges.push({ a: i, b: cand[m].j, hot: 0 }); link++; }
+      for (var m = 0; m < cand.length; m++) {
+        if (cand[m].same) { edges.push({ a: i, b: cand[m].j, hot: 0 }); break; }
       }
-      if (Math.random() < .12) {
+      // 极少的长程连接（8%），保持"网络感"但不杂乱
+      if (Math.random() < .08) {
         for (var m2 = 0; m2 < cand.length; m2++) {
-          if (!cand[m2].same && cand[m2].d < Math.min(W, H) * .6) {
+          if (!cand[m2].same && cand[m2].d < Math.min(W, H) * .45) {
             edges.push({ a: i, b: cand[m2].j, hot: 0 }); break;
           }
         }
@@ -801,15 +818,13 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
     }
     env = Math.exp(-sinceBeat * 4.2);
 
-    // 发光渐变底：环心(0.72W)附近最亮，冷紫→深靛→冷蓝黑。
-    // 提亮：原 .5/.38/.22 叠在 #05060b 上过暗（实测全图均亮仅 22.9），
-    // 提高到 .62/.5/.3，让背景真正成为可见的氛围层。
-    var g = ctx.createRadialGradient(W * .72, H * .38, 0, W * .72, H * .38, Math.max(W, H) * .95);
-    g.addColorStop(0, 'rgba(58,38,96,' + (.62 + env * .14).toFixed(3) + ')');
-    g.addColorStop(.35, 'rgba(38,30,74,.5)');
-    g.addColorStop(.7, 'rgba(22,25,54,.3)');
-    g.addColorStop(1, 'rgba(10,12,24,0)');
-    ctx.fillStyle = '#07080f';
+    /* 苹果式中性底：不是紫，而是极深的近黑 + 一处极淡的冷光。
+       紫调正是"配色不像苹果"的主因 —— 苹果深色界面几乎都是中性黑。 */
+    var g = ctx.createRadialGradient(W * .78, H * .36, 0, W * .78, H * .36, Math.max(W, H) * .8);
+    g.addColorStop(0, 'rgba(38,42,54,' + (.34 + env * .05).toFixed(3) + ')');
+    g.addColorStop(.45, 'rgba(24,27,36,.2)');
+    g.addColorStop(1, 'rgba(8,9,13,0)');
+    ctx.fillStyle = '#07080b';
     ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
@@ -820,9 +835,9 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
       var e = edges[i], A = nodes[e.a], B = nodes[e.b];
       e.hot = Math.max(0, e.hot - dt * 2.2);
       var z = (A.z + B.z) * .5;
-      /* 提亮：原 .07+.06z 太淡（画面近乎不可见），提到 .16+.12z */
-      ctx.strokeStyle = 'rgba(130,145,255,' + (.16 + .12 * z + e.hot * .38).toFixed(3) + ')';
-      ctx.lineWidth = (.6 + .6 * z) + e.hot * 1.2;
+      /* 克制的突触：只要隐约可见的连接感，不要"蜘蛛网" */
+      ctx.strokeStyle = 'rgba(140,158,190,' + (.11 + .08 * z + e.hot * .3).toFixed(3) + ')';
+      ctx.lineWidth = (.5 + .45 * z) + e.hot * 0.9;
       ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
     }
 
@@ -840,13 +855,15 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
       if (!n1 || !n2) { pulses.splice(p, 1); continue; }
       var px = n1.x + (n2.x - n1.x) * pu.t, py = n1.y + (n2.y - n1.y) * pu.t;
       var tp = Math.max(0, pu.t - .18);
-      ctx.strokeStyle = pu.warm ? 'rgba(255,61,139,.5)' : 'rgba(95,224,210,.5)';
-      ctx.lineWidth = 1.6;
+      /* 单色脉冲：不再用粉/青两色区分（那是"花里胡哨"的来源之一）。
+         统一克制的冷青，靠亮度而非色相区分强弱。 */
+      ctx.strokeStyle = 'rgba(120,210,205,.42)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(n1.x + (n2.x - n1.x) * tp, n1.y + (n2.y - n1.y) * tp);
       ctx.lineTo(px, py); ctx.stroke();
-      var pr = 3 + 2 * ((n1.z + n2.z) * .5);
-      ctx.drawImage(pu.warm ? SPR_P : SPR_C, px - pr, py - pr, pr * 2, pr * 2);
+      var pr = 2.4 + 1.6 * ((n1.z + n2.z) * .5);
+      ctx.drawImage(SPR_C, px - pr, py - pr, pr * 2, pr * 2);
     }
 
     // 节点
