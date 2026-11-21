@@ -3453,6 +3453,54 @@ html[data-quality="low"] .aurora i{display:none !important}
 html[data-quality="low"] .aurora i{animation:none !important;opacity:.14 !important}
 /* 中档：极光静止但仍可见（保命的保底渐变仍在） */
 html[data-quality="mid"] .aurora i{animation-duration:30s}
+
+/* ==================================================================
+   生命力美学层 · Vitality (deck)
+   ------------------------------------------------------------------
+   演示里的生命力 = 呼吸的节奏 + 错落的入场 + 有温度的高亮。
+   不改变任何既有镜头/转场，只在细节层注入生命节律。
+   ================================================================== */
+:root{
+  --vital-beat:cubic-bezier(.22,1.35,.36,1);
+}
+
+/* ① 生命指示点双跳（与 portal 同一套语言，跨页一致） */
+@keyframes vitalHeart{
+  0%,100%{transform:scale(1);opacity:.5}
+  12%    {transform:scale(1.5);opacity:1}
+  26%    {transform:scale(1.03);opacity:.6}
+  40%    {transform:scale(1.3);opacity:.92}
+  70%    {transform:scale(1);opacity:.5}
+}
+#pager .dot,.hud .dot,.live .dot{animation:vitalHeart 2.1s var(--vital-beat) infinite}
+
+/* ② 构件错落：一页内的多个 build 元素已有 90ms 错峰，
+   这里让列表项也带轻微"生长"感（只动 transform/opacity）。 */
+@keyframes vitalRise{
+  from{opacity:0;transform:translate3d(0,10px,0) scale(.99)}
+  to  {opacity:1;transform:none}
+}
+
+/* ③ 数字呼吸：大数字极缓慢的冷暖交替（用 filter 会重绘，
+   改用 opacity 微起伏 + 已有的金属渐变），让数据"有体温"。 */
+@keyframes vitalNum{
+  0%,100%{opacity:.92}
+  50%    {opacity:1}
+}
+.slide.active .bignum{animation:vitalNum 6s ease-in-out infinite}
+
+/* ④ 强调色温：让唯一强调色在 12s 周期里极缓慢地偏移一点点色温
+   （粉 → 暖粉 → 粉），像血液氧合的微妙变化，而不是霓虹闪烁。 */
+@keyframes vitalHue{
+  0%,100%{opacity:1}
+  50%    {opacity:.86}
+}
+.slide.active .grad,.slide.active .hl{animation:vitalHue 12s ease-in-out infinite}
+
+@media (prefers-reduced-motion:reduce){
+  #pager .dot,.hud .dot,.live .dot,
+  .slide.active .bignum,.slide.active .grad,.slide.active .hl{animation:none !important}
+}
 </style>
 </head>
 <body>
