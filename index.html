@@ -451,6 +451,79 @@ html.lite .dust{display:none}
 /* 阴影改亮边：深色背景上 60px 纯黑阴影不可见，只耗 GPU */
 .card:hover{box-shadow:0 1px 0 rgba(255,255,255,.08) inset,
   0 12px 32px rgba(0,0,0,.24) !important}
+
+/* ==================================================================
+   生命力美学层 · Vitality
+   ------------------------------------------------------------------
+   生命体 vs 机器 的差别不在装饰多少，而在"节奏是否不均匀"。
+   机械动画匀速/expo-out；生命是双节拍（心跳 lub-dub）、会错落生长、
+   触碰后弹性回弹、且永远有一层极缓的呼吸在底下。
+   全部只动 transform / opacity —— 合成器友好，零重绘。
+   ================================================================== */
+:root{
+  /* 双节拍心跳曲线：快收缩 → 短停顿 → 慢回弹，比 ease-in-out 更像真的脉 */
+  --beat:cubic-bezier(.22,1.4,.36,1);
+  --breathe:4.8s;                 /* 基础呼吸周期（接近静息呼吸 4-6s） */
+}
+
+/* ① 生命点在原位做"双跳"：一次强、一次弱，然后长间歇。
+   旧的 dotBreath 是均匀 scale 1→1.3→1，太像呼吸机；
+   新的 heartbeat 是 lub-dub 双脉冲，像真的心跳。 */
+@keyframes heartbeat{
+  0%   {transform:scale(1);    opacity:.5;  box-shadow:0 0 6px rgba(95,224,210,.5)}
+  14%  {transform:scale(1.5);  opacity:1;   box-shadow:0 0 16px rgba(95,224,210,.9)}
+  28%  {transform:scale(1.05); opacity:.65; box-shadow:0 0 8px rgba(95,224,210,.6)}
+  42%  {transform:scale(1.32); opacity:.95; box-shadow:0 0 13px rgba(95,224,210,.8)}
+  70%  {transform:scale(1);    opacity:.5;  box-shadow:0 0 6px rgba(95,224,210,.5)}
+  100% {transform:scale(1);    opacity:.5;  box-shadow:0 0 6px rgba(95,224,210,.5)}
+}
+.hud .dot{animation:heartbeat 2.1s var(--beat) infinite !important}
+
+/* ② 卡片错落生长：四张卡片不再是同一帧齐刷刷出现，
+   而是像生物一样从左侧依次"长出来"（60ms 间隔，肉眼刚好能感到节奏）。 */
+.home .card:nth-child(1){animation-delay:.06s !important}
+.home .card:nth-child(2){animation-delay:.12s !important}
+.home .card:nth-child(3){animation-delay:.18s !important}
+.home .card:nth-child(4){animation-delay:.24s !important}
+
+/* ③ 弹性触碰：hover 用 spring 曲线回弹，而不是线性抬升。
+   手指/鼠标离开时那种"轻轻弹回"是 Apple 材质感的关键。 */
+.home .card{
+  transition:transform .42s cubic-bezier(.22,1.3,.36,1),
+             border-color .3s var(--ease-standard),
+             box-shadow .42s var(--ease-standard) !important}
+.home .card:hover{transform:translate3d(0,-6px,0) scale(1.014) !important}
+.home .card:active{transform:translate3d(0,-2px,0) scale(.994) !important}
+
+/* ④ 卡片内数字/图标的呼吸：极缓慢（8s）opacity 起伏，
+   让静止的卡片内部仍有"活着"的微动，但不干扰阅读。 */
+@keyframes vitalGlow{
+  0%,100%{opacity:.45}
+  50%    {opacity:.85}
+}
+.home .card .num{animation:vitalGlow 8s ease-in-out infinite}
+
+/* ⑤ 标题的呼吸留白：整个标题组极缓慢地上下浮动 1px 级别，
+   模拟胸腔起伏。幅度极小，只有长时间注视才察觉——这正是"克制"。 */
+@keyframes vitalFloat{
+  0%,100%{transform:translate3d(0,0,0)}
+  50%    {transform:translate3d(0,-4px,0)}
+}
+.home h1{animation:vitalFloat 9s ease-in-out infinite !important}
+
+/* ⑥ 背景引擎的"呼吸光"：让光场整体亮度随双节拍微微起伏。
+   用伪元素 + opacity 动画，不动 iframe 本身（避免重合成）。 */
+#bg{animation:bgBreath 6s ease-in-out infinite}
+@keyframes bgBreath{
+  0%,100%{opacity:.62}
+  50%    {opacity:.74}
+}
+
+/* 无障碍：减弱动效时，生命层全部静止，保持最终可见态 */
+@media (prefers-reduced-motion:reduce){
+  .hud .dot,.home .card,.home .card .num,.home h1,#bg{animation:none !important}
+}
+html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none !important}
 </style>
 </head>
 <body>
