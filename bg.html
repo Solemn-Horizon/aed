@@ -230,6 +230,8 @@ const gauss = () => (rnd() + rnd() + rnd() - 1.5) / 1.5;
 /* 背景不必全分辨率：0.7 倍缓冲 + CSS 拉伸，肉眼几乎无差，填充率降 51% */
 let DPR = Math.min(window.devicePixelRatio || 1, 2) * 0.85;
 const FONT = '"JetBrains Mono",Consolas,monospace';
+/* 背景渐变缓存：只在尺寸/环心变化时重建，避免每帧 new gradient */
+let bgGrad = null, bgGradW = 0, bgGradH = 0, bgGradCx = 0;
 
 function mk(w, h) {
   const c = document.createElement('canvas');
@@ -1179,10 +1181,21 @@ function drawStage(dt) {
   updateRing(dt);
   for (let k = 0; k < 3; k++) layerEnv[k] *= Math.exp(-dt * 2.2);
 
-  // background
+  // background —— AED 版：不再用近黑 #08090b 铺满整屏。
+  // 那会让整个画面天生接近纯黑，用户感知就是"没有背景"。
+  // 改为一层有明显冷紫/青光的低饱和渐变底，让"光场"颜色本身可见，
+  // 再叠加环带/光束/粒子。渐变在 cx（环心，已移到右侧 0.72W）处最亮。
   S.setTransform(DPR, 0, 0, DPR, 0, 0);
   S.globalCompositeOperation = 'source-over'; S.globalAlpha = 1;
-  S.fillStyle = '#08090b'; S.fillRect(0, 0, W, H);
+  if (!bgGrad || bgGradW !== W || bgGradH !== H) {
+    bgGrad = S.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.92);
+    bgGrad.addColorStop(0,    '#2a1c4a');   // 环心：明显冷紫光
+    bgGrad.addColorStop(0.30, '#1c1638');   // 中段：靛蓝紫
+    bgGrad.addColorStop(0.62, '#11132a');   // 外段：冷蓝
+    bgGrad.addColorStop(1,    '#080a14');   // 边缘：深但非纯黑
+    bgGradW = W; bgGradH = H;
+  }
+  S.fillStyle = bgGrad; S.fillRect(0, 0, W, H);
 
   // glow buffer (low-res, blurred later)
   const G = glowC.x;
