@@ -4693,12 +4693,17 @@ window.AEDQ = (function () {
 
     var dx = (r2.left + r2.width / 2) - (r1.left + r1.width / 2);
     var dy = (r2.top + r2.height / 2) - (r1.top + r1.height / 2);
-    var s = Math.sqrt((r2.width / r1.width) * (r2.height / r1.height));
+    /* 分轴非等比缩放：等比 scale 会让 clone 落地时尺寸/形状与目标不符
+       （实测源 460x346 → 落点 249x187，但目标是 319x140），
+       落位瞬间目标图突然变成另一个形状 = "衔接有问题"。
+       改成 sx/sy 分别缩放，让 clone 精确铺满目标矩形，交接无缝。 */
+    var sx = r2.width / r1.width;
+    var sy = r2.height / r1.height;
     var dur = 900;
 
     var anim = clone.animate([
-      { transform: 'translate3d(0,0,0) scale(1)' },
-      { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s.toFixed(4) + ')' }
+      { transform: 'translate3d(0,0,0) scale(1,1)' },
+      { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + sx.toFixed(4) + ',' + sy.toFixed(4) + ')' }
     ], { duration: dur, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' });
 
     var done = false;
