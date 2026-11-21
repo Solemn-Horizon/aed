@@ -403,6 +403,20 @@ function onBeat() {
 
 /* ---------- camera: automatic push-in / pull-out shots ---------- */
 const cam = { x: 0, y: 0, z: 1 };
+
+/* ===== 偏心放大锚点（EC-centric zoom）=====
+   原来 camT 把焦点固定在屏幕正中 (W/2,H/2)，放大就是"朝中心推近"。
+   现在改为：全景(z≈1)仍在中心，放大越多锚点越偏向【右上角】——
+   镜头像从右上角推入，与右侧的光环呼应，形成有电影感的偏心构图。
+   0.5=中心；x>0.5 偏右，y<0.5 偏上。想换角改这两个数即可。 */
+const CAM_ANCHOR = { x: 0.72, y: 0.30 };
+function camAnchor() {
+  const t = Math.min(1, Math.max(0, (cam.z - 1) / 1.15));  // z=1→0, z≈2.15→1
+  const e = t * t * (3 - 2 * t);                            // smoothstep 平滑过渡
+  return { x: 0.5 + (CAM_ANCHOR.x - 0.5) * e,
+           y: 0.5 + (CAM_ANCHOR.y - 0.5) * e };
+}
+
 let shots = [], shotI = 0, shotT = 0, camPhase = 'hold', camFrom = null;
 function buildShots() {
   const P = (a, r) => ({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
@@ -445,12 +459,19 @@ function updateCam(dt) {
   }
   clampCam();
 }
-function camT(ctx, d) { ctx.setTransform(d * cam.z, 0, 0, d * cam.z, d * (W / 2 - cam.x * cam.z), d * (H / 2 - cam.y * cam.z)); }
-function camTk(ctx, d, k) {
-  const z = 1 + (cam.z - 1) * k, x = W / 2 + (cam.x - W / 2) * k, y = H / 2 + (cam.y - H / 2) * k;
-  ctx.setTransform(d * z, 0, 0, d * z, d * (W / 2 - x * z), d * (H / 2 - y * z));
+function camT(ctx, d) {
+  const a = camAnchor(), ax = a.x * W, ay = a.y * H;
+  ctx.setTransform(d * cam.z, 0, 0, d * cam.z, d * (ax - cam.x * cam.z), d * (ay - cam.y * cam.z));
 }
-const toScreen = (x, y) => ({ x: (x - cam.x) * cam.z + W / 2, y: (y - cam.y) * cam.z + H / 2 });
+function camTk(ctx, d, k) {
+  const a = camAnchor(), ax = a.x * W, ay = a.y * H;
+  const z = 1 + (cam.z - 1) * k, x = ax + (cam.x - ax) * k, y = ay + (cam.y - ay) * k;
+  ctx.setTransform(d * z, 0, 0, d * z, d * (ax - x * z), d * (ay - y * z));
+}
+const toScreen = (x, y) => {
+  const a = camAnchor();
+  return { x: (x - cam.x) * cam.z + a.x * W, y: (y - cam.y) * cam.z + a.y * H };
+};
 
 /* ---------- setup ---------- */
 function mkd(w, h, d) {
