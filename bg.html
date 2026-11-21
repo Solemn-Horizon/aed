@@ -169,21 +169,10 @@ html,body{overflow:hidden !important;background:#05060b !important}
     if(n++ > FRAMES) return 0;
     return raf(cb);
   };
-  setTimeout(function(){
-    try{
-      var st = document.getElementById('stage');
-      if(!st) return;
-      var url = st.toDataURL('image/png');
-      var img = new Image();
-      img.onload = function(){
-        document.body.innerHTML = '';
-        img.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;'
-          + 'object-fit:cover;display:block';
-        document.body.appendChild(img);
-      };
-      img.src = url;
-    }catch(e){}
-  }, 2600);
+  /* 不再用 toDataURL + body.innerHTML='' 定格：
+     那会删掉整个 DOM（canvas/aedfx），在 iframe 里极易显示异常或空白，
+     也是"减弱动效设备上背景消失"的元凶。
+     现在只停 rAF（上面已 limiter），让最后一帧原样留在画布上，DOM 完整保留。 */
 })();
 </script>
 <div class="app">
