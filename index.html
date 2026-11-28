@@ -596,6 +596,25 @@ html.lite .hud .dot,html.lite .home .card .num,html.lite .home h1{animation:none
     </div>
   </section>
 
+  <!-- 演示选择：主汇报 / 最新活动汇报 -->
+  <section class="scene" id="demoPickScene">
+    <div class="sheet">
+      <button class="back" data-back><i></i>返回主界面</button>
+      <h2>选择汇报</h2>
+      <p class="lead">同一份调研，两种讲法 —— 完整主线，或聚焦最近一次活动。</p>
+      <div class="grid2" style="margin-top:clamp(24px,4vh,48px)">
+        <button class="card" data-deck="main"><span class="num">01 / MAIN DECK</span>
+          <div class="ico">▷</div><h2>主汇报</h2>
+          <p>27 页一镜到底的完整调研汇报：从问卷数据、实地走访到政策建议。</p>
+          <div class="go">播放 <i></i></div></button>
+        <button class="card" data-deck="activity"><span class="num">02 / ACTIVITY</span>
+          <div class="ico">◎</div><h2>最新活动汇报</h2>
+          <p>聚焦最近一次活动的专题汇报：我们做了什么、发现了什么、下一步怎么走。</p>
+          <div class="go">查看 <i></i></div></button>
+      </div>
+    </div>
+  </section>
+
   <!-- 小组背景 -->
   <section class="scene" id="groupScene">
     <div class="sheet">
@@ -818,7 +837,8 @@ var scenes={
   group:document.getElementById('groupScene'),
   aed:  document.getElementById('aedScene'),
   map:  document.getElementById('mapScene'),
-  demo: null               /* 演示由 iframe 承担，不走 scene 淡入 */
+  demoPick: document.getElementById('demoPickScene'),
+  demo: null               /* 真正播放由 iframe 承担，不走 scene 淡入 */
 };
 var demoFrame=document.getElementById('demoFrame');
 var demoExit=document.getElementById('demoExit');
@@ -864,9 +884,7 @@ function setScene(name){
   }
   /* 演示：延迟加载 iframe，避免首屏多一个 271KB 文档 */
   if(name==='demo'){
-    if(demoFrame.getAttribute('src')==='about:blank'){
-      demoFrame.setAttribute('src','deck/index.html');
-    }
+    /* src 已由 playDeck 选定（主汇报 / 活动汇报），此处不再覆盖 */
     setTimeout(function(){
       demoFrame.classList.add('on'); demoExit.classList.add('on');
       demoExit.style.opacity=''; demoExit.style.pointerEvents='';
@@ -884,13 +902,31 @@ document.getElementById('menu').addEventListener('click',function(e){
   if(!c) return;
   var go=c.getAttribute('data-go');
   if(go==='map') setScene('map');
-  else if(go==='demo') setScene('demo');
+  else if(go==='demo') setScene('demoPick');
   else setScene(go);
 });
+document.getElementById('demoPickScene').addEventListener('click',function(e){
+  var c=e.target.closest?e.target.closest('[data-deck]'):null;
+  if(!c) return;
+  playDeck(c.getAttribute('data-deck'));
+});
+function playDeck(kind){
+  demoFrame.setAttribute('src', kind==='activity' ? 'activity/index.html' : 'deck/index.html');
+  setScene('demo');
+}
 for(var bi=0;bi<document.querySelectorAll('[data-back]').length;bi++){
   document.querySelectorAll('[data-back]')[bi].addEventListener('click',function(){setScene('home')});
 }
-demoExit.addEventListener('click',function(){setScene('home')});
+demoExit.addEventListener('click',function(){
+  /* 退出汇报回到选择页；从选择页的返回按钮再回主界面 */
+  setScene('demoPick');
+});
+/* 演示 iframe 内部的「返回选择」按钮：postMessage 通知父页退出到选择页 */
+window.addEventListener('message', function(e){
+  if (e && e.data && e.data.type === 'deck-exit') {
+    setScene('demoPick');
+  }
+});
 document.getElementById('mapReset').addEventListener('click',function(){setScene('home')});
 
 /* 背景引擎开关（iframe 版，HTML 里已直接写 src="bg.html"）：
@@ -958,7 +994,9 @@ document.addEventListener('keydown',function(e){
 /* 路由：hash 直达 + 反复监听 hashchange + 浏览器前进后退 */
 (function(){
   function fromHash(){
-    var m=/^#(group|demo|aed|map)$/.exec(location.hash||'');
+    /* demoPick 是一级场景（演示二级选择页），必须纳入路由，
+       否则 setScene('demoPick') 写入 #demoPick 后会被解析成 home 而跳回。 */
+    var m=/^#(group|demo|demoPick|aed|map)$/.exec(location.hash||'');
     return m?m[1]:'home';
   }
   function route(){
