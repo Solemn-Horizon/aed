@@ -173,25 +173,21 @@ h2{font-size:clamp(26px,3.8vw,52px);line-height:1.12;letter-spacing:-.03em;
   color:var(--accent);margin-bottom:4px;font-weight:600}
 .tl .d{font-size:15.5px;line-height:1.55}
 
-/* ---------- 逐帧影像播放器（真实可播放） ----------
-   为什么不是 <video>：AED 群那 52 段视频在本地只有缩略图，
-   原视频从未下载到磁盘（微信只在播放时才落盘），且无关视频不能拿来冒充。
-   所以用 10 张真实培训帧做逐帧播放 —— 点击就播、有进度、可暂停，内容全部真实。 */
+/* ---------- 现场剪辑片播放器 ----------
+   素材：AED 群 36 段 11/22 实拍视频（去重后 29 段，共 44.9 分钟）
+   剪辑：12 段精选 × 4.5s + 0.8s 交叉溶解 = 45.2s，1280x720 H.264 */
 .player{position:relative;margin-top:var(--sp-6);border-radius:var(--r-lg);
   overflow:hidden;border:1px solid rgba(255,255,255,.11);
-  aspect-ratio:16/9;max-width:860px;cursor:pointer;background:#08080c;
+  aspect-ratio:16/9;max-width:860px;cursor:pointer;background:#000;
   box-shadow:0 30px 90px rgba(0,0,0,.55);
   transition:border-color .3s var(--ease)}
 .player:hover{border-color:rgba(255,255,255,.2)}
 .player:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
-.player .frame{position:absolute;inset:0;opacity:0;
-  transition:opacity .6s var(--ease);will-change:opacity}
-.player .frame.on{opacity:1}
-.player .frame img{width:100%;height:100%;object-fit:cover;display:block;
-  transform:scale(1.03);transition:transform 2.4s linear}
-.player .frame.on img{transform:scale(1.11)}
-.player .veil{position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(3,3,5,.14) 0%,rgba(3,3,5,.30) 60%,rgba(3,3,5,.52) 100%)}
+.player video{display:block;width:100%;height:100%;object-fit:cover;background:#000}
+.player .veil{position:absolute;inset:0;pointer-events:none;opacity:1;
+  background:linear-gradient(180deg,rgba(3,3,5,.10) 0%,rgba(3,3,5,.22) 62%,rgba(3,3,5,.48) 100%);
+  transition:opacity .45s var(--ease)}
+.player.playing .veil{opacity:0}
 .player .play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:78px;height:78px;border-radius:50%;pointer-events:none;
   background:rgba(255,255,255,.16);
@@ -207,21 +203,27 @@ h2{font-size:clamp(26px,3.8vw,52px);line-height:1.12;letter-spacing:-.03em;
   transition:all .22s var(--ease)}
 .player:hover .play{transform:translate(-50%,-50%) scale(1.06);
   background:rgba(255,255,255,.22)}
-/* 播放中：按钮淡出，悬停才回到暂停态 */
 .player.playing .play{opacity:0}
 .player.playing:hover .play{opacity:.92}
 .player.playing .play::after{margin-left:0;width:17px;height:21px;
   border:0;border-left:5px solid #fff;border-right:5px solid #fff}
 .player .tc{position:absolute;right:var(--sp-4);bottom:var(--sp-4);
-  font-family:var(--font-num);font-size:12px;letter-spacing:.08em;font-variant-numeric:tabular-nums;
-  color:rgba(255,255,255,.85);background:rgba(3,3,5,.55);
+  font-family:var(--font-num);font-size:12px;letter-spacing:.08em;
+  font-variant-numeric:tabular-nums;
+  color:rgba(255,255,255,.88);background:rgba(3,3,5,.55);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   padding:3px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.1)}
 .player .bar{position:absolute;left:0;right:0;bottom:0;height:3px;
-  background:rgba(255,255,255,.16)}
+  background:rgba(255,255,255,.18)}
 .player .bar i{display:block;height:100%;width:0;
-  background:linear-gradient(90deg,rgba(255,92,138,.75),var(--accent));
-  transition:width .12s linear}
+  background:linear-gradient(90deg,rgba(255,92,138,.75),var(--accent))}
+.player .loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:34px;height:34px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.22);border-top-color:#fff;
+  animation:spin .9s linear infinite;opacity:0;pointer-events:none;
+  transition:opacity .3s var(--ease)}
+.player.buffering .loading{opacity:1}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
 .player .note{margin-top:var(--sp-2);font-size:12px;color:var(--ink-dim)}
 
 /* ---------- 问题列表（逐条） ---------- */
@@ -397,23 +399,16 @@ h2{font-size:clamp(26px,3.8vw,52px);line-height:1.12;letter-spacing:-.03em;
     <p class="eyebrow" data-anim="1">现场影像</p>
     <h2 data-anim="2">一整个上午的记录</h2>
     <div class="player" id="vidPlayer" data-anim="3" role="button" tabindex="0"
-         aria-label="播放现场影像（点击播放或暂停）" aria-pressed="false">
-      <div class="frame on"><img src="photos/p01.jpg" alt="培训现场第 1 帧"></div>
-      <div class="frame"><img src="photos/p02.jpg" alt="培训现场第 2 帧"></div>
-      <div class="frame"><img src="photos/p03.jpg" alt="培训现场第 3 帧"></div>
-      <div class="frame"><img src="photos/p04.jpg" alt="培训现场第 4 帧"></div>
-      <div class="frame"><img src="photos/p05.jpg" alt="培训现场第 5 帧"></div>
-      <div class="frame"><img src="photos/p06.jpg" alt="培训现场第 6 帧"></div>
-      <div class="frame"><img src="photos/p07.jpg" alt="培训现场第 7 帧"></div>
-      <div class="frame"><img src="photos/p08.jpg" alt="培训现场第 8 帧"></div>
-      <div class="frame"><img src="photos/p09.jpg" alt="培训现场第 9 帧"></div>
-      <div class="frame"><img src="photos/p10.jpg" alt="培训现场第 10 帧"></div>
+         aria-label="播放现场剪辑片（点击播放或暂停）" aria-pressed="false">
+      <video id="vid" src="video/activity_reel.mp4" poster="photos/p01.jpg"
+             preload="metadata" playsinline></video>
       <div class="veil"></div>
       <div class="play" aria-hidden="true"></div>
-      <div class="tc" id="vidTc">00:00 / 00:18</div>
+      <div class="loading" aria-hidden="true"></div>
+      <div class="tc" id="vidTc">00:00 / 00:45</div>
       <div class="bar"><i id="vidBar"></i></div>
     </div>
-    <p class="note" data-anim="3">群里 52 段视频未能下载到本地，这里是其中的 10 帧实拍画面。</p>
+    <p class="note" data-anim="3">11/22 全天实拍剪辑 · 由群里 36 段视频精选 12 段合成，45 秒。</p>
     <div class="bento" data-anim="4" style="margin-top:var(--sp-6);grid-template-columns:repeat(3,1fr)">
       <div class="b"><div class="big metal" data-count="52">0</div><div class="lbl">段现场视频</div></div>
       <div class="b"><div class="big metal" data-count="65">0</div><div class="lbl">张现场照片</div></div>
@@ -563,61 +558,34 @@ h2{font-size:clamp(26px,3.8vw,52px);line-height:1.12;letter-spacing:-.03em;
     try{ parent.postMessage({type:'deck-exit'}, '*'); }catch(e){}
   });
 
-  /* ---------- 逐帧影像播放器 ---------- */
+  /* ---------- 现场剪辑片播放器 ---------- */
   (function(){
     var box = document.getElementById('vidPlayer');
-    if (!box) return;
-    var layers = box.querySelectorAll('.frame');
+    var vid = document.getElementById('vid');
+    if (!box || !vid) return;
     var bar = document.getElementById('vidBar');
     var tc = document.getElementById('vidTc');
-    var STEP = 1800;                              /* 每帧 1.8 秒 */
-    var TOTAL = layers.length * STEP;
-    var cur = 0, playing = false, t0 = 0, raf = 0;
 
     function pad(n){ return (n < 10 ? '0' : '') + n; }
-    function clock(ms){
-      var t = Math.round(ms / 1000);
-      return '00:' + pad(t) + ' / 00:' + pad(Math.round(TOTAL / 1000));
+    function ts(sec){
+      if (!isFinite(sec)) sec = 0;
+      return '00:' + pad(Math.floor(sec));
     }
-    function show(n){
-      for (var k = 0; k < layers.length; k++) {
-        layers[k].classList.toggle('on', k === n);
-      }
-    }
-    function paint(elapsed){
-      var p = Math.min(1, elapsed / TOTAL);
+    function paint(){
+      var d = vid.duration || 0;
+      var p = d ? (vid.currentTime / d) : 0;
       bar.style.width = (p * 100).toFixed(2) + '%';
-      tc.textContent = clock(elapsed);
-    }
-    function tick(){
-      if (!playing) return;
-      var el = performance.now() - t0;
-      if (el >= TOTAL) { el = 0; t0 = performance.now(); }   /* 循环 */
-      var n = Math.floor(el / STEP) % layers.length;
-      if (n !== cur) { cur = n; show(cur); }
-      paint(el);
-      raf = requestAnimationFrame(tick);
+      tc.textContent = ts(vid.currentTime) + ' / ' + ts(d);
     }
     function play(){
-      if (playing) return;
-      playing = true;
-      box.classList.add('playing');
-      box.setAttribute('aria-pressed', 'true');
-      t0 = performance.now() - cur * STEP;     /* 从当前帧续播 */
-      raf = requestAnimationFrame(tick);
+      var pr = vid.play();
+      if (pr && pr.catch) pr.catch(function(){ /* 自动播放被拦时静默 */ });
     }
-    function pause(){
-      if (!playing) return;
-      playing = false;
-      box.classList.remove('playing');
-      box.setAttribute('aria-pressed', 'false');
-      cancelAnimationFrame(raf);
-    }
-    function toggle(){ playing ? pause() : play(); }
+    function pause(){ vid.pause(); }
+    function toggle(){ vid.paused ? play() : pause(); }
 
-    /* 关键：阻止冒泡，否则点击播放器会同时触发「翻到下一页」 */
     box.addEventListener('click', function(e){
-      e.stopPropagation();
+      e.stopPropagation();          /* 关键：否则会同时触发翻页 */
       toggle();
     });
     box.addEventListener('keydown', function(e){
@@ -625,15 +593,35 @@ h2{font-size:clamp(26px,3.8vw,52px);line-height:1.12;letter-spacing:-.03em;
         e.preventDefault(); e.stopPropagation(); toggle();
       }
     });
-    /* 翻页离开这一页时自动暂停，避免后台空转 */
-    var obs = new MutationObserver(function(){
-      var sl = box.closest('.slide');
-      if (sl && !sl.classList.contains('active')) pause();
-    });
-    var sl = box.closest('.slide');
-    if (sl) obs.observe(sl, { attributes: true, attributeFilter: ['class'] });
 
-    paint(0);
+    vid.addEventListener('loadedmetadata', paint);
+    vid.addEventListener('timeupdate', paint);
+    vid.addEventListener('play', function(){
+      box.classList.add('playing');
+      box.setAttribute('aria-pressed', 'true');
+    });
+    vid.addEventListener('pause', function(){
+      box.classList.remove('playing');
+      box.setAttribute('aria-pressed', 'false');
+    });
+    vid.addEventListener('waiting', function(){ box.classList.add('buffering'); });
+    vid.addEventListener('playing', function(){ box.classList.remove('buffering'); });
+    vid.addEventListener('canplay', function(){ box.classList.remove('buffering'); });
+    vid.addEventListener('ended', function(){
+      vid.currentTime = 0;
+      paint();
+      box.classList.remove('playing');
+      box.setAttribute('aria-pressed', 'false');
+    });
+
+    /* 翻页离开本页时暂停，避免后台继续播放 */
+    var sl = box.closest('.slide');
+    if (sl) {
+      new MutationObserver(function(){
+        if (!sl.classList.contains('active') && !vid.paused) vid.pause();
+      }).observe(sl, { attributes: true, attributeFilter: ['class'] });
+    }
+    paint();
   })();
 
   var m = /^#(\d+)$/.exec(location.hash||'');
