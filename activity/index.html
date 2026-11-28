@@ -49,12 +49,20 @@ html,body{height:100%;overflow:hidden;background:var(--paper);color:var(--ink);
 .slide.tint{background:var(--paper-2)}
 .slide.tint .qnum .row::before{background:var(--paper-2)}
 
+/* 内容栏宽：苹果正文栏只占约 68% 视宽。
+   满幅宽行（84%）会让每行字数过多、阅读疲劳，也不像苹果。
+   这里把文字页的容器收窄并居中；双栏页与满幅图页不受影响。 */
+.band,.bigq,.next,.quad,.quote-split{max-width:1240px;margin-left:auto;margin-right:auto}
+@media (min-width:1700px){
+  .band,.bigq,.next,.quad,.quote-split{max-width:1280px}
+}
+
 /* ---------- 通用文字 ---------- */
-.eyebrow{font-size:12.5px;letter-spacing:.24em;color:var(--ink-3);font-weight:600;
-  text-transform:uppercase;margin-bottom:var(--sp-4)}
-h1{font-size:clamp(38px,5.6vw,78px);line-height:1.03;letter-spacing:-.045em;font-weight:700}
-h2{font-size:clamp(24px,3.3vw,48px);line-height:1.08;letter-spacing:-.032em;font-weight:700}
-.sub{font-size:clamp(14.5px,1.35vw,17px);line-height:1.68;color:var(--ink-2);max-width:46ch}
+.eyebrow{font-size:14px;letter-spacing:.01em;color:var(--ink-3);font-weight:600;
+  margin-bottom:var(--sp-4)}
+h1{font-size:clamp(38px,5.6vw,78px);line-height:1.05;letter-spacing:-.015em;font-weight:600}
+h2{font-size:clamp(24px,3.3vw,48px);line-height:1.1;letter-spacing:-.01em;font-weight:600}
+.sub{font-size:clamp(14.5px,1.35vw,17px);line-height:1.47;color:var(--ink-2);max-width:52ch}
 .dim{color:var(--ink-3)}
 .acc{color:var(--accent-ink)}
 b{font-weight:700;color:var(--ink)}
@@ -86,8 +94,8 @@ b{font-weight:700;color:var(--ink)}
   border-top:1px solid var(--hair-strong)}
 .numrow .cell{padding:var(--sp-6) var(--sp-6) 0 0;border-right:1px solid var(--hair)}
 .numrow .cell:last-child{border-right:0;padding-right:0}
-.numrow .v{font-family:var(--num);font-size:clamp(38px,4.6vw,68px);font-weight:800;
-  line-height:.95;letter-spacing:-.045em}
+.numrow .v{font-family:var(--num);font-size:clamp(38px,4.6vw,68px);font-weight:600;
+  line-height:.98;letter-spacing:-.02em}
 .numrow .k{font-size:13.5px;color:var(--ink-3);margin-top:var(--sp-3);line-height:1.5}
 .numrow .bar{height:3px;background:var(--hair);margin-top:var(--sp-4);border-radius:2px;overflow:hidden}
 .numrow .bar i{display:block;height:100%;background:var(--accent);width:0;
@@ -133,15 +141,15 @@ b{font-weight:700;color:var(--ink)}
    ============================================================ */
 .quote-split{display:grid;grid-template-columns:minmax(0,50fr) minmax(0,50fr);
   align-items:center;padding:11vh 8vw;gap:5vw}
-.pull{font-size:clamp(26px,2.9vw,42px);line-height:1.28;letter-spacing:-.028em;
-  font-weight:700;max-width:16ch}
+.pull{font-size:clamp(26px,2.9vw,42px);line-height:1.2;letter-spacing:-.012em;
+  font-weight:600;max-width:18ch}
 .pull .qmark{color:var(--accent);font-family:var(--num)}
 .qnum{display:flex;flex-direction:column}
 .qnum .row{display:grid;grid-template-columns:2.2em 1fr;gap:var(--sp-3);
   padding:var(--sp-4) 0;border-bottom:1px solid var(--hair);align-items:baseline}
 .qnum .row:first-child{border-top:1px solid var(--hair-strong)}
 .qnum .n{font-family:var(--num);font-size:11.5px;font-weight:800;color:var(--accent);letter-spacing:.08em}
-.qnum .t{font-size:16px;font-weight:600;line-height:1.35}
+.qnum .t{font-size:16px;font-weight:600;line-height:1.35;letter-spacing:-.004em}
 .qnum .d{font-size:13px;color:var(--ink-3);margin-top:3px;line-height:1.5}
 
 /* ============================================================
@@ -202,8 +210,8 @@ b{font-weight:700;color:var(--ink)}
   pointer-events:none;transition:opacity .3s}
 .player.buffering .loading{opacity:1}
 @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-.vid-side .k{font-family:var(--num);font-size:clamp(26px,3.2vw,40px);font-weight:800;
-  letter-spacing:-.04em;line-height:1}
+.vid-side .k{font-family:var(--num);font-size:clamp(26px,3.2vw,40px);font-weight:600;
+  letter-spacing:-.018em;line-height:1.05}
 .vid-side .l{font-size:12.5px;color:var(--ink-3);margin:2px 0 var(--sp-6)}
 
 /* ============================================================
@@ -213,7 +221,7 @@ b{font-weight:700;color:var(--ink)}
 .bigq .row{display:grid;grid-template-columns:56fr 44fr;gap:4vw;align-items:baseline;
   padding:var(--sp-6) 0;border-bottom:1px solid var(--hair)}
 .bigq .row:last-child{border-bottom:0}
-.bigq .question{font-size:clamp(19px,2.1vw,30px);line-height:1.28;letter-spacing:-.022em;font-weight:700}
+.bigq .question{font-size:clamp(19px,2.1vw,30px);line-height:1.25;letter-spacing:-.008em;font-weight:600}
 .bigq .answer{font-size:14px;line-height:1.6;color:var(--ink-3)}
 .bigq .answer.miss{color:var(--accent-ink)}
 
@@ -228,8 +236,8 @@ b{font-weight:700;color:var(--ink)}
   box-shadow:var(--shadow-s)}
 .quad .cell.photo{padding:0;border:0}
 .quad .cell.photo img{width:100%;height:100%;object-fit:cover;display:block}
-.quad .cell .qq{font-size:clamp(16px,1.6vw,21px);font-weight:700;line-height:1.3;
-  letter-spacing:-.015em;margin-bottom:var(--sp-2)}
+.quad .cell .qq{font-size:clamp(16px,1.6vw,21px);font-weight:600;line-height:1.3;
+  letter-spacing:-.006em;margin-bottom:var(--sp-2)}
 .quad .cell .bb{font-size:13.5px;line-height:1.6;color:var(--ink-3)}
 
 /* ============================================================
@@ -238,22 +246,24 @@ b{font-weight:700;color:var(--ink)}
 .next{padding:9vh 8vw;display:flex;flex-direction:column;justify-content:center}
 .next .item{display:grid;grid-template-columns:auto 1fr;gap:var(--sp-8);
   align-items:baseline;padding:var(--sp-4) 0}
-.next .n{font-family:var(--num);font-size:clamp(30px,3.6vw,52px);font-weight:800;
-  letter-spacing:-.05em;color:var(--hair-strong);line-height:.9}
-.next .t{font-size:clamp(17px,1.9vw,26px);font-weight:700;letter-spacing:-.022em;line-height:1.3}
+.next .n{font-family:var(--num);font-size:clamp(30px,3.6vw,52px);font-weight:600;
+  letter-spacing:-.03em;color:#D2D2D7;line-height:.94}
+.next .t{font-size:clamp(17px,1.9vw,26px);font-weight:600;letter-spacing:-.008em;line-height:1.3}
 .next .d{font-size:13.5px;color:var(--ink-3);margin-top:3px;line-height:1.55}
 
 /* ============================================================
    深色段落（节奏断点）：苹果页面常用明暗交替切分章节
    ============================================================ */
-.slide.inverse{background:#101013}
-.slide.inverse .eyebrow{color:rgba(255,255,255,.52)}
+/* 深色段落：背景用纯黑（苹果深色页就是 #000），文字用实色不用低透明白。
+   注意 .bigq 与 .inverse 是同一个元素，选择器不能写成 .slide.inverse .bigq */
+.slide.inverse{background:#000}
+.slide.inverse .eyebrow{color:#86868B}
 .slide.inverse h2{color:#F5F5F7}
-.slide.inverse .bigq .row{border-bottom-color:rgba(255,255,255,.12)}
-.slide.inverse .bigq .row:last-child{border-bottom:0}
-.slide.inverse .bigq .question{color:#F5F5F7}
-.slide.inverse .bigq .answer{color:rgba(255,255,255,.54)}
-.slide.inverse .bigq .answer.miss{color:#FF8FB0}
+.slide.bigq.inverse .row{border-bottom-color:rgba(255,255,255,.14)}
+.slide.bigq.inverse .row:last-child{border-bottom:0}
+.slide.bigq.inverse .question{color:#F5F5F7}
+.slide.bigq.inverse .answer{color:#A1A1A6}
+.slide.bigq.inverse .answer.miss{color:#FF9FB8}
 .slide.inverse b{color:#fff}
 
 /* ---------- 构建动画 ---------- */
