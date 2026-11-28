@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026.11.22 红十字应急救护培训 · 活动汇报</title>
+<style>
+/* ============================================================
+   活动汇报 deck —— 复用主汇报设计令牌，聚焦 11/22 单次活动
+   数据来源：AED急救培训调研组 微信群聊（2026.10.31–11.22，904 条）
+   ============================================================ */
+:root{
+  --bg:#050507; --ink:#F5F5F7; --ink-sub:#A1A1A6; --ink-dim:#86868B;
+  --accent:#FF5C8A; --accent-q:rgba(255,92,138,.14);
+  --line:rgba(255,255,255,.10);
+  --grad-main:linear-gradient(176deg,#ffffff 0%,#eef0f5 38%,#c3cad8 72%,#9aa3b4 100%);
+  --ease:cubic-bezier(.16,1,.3,1);
+  --ease-std:cubic-bezier(.25,.1,.25,1);
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px; --fs-lg:18px;
+  --fs-xl:24px; --fs-2xl:30px; --fs-3xl:36px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px; --sp-8:32px;
+  --font-cn:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  --font-num:"Inter","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);
+  font-family:var(--font-cn);overflow:hidden;-webkit-font-smoothing:antialiased}
+#stage{position:relative;height:100vh;width:100%;overflow:hidden}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;
+  justify-content:center;padding:8vh 10vw;opacity:0;visibility:hidden;
+  transform:translate3d(0,24px,0);transition:opacity .7s var(--ease),transform .9s var(--ease),visibility .7s}
+.slide.active{opacity:1;visibility:visible;transform:none}
+
+/* 氛围：极淡光晕（与主界面一致的冷调） */
+#glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 50% at 78% 30%,rgba(255,92,138,.055),transparent 62%),
+             radial-gradient(ellipse 50% 40% at 12% 82%,rgba(95,224,210,.035),transparent 66%)}
+
+/* 排版 */
+.kicker{font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink-dim);
+  font-weight:700;text-transform:uppercase;margin-bottom:var(--sp-4)}
+h1{font-size:clamp(34px,6vw,84px);line-height:1.1;letter-spacing:-.035em;font-weight:800}
+h2{font-size:clamp(24px,3.4vw,48px);line-height:1.2;letter-spacing:-.025em;font-weight:800;
+  margin-bottom:var(--sp-6)}
+.grad{background:var(--grad-main);-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent}
+.sub{font-size:clamp(14px,1.5vw,19px);line-height:1.75;color:var(--ink-sub);max-width:62ch}
+.dim{color:var(--ink-dim)}
+.acc{color:var(--accent)}
+
+/* 数据条 */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:var(--sp-6);margin-top:var(--sp-8)}
+.stat{border-left:2px solid var(--line);padding-left:var(--sp-4)}
+.stat .v{font-family:var(--font-num);font-size:clamp(26px,3.6vw,52px);
+  font-weight:800;line-height:1;letter-spacing:-.03em}
+.stat .k{font-size:var(--fs-sm);color:var(--ink-dim);margin-top:var(--sp-2)}
+
+/* 时间线 */
+.tl{position:relative;margin-top:var(--sp-8);padding-left:var(--sp-8)}
+.tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.tl .it{position:relative;margin-bottom:var(--sp-6)}
+.tl .it::before{content:"";position:absolute;left:calc(-1 * var(--sp-8) + 2px);top:7px;
+  width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.tl .t{font-family:var(--font-num);font-size:var(--fs-xs);letter-spacing:.1em;
+  color:var(--accent);margin-bottom:var(--sp-1)}
+.tl .d{font-size:var(--fs-md);line-height:1.6}
+
+/* 卡片网格 */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  gap:var(--sp-4);margin-top:var(--sp-6)}
+.card{padding:var(--sp-4) var(--sp-6);border:1px solid var(--line);border-radius:12px;
+  background:rgba(255,255,255,.03)}
+.card .h{font-size:var(--fs-md);font-weight:700;margin-bottom:var(--sp-2)}
+.card .b{font-size:var(--fs-sm);line-height:1.65;color:var(--ink-sub)}
+
+/* 引言 */
+.quote{border-left:2px solid var(--accent);padding-left:var(--sp-6);
+  font-size:clamp(16px,1.9vw,24px);line-height:1.7;margin-top:var(--sp-6)}
+
+/* 步骤 */
+.steps{display:flex;flex-direction:column;gap:var(--sp-3);margin-top:var(--sp-6)}
+.step{display:flex;gap:var(--sp-4);align-items:baseline}
+.step .n{font-family:var(--font-num);font-size:var(--fs-sm);font-weight:800;
+  color:var(--accent);min-width:2.2em}
+.step .x{font-size:clamp(14px,1.45vw,18px);line-height:1.6}
+
+/* 构建动画 */
+[data-anim]{opacity:0;transform:translate3d(0,18px,0)}
+.slide.active [data-anim]{opacity:1;transform:none;
+  transition:opacity .7s var(--ease),transform .9s var(--ease)}
+.slide.active [data-anim="1"]{transition-delay:.05s}
+.slide.active [data-anim="2"]{transition-delay:.16s}
+.slide.active [data-anim="3"]{transition-delay:.27s}
+.slide.active [data-anim="4"]{transition-delay:.38s}
+.slide.active [data-anim="5"]{transition-delay:.49s}
+.slide.active [data-anim="6"]{transition-delay:.60s}
+
+/* HUD */
+#hud{position:fixed;left:0;right:0;bottom:0;height:56px;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(20px,4vw,64px);font-size:var(--fs-xs);color:var(--ink-dim);
+  letter-spacing:.14em;pointer-events:none}
+#pager b{color:var(--ink);font-weight:700}
+#back{pointer-events:auto;background:none;border:1px solid var(--line);
+  color:var(--ink-sub);font-family:inherit;font-size:var(--fs-xs);
+  letter-spacing:.12em;padding:6px 14px;border-radius:999px;cursor:pointer;
+  transition:color .2s var(--ease-std),border-color .2s var(--ease-std)}
+#back:hover{color:var(--ink);border-color:var(--accent)}
+#back:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#hint{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);
+  font-size:var(--fs-xs);color:var(--ink-dim);letter-spacing:.1em;
+  z-index:10;pointer-events:none;transition:opacity .6s}
+
+@media (prefers-reduced-motion:reduce){
+  [data-anim]{opacity:1 !important;transform:none !important}
+  .slide{transition:none}
+}
+@media (max-width:760px){
+  .slide{padding:7vh 7vw}
+  #hint{display:none}
+}
+</style>
+</head>
+<body>
+<div id="glow"></div>
+<div id="stage">
+
+  <!-- 1 封面 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">活动汇报 · 2026.11.22</p>
+    <h1 data-anim="2">一堂<br><span class="grad">救命的课</span></h1>
+    <p class="sub" data-anim="3" style="margin-top:3.4vh">
+      江海学院 · 红十字会应急救护培训<br>
+      邗江一中「研急救之策，筑护城之心」课题组
+    </p>
+  </section>
+
+  <!-- 2 为什么去 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">为什么是这一趟</p>
+    <h2 data-anim="2">三处断点，逼着我们走进现场</h2>
+    <div class="stats" data-anim="3">
+      <div class="stat"><div class="v grad">27.82%</div><div class="k">知道有 AED，但找不到</div></div>
+      <div class="stat"><div class="v grad">74.43%</div><div class="k">担心用了要担责</div></div>
+      <div class="stat"><div class="v grad">19.55%</div><div class="k">敢说自己会操作</div></div>
+    </div>
+    <p class="sub" data-anim="4" style="margin-top:4vh">
+      133 份问卷告诉我们"哪里断了"，但问卷说不清"为什么断"。
+      于是我们去问真正在教急救的人。
+    </p>
+  </section>
+
+  <!-- 3 前期对接 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">前期对接</p>
+    <h2 data-anim="2">从一句"周日上午可以吗"开始</h2>
+    <div class="tl" data-anim="3">
+      <div class="it"><div class="t">11.13</div><div class="d">联系红十字会，确认能否安排现场学习</div></div>
+      <div class="it"><div class="t">11.20</div><div class="d">主任回复：周日上午可以，地点在江海学院</div></div>
+      <div class="it"><div class="t">11.21 18:46</div><div class="d">老师确认集合点：<b>江海学院西大门</b></div></div>
+      <div class="it"><div class="t">11.21 22:07</div><div class="d">全组通知：<b>明早 8 点到西门</b></div></div>
+    </div>
+  </section>
+
+  <!-- 4 出发 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">11.22 清晨</p>
+    <h2 data-anim="2">八点，西门</h2>
+    <p class="sub" data-anim="3">
+      江海学院在城郊，周围是田，最近的便利店要走一段。
+      有人六点半就出发，有人坐了一个多小时车，有人骑车过来。
+    </p>
+    <p class="quote" data-anim="4">
+      "明天 8 点早上到江海学院的西门"<br>
+      <span class="dim" style="font-size:.62em">—— 群通知，11.21 22:07</span>
+    </p>
+  </section>
+
+  <!-- 5 我们带了什么 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">准备</p>
+    <h2 data-anim="2">不是空手去的</h2>
+    <p class="sub" data-anim="3">
+      出发前一晚，我们把三个月的调研整理成一份访谈提纲，
+      发到群里，标好"如果有机会，明天咨询一下"。
+    </p>
+    <div class="grid" data-anim="4">
+      <div class="card"><div class="h">配置与布点</div><div class="b">配了多少、在哪、市民怎么查</div></div>
+      <div class="card"><div class="h">培训体系</div><div class="b">一年培训多少人、谁能参加</div></div>
+      <div class="card"><div class="h">法律与责任</div><div class="b">好人法、免责、追责</div></div>
+      <div class="card"><div class="h">维护与巡检</div><div class="b">电极片有效期、谁在管</div></div>
+    </div>
+  </section>
+
+  <!-- 6 现场 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">08:03 · 培训开始</p>
+    <h2 data-anim="2">老师已经到了</h2>
+    <p class="sub" data-anim="3">
+      主任当天还要赶朋友的婚礼，仍先过来把大家交给培训老师。
+      老师说，先把流程讲一遍，再上手。
+    </p>
+    <p class="quote" data-anim="4">
+      "人主任刚才还来找我们了一下"<br>
+      "然后让她说她先给我们讲一下"<br>
+      <span class="dim" style="font-size:.62em">—— 群记录，11.22 07:53–07:54</span>
+    </p>
+  </section>
+
+  <!-- 7 现场记录 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">我们带回了什么</p>
+    <h2 data-anim="2">一整个上午的影像</h2>
+    <div class="stats" data-anim="3">
+      <div class="stat"><div class="v grad">52</div><div class="k">段现场视频</div></div>
+      <div class="stat"><div class="v grad">65</div><div class="k">张现场照片</div></div>
+      <div class="stat"><div class="v grad">900+</div><div class="k">条群内讨论</div></div>
+    </div>
+    <p class="sub" data-anim="4" style="margin-top:4vh">
+      视频从上午 9 点录到下午 1 点多。因为微信限制，
+      组员一段段拆开发，才有了这些碎片。
+    </p>
+  </section>
+
+  <!-- 8 我们问的四个问题 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">我们想弄清的</p>
+    <h2 data-anim="2">四个绕不开的问题</h2>
+    <div class="steps" data-anim="3">
+      <div class="step"><span class="n">01</span><span class="x">设备在那儿，可市民真的知道<b>在哪</b>吗？</span></div>
+      <div class="step"><span class="n">02</span><span class="x">培训过的人，为什么还是<b>不敢用</b>？</span></div>
+      <div class="step"><span class="n">03</span><span class="x">真出了事，救人的<b>要不要担责</b>？</span></div>
+      <div class="step"><span class="n">04</span><span class="x">一根电极片的<b>保质期</b>，谁在盯？</span></div>
+    </div>
+  </section>
+
+  <!-- 9 收获 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">这一趟的收获</p>
+    <h2 data-anim="2">从"看数据"到"看人"</h2>
+    <div class="grid" data-anim="3">
+      <div class="card"><div class="h">看见了流程</div>
+        <div class="b">AED 开机后说什么、电极片贴哪里、什么时候不能碰人——这些问卷里问不出来。</div></div>
+      <div class="card"><div class="h">听见了顾虑</div>
+        <div class="b">"怕担责"不是抽象选项，是具体的、能讲出场景的担心。</div></div>
+      <div class="card"><div class="h">摸到了边界</div>
+        <div class="b">基层能做什么、不能做什么，比报告里的建议更具体。</div></div>
+      <div class="card"><div class="h">留下了素材</div>
+        <div class="b">52 段视频是这次最实在的资产，够我们剪很久。</div></div>
+    </div>
+  </section>
+
+  <!-- 10 下一步 -->
+  <section class="slide">
+    <p class="kicker" data-anim="1">接下来</p>
+    <h2 data-anim="2">把这些变成能用的东西</h2>
+    <div class="steps" data-anim="3">
+      <div class="step"><span class="n">01</span><span class="x">整理 52 段视频，剪一支<b>急救科普短片</b></span></div>
+      <div class="step"><span class="n">02</span><span class="x">把培训里学到的操作，做成<b>图文步骤</b></span></div>
+      <div class="step"><span class="n">03</span><span class="x">补齐"法律与责任"的数据缺口</span></div>
+      <div class="step"><span class="n">04</span><span class="x">把 AED 地图和这份汇报，一起交出去</span></div>
+    </div>
+    <p class="sub dim" data-anim="4" style="margin-top:5vh">
+      研急救之策，筑护城之心。
+    </p>
+  </section>
+
+</div>
+
+<div id="hud">
+  <div id="pager"><b>01</b> / 10</div>
+  <button id="back" type="button">← 返回选择</button>
+</div>
+<div id="hint">点击 / 空格 / → 继续</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var idx = 0, lock = false;
+  var pagerEl = document.querySelector('#pager b');
+  var hintEl = document.getElementById('hint');
+  var pad = function(n){ return (n<10?'0':'')+n; };
+
+  function show(n){
+    n = Math.max(0, Math.min(slides.length-1, n));
+    if(n === idx && slides[n].classList.contains('active')) return;
+    if(lock) return;
+    lock = true;
+    slides.forEach(function(s,i){
+      s.classList.toggle('active', i===n);
+    });
+    idx = n;
+    if(pagerEl) pagerEl.textContent = pad(n+1);
+    setTimeout(function(){ lock = false; }, 420);
+    if(hintEl && n >= slides.length-1) hintEl.style.opacity = '0';
+    else if(hintEl) hintEl.style.opacity = '';
+    try{ history.replaceState(null,'','#'+(n+1)); }catch(e){}
+  }
+
+  function next(){ show(idx+1); }
+  function prev(){ show(idx-1); }
+
+  document.addEventListener('keydown', function(e){
+    var k = e.key;
+    if(k==='ArrowRight'||k==='PageDown'||k===' '||k==='Enter'){ e.preventDefault(); next(); }
+    else if(k==='ArrowLeft'||k==='PageUp'){ e.preventDefault(); prev(); }
+    else if(k==='Home'){ show(0); }
+    else if(k==='End'){ show(slides.length-1); }
+  });
+
+  document.getElementById('stage').addEventListener('click', function(e){
+    if(e.target.closest('button')) return;
+    next();
+  });
+
+  var wheelLock = false;
+  document.addEventListener('wheel', function(e){
+    if(wheelLock) return;
+    if(Math.abs(e.deltaY) < 12) return;
+    wheelLock = true;
+    if(e.deltaY > 0) next(); else prev();
+    setTimeout(function(){ wheelLock = false; }, 280);
+  }, { passive:true });
+
+  var tx=0, ty=0, tt=0, track=false;
+  var stage = document.getElementById('stage');
+  stage.addEventListener('touchstart', function(e){
+    if(e.touches.length!==1){ track=false; return; }
+    var t=e.touches[0]; tx=t.clientX; ty=t.clientY; tt=Date.now(); track=true;
+  }, { passive:true });
+  stage.addEventListener('touchend', function(e){
+    if(!track) return; track=false;
+    var t=e.changedTouches && e.changedTouches[0]; if(!t) return;
+    var dx=t.clientX-tx, dy=t.clientY-ty, dt=Date.now()-tt;
+    if(Math.abs(dy)>Math.abs(dx)) return;
+    if(!(Math.abs(dx)>34 && dt<320) && Math.abs(dx)<=62) return;
+    if(dx<0) next(); else prev();
+  });
+
+  document.getElementById('back').addEventListener('click', function(){
+    /* iframe 内无法直接控制父页，通知父页退出 */
+    try{ parent.postMessage({type:'deck-exit'}, '*'); }catch(e){}
+  });
+
+  /* 支持 #页码 直达 */
+  var m = /^#(\d+)$/.exec(location.hash||'');
+  var start = m ? Math.max(0, Math.min(slides.length-1, parseInt(m[1],10)-1)) : 0;
+  slides[start].classList.add('active');
+  idx = start;
+  if(pagerEl) pagerEl.textContent = pad(start+1);
+})();
+</script>
+</body>
+</html>
