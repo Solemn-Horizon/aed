@@ -911,7 +911,11 @@ document.getElementById('demoPickScene').addEventListener('click',function(e){
   playDeck(c.getAttribute('data-deck'));
 });
 function playDeck(kind){
-  demoFrame.setAttribute('src', kind==='activity' ? 'activity/index.html' : 'deck/index.html');
+  /* 两个报告都带 #1 打开：
+     · 主汇报带 hash 会跳过电影片头（片头在 iframe 里看不到操作引导，会停在黑屏）
+     · #1 同时保证每次都从第一页开始，而不是上次停留的位置 */
+  var src = kind==='activity' ? 'activity/index.html#1' : 'deck/index.html#1';
+  demoFrame.setAttribute('src', src);
   setScene('demo');
 }
 for(var bi=0;bi<document.querySelectorAll('[data-back]').length;bi++){
