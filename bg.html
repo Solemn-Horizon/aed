@@ -40,9 +40,25 @@ header{display:grid;grid-template-columns:minmax(240px,1.7fr) repeat(5,minmax(0,
 /* ---------- stage ---------- */
 .stage{position:relative;min-height:0;overflow:hidden}
 #stage{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* 舞台叠层：原来继承 lab 界面的「扫描线 + 强暗角」——
+   每 3px 一条 18% 黑线会在页面上形成细密横纹，
+   而 radial 暗角把边缘压掉 55%，和画布本身的光晕叠加后，
+   在光环与左侧之间留下一条发黑的竖带。
+   这里换成一层几乎看不见的提亮基底，只负责消除"空洞感"，不做任何压暗。 */
 .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px),
-             radial-gradient(ellipse at 40% 50%,transparent 55%,rgba(0,0,0,.55) 100%)}
+  background:
+    /* 左中侧补一层极淡的空气感：画布上光环的光晕到不了这里，
+       会留下一条亮度 4–6 的竖带，看着像"缺了一块" */
+    radial-gradient(ellipse 70% 76% at 27% 46%,
+      rgba(255,255,255,.055) 0%,
+      rgba(255,255,255,.030) 38%,
+      rgba(255,255,255,.012) 62%,
+      transparent 84%),
+    radial-gradient(ellipse 96% 92% at 70% 34%,
+      rgba(255,255,255,.028) 0%,
+      rgba(255,255,255,.011) 42%,
+      rgba(255,255,255,.004) 68%,
+      transparent 84%)}
 .ov{position:absolute;font-size:9px;letter-spacing:1px;color:var(--text);pointer-events:none;z-index:2}
 .chk{left:0;top:0;will-change:transform;background:rgba(8,9,11,.85);border:1px solid var(--line2);padding:5px 8px;transition:opacity .4s}
 .chk b{display:block;font-size:8px;color:var(--dim);font-weight:600;margin-bottom:3px}
