@@ -349,13 +349,13 @@ C.depthBlur = 0;               /* 远景虚化：关 */
    原版是 lab 控制台可视化，微数据块 / 粒子 / 光束全开，信息量极高。
    作为网页背景要"少即是多"——保留环 + 心电 + 少量点的骨架，
    砍掉高密度的粒子流、飞散物、爆闪和散景。 */
-C.runnerCount = 24;            /* 沿线粒子 788 → 24（繁杂主因） */
+C.runnerCount = 8;             /* 沿线粒子 788 → 24 → 8：只留"缓慢流动"的呼吸感 */
 C.bokeh = 0;                   /* 散景光斑：关 */
 C.atmos = 0;                   /* 大气层：关 */
 C.hazeCount = 0;               /* 雾霾粒子：关 */
 C.flyerCount = 0;              /* 飞散物：关 */
 C.burstRate = 0; C.flareRate = 0;  /* 爆闪/耀斑：关 */
-C.cometPerBeat = 0.5; C.cometTrickle = 0;  /* 彗星：大幅减少 */
+C.cometPerBeat = 0.18; C.cometTrickle = 0; /* 彗星：大幅减少 → 更克制，只做偶发点缀 */
 C.ringSpeed = Math.min(C.ringSpeed || 3, 1.2);  /* 环转慢一点，减少躁动 */
 
 /* 亮度：从"增强"回落到克制 —— 看得见但不喧宾夺主 */
@@ -527,7 +527,9 @@ function buildWeb() {
   /* 线网密度大幅收敛：原来最多 2600 条曲线，像一团乱麻，是"繁杂"的主因。
      作为背景只需要"隐约的神经线网"骨架 —— 砍到约 1/5（240 条）。
      性能也显著变好（这些是预渲染到离屏 canvas 的）。 */
-  const N = Math.min(360, Math.round(140 + (W * H) / 9000));
+  /* 网线数量：360 → 96。原值让整屏布满曲线，与光环争夺注意力；
+     降到 96 只保留"隐约的结构感"，让光环成为唯一视觉焦点。 */
+  const N = Math.min(96, Math.round(52 + (W * H) / 42000));
   for (let i = 0; i < N; i++) {
     const a1 = rnd() * TAU, a2 = a1 + rr(0.6, Math.PI * 1.4);
     const p0 = { x: Math.cos(a1) * R, y: Math.sin(a1) * R };
@@ -1926,41 +1928,13 @@ document.addEventListener('keydown', e => {
     return 0;
   }
 
-  var crosses = [], glyphs = [];
-  function build(){
-    crosses = [];
-    /* 十字阵列大幅收敛：原来 62% 概率铺满全屏，像满屏星点，很繁杂。
-       现在只在右侧环附近放 3 个，作为"医疗定位"的克制暗示。 */
-    var spots = [[0.74, 0.18], [0.90, 0.34], [0.66, 0.48]];   /* 跟随环心(右上) */
-    for (var i = 0; i < spots.length; i++) {
-      crosses.push({
-        x: spots[i][0] * W + (Math.random()-0.5) * 24,
-        y: spots[i][1] * H + (Math.random()-0.5) * 24,
-        s: 4 + Math.random() * 2,
-        ph: Math.random() * 6.283,
-        sp: 0.2 + Math.random() * 0.3
-      });
-    }
-    /* 一个"主角"AED 设备轮廓 + 三个陪衬：
-       主角放在右侧空白带（避免被数据环和卡片盖住），
-       这是整页最直接的"这是一台除颤器"的视觉锚点。 */
-    /* 一排 AED 设备 = "布点图"，放在卡片下方的空带里。
-       这一排是最能表达项目主题的元素（AED 在城市的分布密度）。 */
-    glyphs = [];
-    /* 设备排 7 → 3：保留"城市布点"的项目语义，
-       去掉密集重复带来的繁杂感。位置仍在卡片下方空带。 */
-    var n = 3;
-    for(var i=0;i<n;i++){
-      glyphs.push({
-        x: (0.30 + i * (0.40 / (n - 1))) * W,
-        y: H * 0.862,
-        s: 28,
-        ph: i * 0.7,
-        sp: 0.10,
-        row: i
-      });
-    }
-  }
+    /* 背景元素取舍（2026-11-28）
+     原来 7 类元素同时运动：光环 / 360 条网线 / 24 个光点 / 彗星 /
+     边缘刻度 / 3 个医疗十字 / 3 台 AED 轮廓 —— 密度过载、彼此抢焦点。
+     现在只保留 4 类：光环 + 少量网线 + 少量光点 + 心电图。
+     十字与 AED 轮廓全部移除：主题识别交给主界面标题和卡片，
+     背景只负责氛围与呼吸，不承担信息量。 */
+  function build(){}
 
   function fit(){
     DPR = Math.min(1.0, window.devicePixelRatio || 1) * 0.8;
@@ -1977,41 +1951,7 @@ document.addEventListener('keydown', e => {
   }, { passive:true });
 
   /* 十字：医疗标识的极简形式 */
-  function drawCross(x, y, s, al){
-    c.strokeStyle = 'rgba(255,61,139,' + al.toFixed(3) + ')';
-    c.lineWidth = 1.1;
-    c.beginPath();
-    c.moveTo(x - s, y); c.lineTo(x + s, y);
-    c.moveTo(x, y - s); c.lineTo(x, y + s);
-    c.stroke();
-  }
-
   /* AED 设备轮廓：圆角方盒 + 心形闪电（除颤器的经典视觉） */
-  function drawAed(x, y, s, al){
-    var w = s, hh = s * 0.78;
-    c.strokeStyle = 'rgba(160,107,255,' + al.toFixed(3) + ')';
-    c.lineWidth = 1.2;
-    c.beginPath();
-    if(c.roundRect) c.roundRect(x - w/2, y - hh/2, w, hh, s * 0.14);
-    else c.rect(x - w/2, y - hh/2, w, hh);
-    c.stroke();
-    /* 屏幕 */
-    c.strokeStyle = 'rgba(95,224,210,' + (al * 0.9).toFixed(3) + ')';
-    c.beginPath();
-    c.rect(x - w*0.30, y - hh*0.24, w*0.60, hh*0.30);
-    c.stroke();
-    /* 闪电 */
-    var bx = x, by = y + hh*0.22, u = s * 0.10;
-    c.strokeStyle = 'rgba(255,61,139,' + (al * 1.25).toFixed(3) + ')';
-    c.lineWidth = 1.4;
-    c.beginPath();
-    c.moveTo(bx + u*0.5, by - u*1.6);
-    c.lineTo(bx - u*0.9, by + u*0.2);
-    c.lineTo(bx + u*0.1, by + u*0.2);
-    c.lineTo(bx - u*0.5, by + u*1.8);
-    c.stroke();
-  }
-
   var T = 0;
   function draw(dt){
     T += dt;
@@ -2091,24 +2031,6 @@ document.addEventListener('keydown', e => {
         c.fillStyle = 'rgba(190,255,250,' + (0.055 * k2).toFixed(4) + ')';
         c.fillRect(0, 0, W, H);
       }
-    }
-
-    /* ---------- ③ 医疗十字（呼吸微亮） ---------- */
-    for(var i=0;i<crosses.length;i++){
-      var k = crosses[i];
-      var al = 0.075 + 0.06 * (0.5 + 0.5 * Math.sin(T * k.sp + k.ph));
-      drawCross(k.x, k.y, k.s, al);
-    }
-
-    /* ---------- ④ AED 设备轮廓（缓慢漂移） ---------- */
-    for(var j=0;j<glyphs.length;j++){
-      var d = glyphs[j];
-      /* 沿线扫描的高光：一道亮光从左往右依次点亮每台设备 */
-      var scan = (T * 0.16) % 1;
-      var dist = Math.abs((d.x / W) - (0.115 + scan * 0.75));
-      var lit = Math.max(0, 1 - dist * 7);
-      var al = 0.13 + lit * 0.30;
-      drawAed(d.x, d.y + Math.sin(T * d.sp + d.ph) * 2, d.s, al);
     }
   }
 
