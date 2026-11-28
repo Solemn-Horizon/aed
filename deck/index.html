@@ -5910,8 +5910,15 @@ if (stageEl) {
       }
     }, true);
 
-    /* 直达链接 / 减弱动效：直接落定到终态，不播放动画 */
-    if (/^#\d+$/.test(location.hash || '') || reduce) {
+    /* 是否被嵌入 iframe（主界面的演示容器）。
+       嵌入时用户看不到"点击任意处开始"的引导，片头会一直停在待机黑屏，
+       所以嵌入场景直接跳过片头；独立打开时保留完整片头。 */
+    var EMBEDDED = (function () {
+      try { return window.self !== window.top; } catch (e) { return true; }
+    })();
+
+    /* 直达链接 / 减弱动效 / 嵌入：直接落定到终态，不播放动画 */
+    if (/^#\d+$/.test(location.hash || '') || reduce || EMBEDDED) {
       started = true;
       intro.setAttribute('data-phase', 'running');
       intro.classList.add('intro-landed');
