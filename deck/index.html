@@ -13,7 +13,7 @@
   --black:#000000;
   --white:#ffffff;
   --grey:#9ca3af;
-  --dim:#4b5563;
+  --dim:#7A7A7F;   /* WCAG AA：2.69:1 → 4.77:1（kicker/序号/进度大量使用） */
   --pink:#ff3d8b;
   --purple:#a06bff;
   --line:#1f1f1f;
@@ -38,6 +38,11 @@
   /* 中文字形优先，回退到系统黑体 */
   --font-cn:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Noto Sans SC",sans-serif;
   --font-num:"Inter","Helvetica Neue",Helvetica,Arial,sans-serif;
+  /* premium 字体阶梯：12/14/16/18/24/30/36（大标题另用 clamp Fluid） */
+  --fs-xs:12px; --fs-sm:14px; --fs-md:16px; --fs-lg:18px;
+  --fs-xl:24px; --fs-2xl:30px; --fs-3xl:36px;
+  /* premium 间距节奏：4/8/12/16/24/32（原 --s-md:24 保留兼容） */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px; --sp-8:32px;
 }
 
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1066,10 +1071,10 @@ body{
 }
 /* 小字统一压到中性灰，形成"呼吸" */
 .kicker{
-  color:#6e6e73;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--text-tertiary);letter-spacing:.15em;text-transform:uppercase;
   font-size:clamp(10px,1vw,14px);font-weight:700;
 }
-.sub{color:#86868b;letter-spacing:.004em}
+.sub{color:var(--text-secondary);letter-spacing:.004em}
 .sub.dim{color:#5b5b62}
 .sub.soft{
   background:linear-gradient(100deg,#d4d6de 0%,#ffffff 100%);
@@ -1116,7 +1121,7 @@ body::after{
   background:linear-gradient(90deg,#a06bff 0%,#d94bd8 55%,#ff3d8b 100%);
   box-shadow:0 0 16px rgba(139,92,246,.40);
 }
-.brow .lab{color:#86868b;letter-spacing:.01em}
+.brow .lab{color:var(--text-secondary);letter-spacing:.01em}
 .brow .val{color:#f5f5f7;letter-spacing:-.012em}
 .brow.hot .val{
   background:linear-gradient(100deg,#c9a6ff,#ff5c8a);
@@ -1125,12 +1130,12 @@ body::after{
 }
 
 /* ---------- 6. 界面元素同步收敛 ---------- */
-#chapter{color:#6e6e73;letter-spacing:.22em;font-size:10.5px;font-weight:700}
-#pager{color:#6e6e73;letter-spacing:.12em}
+#chapter{color:var(--text-tertiary);letter-spacing:.22em;font-size:10.5px;font-weight:700}
+#pager{color:var(--text-tertiary);letter-spacing:.12em}
 #pager b{color:#f5f5f7;font-weight:600}
-#tools button{color:#5a5a61;letter-spacing:.06em}
+#tools button{color:var(--text-tertiary);letter-spacing:.06em}
 #tools button:hover,#tools button.on{color:#f5f5f7}
-#speaker{color:#5a5a61;letter-spacing:.12em}
+#speaker{color:var(--text-tertiary);letter-spacing:.12em}
 #speakerName b{color:#c9a6ff;font-weight:700}
 #bar{height:2px;background:linear-gradient(90deg,#a06bff,#ff5c8a)}
 
@@ -1167,7 +1172,7 @@ body::after{
 .chapter-slide .word{
   color:#f5f5f7;letter-spacing:.06em;font-weight:700;
 }
-.chapter-slide .cn{color:#86868b;letter-spacing:.02em}
+.chapter-slide .cn{color:var(--text-secondary);letter-spacing:.02em}
 /* 章节页那根细线：更细、更冷 */
 .chapter-slide .bar-line{
   background:linear-gradient(90deg,#c9a6ff,#ff5c8a);
@@ -1190,7 +1195,7 @@ body::after{
   -webkit-background-clip:text;background-clip:text;
   -webkit-text-fill-color:transparent;color:transparent;
 }
-.unit{color:#86868b}
+.unit{color:var(--text-secondary)}
 
 /* ---------- 11. 顶部进度条：降到发丝级，不与取景框抢视线 ---------- */
 #bar{height:1.5px;opacity:.75}
@@ -1996,7 +2001,7 @@ body::after{content:none !important}
 #xray .cell .k{font-size:11px;color:#8e8e93;margin-bottom:6px}
 #xray .cell .v{font-family:var(--font-num);font-size:22px;font-weight:700;
   font-variant-numeric:tabular-nums}
-#xray .cell .d{font-size:11px;color:#86868b;margin-top:5px}
+#xray .cell .d{font-size:11px;color:var(--text-secondary);margin-top:5px}
 /* 非线性导航：26 页缩略索引，点任意一页直达 */
 #xray .nav{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;margin-top:26px}
 #xray .nav button{
@@ -2007,7 +2012,7 @@ body::after{content:none !important}
 #xray .nav button:hover{color:#fff;border-color:rgba(167,139,250,.6);
   background:rgba(139,124,246,.18)}
 #xray .nav button.cur{color:#fff;border-color:#c07bf0;background:rgba(139,124,246,.28)}
-#xray .tip{margin-top:22px;font-size:11px;color:#5a5a61;line-height:1.8}
+#xray .tip{margin-top:22px;font-size:11px;color:var(--text-tertiary);line-height:1.8}
 
 @media (max-width:760px){
   #xray .panel{padding:24px 20px;width:94vw}
@@ -2687,13 +2692,13 @@ body::after{border-radius:var(--r-xs)}
 #stage[data-form="form-card"]{
   --ink:#1D1D1F; --ink-sub:#515154; --ink-dim:#6E6E73;
 }
-#stage[data-form="form-card"] .slide:not(.bento-slide) .kicker{color:#6E6E73}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .kicker{color:var(--text-tertiary)}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .h2,
 #stage[data-form="form-card"] .slide:not(.bento-slide) .h2.grad{
   color:#1D1D1F;background:none;-webkit-text-fill-color:#1D1D1F}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .sub,
 #stage[data-form="form-card"] .slide:not(.bento-slide) .sub.dim{color:#515154}
-#stage[data-form="form-card"] .slide:not(.bento-slide) .brow .lab{color:#6E6E73}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .brow .lab{color:var(--text-tertiary)}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .brow .val{color:#1D1D1F}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .brow .track{
   background:rgba(29,29,31,.10)}
@@ -2722,12 +2727,12 @@ body::after{border-radius:var(--r-xs)}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .stat .k,
 #stage[data-form="form-card"] .slide:not(.bento-slide) .tl .node .s,
 #stage[data-form="form-card"] .slide:not(.bento-slide) .tl .node .d{
-  color:#6E6E73}
+  color:var(--text-tertiary)}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .stat{
   border-left-color:rgba(29,29,31,.12)}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .segbar{
   background:rgba(29,29,31,.07)}
-#stage[data-form="form-card"] .slide:not(.bento-slide) .seglegend b{color:#6E6E73}
+#stage[data-form="form-card"] .slide:not(.bento-slide) .seglegend b{color:var(--text-tertiary)}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .seglegend u{color:#1D1D1F}
 #stage[data-form="form-card"] .slide:not(.bento-slide) .capsule{
   background:#1D1D1F;color:#FFF}
@@ -3382,12 +3387,13 @@ html.lite [data-build]{animation:none !important}
   /* 文字：中性灰阶梯，全部达 WCAG AA（正文 ≥4.5:1） */
   --ink:#F5F5F7;            --ink-sub:#A1A1A6;        --ink-dim:#86868B;
   --text-primary:#F5F5F7;   --text-secondary:#A1A1A6;
-  --text-tertiary:#86868B;  --text-quaternary:#6E6E73;/* 仅 ≥20px 大字 */
+  --text-tertiary:#86868B;  --text-quaternary:#7A7A7F;/* WCAG AA 4.77:1，仍限定 ≥20px 大字 */
 
   /* 单一强调色：AED 玫瑰红（呼应除颤器红色标识） */
   --accent:#FF5C8A;         --accent-hover:#FF7AA1;
   --accent-quiet:rgba(255,92,138,.14);
   --accent-glow:rgba(255,92,138,.28);
+  --success:#16A34A; --warning:#D97706; --danger:#DC2626;
   --focus:#0A84FF;                       /* Apple 蓝：只做键盘焦点环 */
   --ecg:#30D0C4;                         /* 心电/生命体征母题，仅此一处 */
 
